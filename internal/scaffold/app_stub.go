@@ -9,7 +9,7 @@ import (
 
 // GenerateAppStub returns a minimal SwiftUI app entry point.
 func GenerateAppStub(cfg config.ProjectConfig) string {
-	appTypeName := swiftTypeName(cfg.AppName)
+	appTypeName := SwiftTypeName(cfg.AppName)
 
 	return `import SwiftUI
 
@@ -24,7 +24,8 @@ struct ` + appTypeName + `: App {
 `
 }
 
-func swiftTypeName(raw string) string {
+// SwiftTypeName converts a raw app name into a valid Swift type name.
+func SwiftTypeName(raw string) string {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
 		return "AppMain"

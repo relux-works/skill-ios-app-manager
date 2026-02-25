@@ -1,0 +1,34 @@
+import SwiftIoC
+{{- range .Imports }}
+import {{ . }}
+{{- end }}
+
+extension {{ .AppTypeName }} {
+    @MainActor
+    enum Registry {
+        static let ioc = IoC()
+
+        static func configure() {
+{{- range .Modules }}
+            ioc.register({{ .InterfacePackage }}.Module.Interface.self, lifecycle: .container, resolver: Self.build{{ .Name }})
+{{- end }}
+        }
+
+        static func resolve<T>(_ type: T.Type) -> T {
+            ioc.get(by: type)!
+        }
+
+        static func resolveAsync<T>(_ type: T.Type) async -> T {
+            await ioc.getAsync(by: type)!
+        }
+    }
+}
+
+// MARK: - Module Builders
+extension {{ .AppTypeName }}.Registry {
+{{- range .Modules }}
+    private static func build{{ .Name }}() {{ if .IsAsync }}async {{ end }}-> {{ .InterfacePackage }}.Module.Interface {
+        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl()
+    }
+{{ end -}}
+}

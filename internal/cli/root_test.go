@@ -23,6 +23,7 @@ func TestRootHelpShowsAllSubcommands(t *testing.T) {
 		"clean",
 		"q",
 		"m",
+		"ioc",
 	} {
 		if !strings.Contains(output, expected) {
 			t.Fatalf("help output missing %q:\n%s", expected, output)

@@ -79,6 +79,7 @@ func NewRootCommandWithAppManager(appManager components.AppManager) *cobra.Comma
 		newCleanCommand(opts),
 		newQueryCommand(opts),
 		newMutationCommand(opts),
+		newIocCommand(opts),
 	)
 
 	return cmd
