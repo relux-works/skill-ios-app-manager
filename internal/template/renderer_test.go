@@ -65,9 +65,6 @@ func TestRendererRenderWithSampleConfig(t *testing.T) {
 	if !strings.Contains(workspaceSwift, "import ProjectDescription") {
 		t.Fatalf("Workspace.swift missing ProjectDescription import:\n%s", workspaceSwift)
 	}
-	if !strings.Contains(workspaceSwift, cfg.ModulesPath) {
-		t.Fatalf("Workspace.swift missing ModulesPath %q:\n%s", cfg.ModulesPath, workspaceSwift)
-	}
 
 	packageSwift := rendered["Package.swift"]
 	requiredPackageValues := []string{
@@ -120,8 +117,8 @@ func TestRendererRenderWithMinimalConfig(t *testing.T) {
 	}
 
 	workspaceSwift := rendered["Workspace.swift"]
-	if !strings.Contains(workspaceSwift, `let localPackagesPath = "Packages"`) {
-		t.Fatalf("Workspace.swift missing default modules path:\n%s", workspaceSwift)
+	if !strings.Contains(workspaceSwift, cfg.AppName) {
+		t.Fatalf("Workspace.swift missing app name %q:\n%s", cfg.AppName, workspaceSwift)
 	}
 
 	for name, content := range rendered {
@@ -164,8 +161,8 @@ func TestRendererRenderWithFullConfig(t *testing.T) {
 	}
 
 	workspaceSwift := rendered["Workspace.swift"]
-	if !strings.Contains(workspaceSwift, cfg.ModulesPath) {
-		t.Fatalf("Workspace.swift missing full modules path %q:\n%s", cfg.ModulesPath, workspaceSwift)
+	if !strings.Contains(workspaceSwift, cfg.AppName) {
+		t.Fatalf("Workspace.swift missing app name %q:\n%s", cfg.AppName, workspaceSwift)
 	}
 
 	packageSwift := rendered["Package.swift"]
@@ -213,8 +210,8 @@ func TestRendererRenderDefaultsModulesPathAndConfigurations(t *testing.T) {
 	}
 
 	workspaceSwift := rendered["Workspace.swift"]
-	if !strings.Contains(workspaceSwift, `"Packages"`) {
-		t.Fatalf("Workspace.swift missing default ModulesPath:\n%s", workspaceSwift)
+	if !strings.Contains(workspaceSwift, `"DemoApp"`) {
+		t.Fatalf("Workspace.swift missing app name:\n%s", workspaceSwift)
 	}
 
 	packageSwift := rendered["Package.swift"]

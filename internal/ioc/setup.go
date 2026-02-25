@@ -40,10 +40,12 @@ type DiscoveredModule struct {
 	IsAsync          bool // true for relux modules (Impl has async init)
 }
 
-type registryTemplateData struct {
+// RegistryTemplateData holds parameters for the Registry.swift template.
+type RegistryTemplateData struct {
 	AppTypeName string
 	Imports     []string
 	Modules     []DiscoveredModule
+	HasRelux    bool
 }
 
 // Setup integrates SwiftIoC into a Tuist project.
@@ -52,7 +54,7 @@ func Setup(input SetupInput) error {
 		return err
 	}
 
-	modulesRoot := resolveModulesPath(input.ProjectRoot, input.ModulesPath)
+	modulesRoot := ResolveModulesPath(input.ProjectRoot, input.ModulesPath)
 
 	if err := addSwiftIoCToPackageSwift(modulesRoot); err != nil {
 		return fmt.Errorf("add SwiftIoC to Package.swift: %w", err)
@@ -70,7 +72,7 @@ func Setup(input SetupInput) error {
 
 	appTypeName := scaffold.SwiftTypeName(input.AppName)
 
-	registryPath := filepath.Join(input.ProjectRoot, "Targets", input.AppName, "Sources", "Registry.swift")
+	registryPath := filepath.Join(input.ProjectRoot, "Targets", input.AppName, "Sources", "App", appTypeName+".Registry.swift")
 	if err := scaffoldRegistry(registryPath, appTypeName, modules); err != nil {
 		return fmt.Errorf("scaffold Registry.swift: %w", err)
 	}
@@ -139,7 +141,8 @@ func validateInput(input SetupInput) error {
 	return nil
 }
 
-func resolveModulesPath(projectRoot, modulesPath string) string {
+// ResolveModulesPath resolves the modules root path (default: Packages).
+func ResolveModulesPath(projectRoot, modulesPath string) string {
 	mp := strings.TrimSpace(modulesPath)
 	if mp == "" {
 		mp = "Packages"
@@ -171,7 +174,21 @@ func addSwiftIoCToProjectSwift(projectSwiftPath string) error {
 }
 
 func scaffoldRegistry(registryPath, appTypeName string, modules []DiscoveredModule) error {
-	content, err := renderRegistry(appTypeName, modules)
+	content, err := RenderRegistry(appTypeName, modules)
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(registryPath), 0o755); err != nil {
+		return fmt.Errorf("create directory for Registry.swift: %w", err)
+	}
+
+	return os.WriteFile(registryPath, []byte(content), 0o644)
+}
+
+// ScaffoldRegistryWithData writes Registry.swift using full template data.
+func ScaffoldRegistryWithData(registryPath string, data RegistryTemplateData) error {
+	content, err := RenderRegistryWithData(data)
 	if err != nil {
 		return err
 	}
@@ -185,10 +202,15 @@ func scaffoldRegistry(registryPath, appTypeName string, modules []DiscoveredModu
 
 // RenderRegistry renders the Registry.swift content from the template.
 func RenderRegistry(appTypeName string, modules []DiscoveredModule) (string, error) {
-	return renderRegistry(appTypeName, modules)
+	return RenderRegistryWithData(RegistryTemplateData{
+		AppTypeName: appTypeName,
+		Imports:     BuildModuleImports(modules),
+		Modules:     modules,
+	})
 }
 
-func renderRegistry(appTypeName string, modules []DiscoveredModule) (string, error) {
+// RenderRegistryWithData renders the Registry.swift content from the template using full data.
+func RenderRegistryWithData(data RegistryTemplateData) (string, error) {
 	tmplContent, err := templatesFS.ReadFile("templates/registry.swift.tmpl")
 	if err != nil {
 		return "", fmt.Errorf("read registry template: %w", err)
@@ -199,13 +221,6 @@ func renderRegistry(appTypeName string, modules []DiscoveredModule) (string, err
 		return "", fmt.Errorf("parse registry template: %w", err)
 	}
 
-	imports := buildModuleImports(modules)
-	data := registryTemplateData{
-		AppTypeName: appTypeName,
-		Imports:     imports,
-		Modules:     modules,
-	}
-
 	var buf strings.Builder
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return "", fmt.Errorf("render registry template: %w", err)
@@ -214,7 +229,8 @@ func renderRegistry(appTypeName string, modules []DiscoveredModule) (string, err
 	return buf.String(), nil
 }
 
-func buildModuleImports(modules []DiscoveredModule) []string {
+// BuildModuleImports builds sorted import list from discovered modules.
+func BuildModuleImports(modules []DiscoveredModule) []string {
 	seen := make(map[string]struct{})
 	var imports []string
 	for _, m := range modules {
@@ -249,10 +265,10 @@ func EditAppSwift(content string, modules []DiscoveredModule) string {
 	result := content
 
 	// Add imports if not already present.
-	result = ensureImport(result, "SwiftIoC")
+	result = EnsureImport(result, "SwiftIoC")
 	for _, m := range modules {
-		result = ensureImport(result, m.InterfacePackage)
-		result = ensureImport(result, m.ImplPackage)
+		result = EnsureImport(result, m.InterfacePackage)
+		result = EnsureImport(result, m.ImplPackage)
 	}
 
 	// Add init() { Registry.configure() } if not already present.
@@ -318,7 +334,8 @@ func hasReluxImport(packageDir string) bool {
 	return false
 }
 
-func ensureImport(content, moduleName string) string {
+// EnsureImport adds an import statement if not already present.
+func EnsureImport(content, moduleName string) string {
 	importLine := "import " + moduleName
 	importPattern := regexp.MustCompile(`(?m)^import\s+` + regexp.QuoteMeta(moduleName) + `\s*$`)
 	if importPattern.MatchString(content) {

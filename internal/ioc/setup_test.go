@@ -302,13 +302,13 @@ func TestEnsureImport(t *testing.T) {
 
 	input := "import SwiftUI\n\n@main\nstruct App {}\n"
 
-	result := ensureImport(input, "SwiftIoC")
+	result := EnsureImport(input, "SwiftIoC")
 	if !strings.Contains(result, "import SwiftIoC") {
 		t.Fatalf("result missing import SwiftIoC:\n%s", result)
 	}
 
 	// Should not duplicate.
-	result2 := ensureImport(result, "SwiftIoC")
+	result2 := EnsureImport(result, "SwiftIoC")
 	count := strings.Count(result2, "import SwiftIoC")
 	if count != 1 {
 		t.Fatalf("import SwiftIoC appears %d times, want 1:\n%s", count, result2)
@@ -323,7 +323,7 @@ func TestBuildModuleImports(t *testing.T) {
 		{Name: "Auth", InterfacePackage: "Auth", ImplPackage: "AuthImpl"},
 	}
 
-	imports := buildModuleImports(modules)
+	imports := BuildModuleImports(modules)
 
 	expected := []string{"Auth", "AuthImpl", "TodoList", "TodoListImpl"}
 	if len(imports) != len(expected) {

@@ -75,8 +75,8 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 	}
 
 	workspaceManifest := readFile(t, filepath.Join(outputDir, "Workspace.swift"))
-	if !strings.Contains(workspaceManifest, cfg.ModulesPath) {
-		t.Fatalf("Workspace.swift missing ModulesPath %q:\n%s", cfg.ModulesPath, workspaceManifest)
+	if !strings.Contains(workspaceManifest, cfg.AppName) {
+		t.Fatalf("Workspace.swift missing AppName %q:\n%s", cfg.AppName, workspaceManifest)
 	}
 
 	packageManifest := readFile(t, filepath.Join(outputDir, "Package.swift"))

@@ -66,7 +66,7 @@ func (c *InitCommand) Run(ctx context.Context, input InitModuleInput) ([]string,
 		ImplPackageName:      defaultValue(input.ImplPackageName, moduleName+"Impl"),
 	}
 
-	targets, err := templateTargetsForSet(layout, input.TemplateSet)
+	targets, err := templateTargetsForSet(layout, input.TemplateSet, moduleName)
 	if err != nil {
 		return nil, err
 	}
@@ -89,20 +89,21 @@ func (c *InitCommand) Run(ctx context.Context, input InitModuleInput) ([]string,
 	return written, nil
 }
 
-func templateTargetsForSet(layout moduleLayout, templateSet []string) ([]templateTarget, error) {
+func templateTargetsForSet(layout moduleLayout, templateSet []string, moduleName string) ([]templateTarget, error) {
+	n := moduleName
 	definitions := map[string]templateTarget{
-		"namespace": {templateName: "namespace.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, "Namespace.swift")},
-		"module":    {templateName: "module.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, "Module.swift")},
-		"interface": {templateName: "interface.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, "Module+Interface.swift")},
-		"impl":      {templateName: "impl.swift.tmpl", outputPath: filepath.Join(layout.ImplSourcesDir, "Module+Impl.swift")},
+		"namespace": {templateName: "namespace.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, n+".swift")},
+		"module":    {templateName: "module.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, n+".Module.swift")},
+		"interface": {templateName: "interface.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, n+".Module+Interface.swift")},
+		"impl":      {templateName: "impl.swift.tmpl", outputPath: filepath.Join(layout.ImplSourcesDir, n+".Module+Impl.swift")},
 
-		"relux_namespace": {templateName: "relux_namespace.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, "Namespace.swift")},
-		"relux_interface": {templateName: "relux_interface.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, "Module+Interface.swift")},
-		"relux_action":    {templateName: "relux_action.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, "Business+Action.swift")},
-		"relux_effect":    {templateName: "relux_effect.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, "Business+Effect.swift")},
-		"relux_impl":      {templateName: "relux_impl.swift.tmpl", outputPath: filepath.Join(layout.ImplSourcesDir, "Module+Impl.swift")},
-		"relux_state":     {templateName: "relux_state.swift.tmpl", outputPath: filepath.Join(layout.ImplSourcesDir, "Business+State.swift")},
-		"relux_flow":      {templateName: "relux_flow.swift.tmpl", outputPath: filepath.Join(layout.ImplSourcesDir, "Business+Flow.swift")},
+		"relux_namespace": {templateName: "relux_namespace.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, n+".swift")},
+		"relux_interface": {templateName: "relux_interface.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, n+".Module+Interface.swift")},
+		"relux_action":    {templateName: "relux_action.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, n+".Business+Action.swift")},
+		"relux_effect":    {templateName: "relux_effect.swift.tmpl", outputPath: filepath.Join(layout.InterfaceSourcesDir, n+".Business+Effect.swift")},
+		"relux_impl":      {templateName: "relux_impl.swift.tmpl", outputPath: filepath.Join(layout.ImplSourcesDir, n+".Module+Impl.swift")},
+		"relux_state":     {templateName: "relux_state.swift.tmpl", outputPath: filepath.Join(layout.ImplSourcesDir, n+".Business+State.swift")},
+		"relux_flow":      {templateName: "relux_flow.swift.tmpl", outputPath: filepath.Join(layout.ImplSourcesDir, n+".Business+Flow.swift")},
 	}
 
 	selected := templateSet

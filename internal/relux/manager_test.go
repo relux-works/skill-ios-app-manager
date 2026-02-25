@@ -25,10 +25,10 @@ func TestReluxManagerInitAndAddAction(t *testing.T) {
 	implDir := filepath.Join(root, moduleName+"Impl", "Sources", moduleName+"Impl")
 
 	for _, expected := range []string{
-		filepath.Join(interfaceDir, "Namespace.swift"),
-		filepath.Join(interfaceDir, "Module.swift"),
-		filepath.Join(interfaceDir, "Module+Interface.swift"),
-		filepath.Join(implDir, "Module+Impl.swift"),
+		filepath.Join(interfaceDir, moduleName+".swift"),
+		filepath.Join(interfaceDir, moduleName+".Module.swift"),
+		filepath.Join(interfaceDir, moduleName+".Module+Interface.swift"),
+		filepath.Join(implDir, moduleName+".Module+Impl.swift"),
 	} {
 		if _, err := os.Stat(expected); err != nil {
 			t.Fatalf("InitModule() expected file %q: %v", expected, err)

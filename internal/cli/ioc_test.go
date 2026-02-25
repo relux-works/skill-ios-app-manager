@@ -38,7 +38,7 @@ func TestIocSetupIntegration(t *testing.T) {
 	}
 
 	// Verify Registry.swift was created.
-	registryPath := filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Registry.swift")
+	registryPath := filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "App", cfg.AppName+".Registry.swift")
 	requireFileExists(t, registryPath)
 
 	registryContent := readTestFile(t, registryPath)
@@ -108,7 +108,7 @@ func TestIocSetupNoModules(t *testing.T) {
 	}
 
 	// Registry.swift should exist but without module registrations.
-	registryPath := filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Registry.swift")
+	registryPath := filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "App", cfg.AppName+".Registry.swift")
 	requireFileExists(t, registryPath)
 
 	registryContent := readTestFile(t, registryPath)

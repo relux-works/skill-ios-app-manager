@@ -80,6 +80,7 @@ func NewRootCommandWithAppManager(appManager components.AppManager) *cobra.Comma
 		newQueryCommand(opts),
 		newMutationCommand(opts),
 		newIocCommand(opts),
+		newReluxCommand(opts),
 	)
 
 	return cmd

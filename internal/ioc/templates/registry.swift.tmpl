@@ -1,4 +1,9 @@
+{{- if .HasRelux }}@_exported import Relux
+{{ end -}}
 import SwiftIoC
+{{- if .HasRelux }}
+import SwiftUIRelux
+{{- end }}
 {{- range .Imports }}
 import {{ . }}
 {{- end }}
@@ -9,6 +14,11 @@ extension {{ .AppTypeName }} {
         static let ioc = IoC()
 
         static func configure() {
+{{- if .HasRelux }}
+            ioc.register(Relux.self, lifecycle: .container, resolver: Self.buildRelux)
+            ioc.register(Relux.Store.self, lifecycle: .container, resolver: Self.buildReluxStore)
+            ioc.register(Relux.RootSaga.self, lifecycle: .container, resolver: Self.buildReluxRootSaga)
+{{- end }}
 {{- range .Modules }}
             ioc.register({{ .InterfacePackage }}.Module.Interface.self, lifecycle: .container, resolver: Self.build{{ .Name }})
 {{- end }}
@@ -31,4 +41,29 @@ extension {{ .AppTypeName }}.Registry {
         {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl()
     }
 {{ end -}}
+{{- if .HasRelux }}
+
+    private static func buildRelux() async -> Relux {
+        await Relux.init(
+            logger: {{ .AppTypeName }}.ReluxLogger(),
+            appStore: resolve(Relux.Store.self),
+            rootSaga: .init()
+        )
+        .register { @MainActor in
+{{- range .Modules }}
+{{- if .IsAsync }}
+            await resolveAsync({{ .InterfacePackage }}.Module.Interface.self)
+{{- end }}
+{{- end }}
+        }
+    }
+
+    private static func buildReluxStore() -> Relux.Store {
+        Relux.Store()
+    }
+
+    private static func buildReluxRootSaga() -> Relux.RootSaga {
+        Relux.RootSaga()
+    }
+{{- end }}
 }

@@ -38,9 +38,9 @@ func TestModuleCreateFeature(t *testing.T) {
 
 	requireDirExists(t, filepath.Join(projectRoot, "Packages", "Auth"))
 	requireDirExists(t, filepath.Join(projectRoot, "Packages", "AuthImpl"))
-	requireFileExists(t, filepath.Join(projectRoot, "Packages", "Auth", "Sources", "Auth", "Namespace.swift"))
-	requireFileExists(t, filepath.Join(projectRoot, "Packages", "Auth", "Sources", "Auth", "Module+Interface.swift"))
-	requireFileExists(t, filepath.Join(projectRoot, "Packages", "AuthImpl", "Sources", "AuthImpl", "Module+Impl.swift"))
+	requireFileExists(t, filepath.Join(projectRoot, "Packages", "Auth", "Sources", "Auth", "Auth.swift"))
+	requireFileExists(t, filepath.Join(projectRoot, "Packages", "Auth", "Sources", "Auth", "Auth.Module+Interface.swift"))
+	requireFileExists(t, filepath.Join(projectRoot, "Packages", "AuthImpl", "Sources", "AuthImpl", "Auth.Module+Impl.swift"))
 }
 
 func TestModuleCreateUtility(t *testing.T) {
@@ -65,7 +65,7 @@ func TestModuleCreateUtility(t *testing.T) {
 	requireDirExists(t, filepath.Join(projectRoot, "Packages", "Logger"))
 	requireDirExists(t, filepath.Join(projectRoot, "Packages", "Logger", "Sources", "Logger"))
 	requirePathMissing(t, filepath.Join(projectRoot, "Packages", "LoggerImpl"))
-	requirePathMissing(t, filepath.Join(projectRoot, "Packages", "Logger", "Sources", "Logger", "Namespace.swift"))
+	requirePathMissing(t, filepath.Join(projectRoot, "Packages", "Logger", "Sources", "Logger", "Logger.swift"))
 }
 
 func TestModuleCreateValidatesType(t *testing.T) {

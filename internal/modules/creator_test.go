@@ -30,10 +30,10 @@ func TestCreatorCreateFeatureModule(t *testing.T) {
 	requireDir(t, filepath.Join(root, "Packages", "Auth"))
 	requireDir(t, filepath.Join(root, "Packages", "AuthImpl"))
 
-	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Namespace.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Module.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Module+Interface.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "AuthImpl", "Sources", "AuthImpl", "Module+Impl.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Auth.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Auth.Module.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Auth.Module+Interface.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "AuthImpl", "Sources", "AuthImpl", "Auth.Module+Impl.swift"))
 }
 
 func TestCreatorCreateUtilityModule(t *testing.T) {
@@ -52,8 +52,8 @@ func TestCreatorCreateUtilityModule(t *testing.T) {
 	requireDir(t, filepath.Join(root, "Packages", "Logger"))
 	requireNotExists(t, filepath.Join(root, "Packages", "LoggerImpl"))
 
-	requireNotExists(t, filepath.Join(root, "Packages", "Logger", "Sources", "Logger", "Namespace.swift"))
-	requireNotExists(t, filepath.Join(root, "Packages", "Logger", "Sources", "Logger", "Module+Impl.swift"))
+	requireNotExists(t, filepath.Join(root, "Packages", "Logger", "Sources", "Logger", "Logger.swift"))
+	requireNotExists(t, filepath.Join(root, "Packages", "Logger", "Sources", "Logger", "Logger.Module+Impl.swift"))
 }
 
 func TestCreatorCreateReluxFeatureModule(t *testing.T) {
@@ -73,16 +73,16 @@ func TestCreatorCreateReluxFeatureModule(t *testing.T) {
 	requireDir(t, filepath.Join(root, "Packages", "AuthImpl"))
 
 	// Interface package files
-	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Namespace.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Module.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Module+Interface.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Business+Action.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Business+Effect.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Auth.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Auth.Module.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Auth.Module+Interface.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Auth.Business+Action.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Auth.Business+Effect.swift"))
 
 	// Impl package files
-	requireFile(t, filepath.Join(root, "Packages", "AuthImpl", "Sources", "AuthImpl", "Module+Impl.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "AuthImpl", "Sources", "AuthImpl", "Business+State.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "AuthImpl", "Sources", "AuthImpl", "Business+Flow.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "AuthImpl", "Sources", "AuthImpl", "Auth.Module+Impl.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "AuthImpl", "Sources", "AuthImpl", "Auth.Business+State.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "AuthImpl", "Sources", "AuthImpl", "Auth.Business+Flow.swift"))
 
 	// Verify Package.swift files contain swift-relux dependency
 	interfaceManifest := readFileString(t, filepath.Join(root, "Packages", "Auth", "Package.swift"))

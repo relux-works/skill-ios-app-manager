@@ -1,13 +1,8 @@
 import ProjectDescription
 
-let localPackagesPath = "Packages"
-
 let workspace = Workspace(
     name: "DemoApp",
     projects: [
         "."
-    ],
-    additionalFiles: [
-        "\(localPackagesPath)/**"
     ]
 )

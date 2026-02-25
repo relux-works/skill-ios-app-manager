@@ -1,0 +1,15 @@
+import Relux
+
+extension {{ .AppTypeName }} {
+    struct ReluxLogger: Relux.Logger {
+        func logAction(
+            _ action: Relux.EnumReflectable,
+            result: Relux.ActionResult?,
+            startTimeInMillis: Int,
+            privacy: Relux.OSLogPrivacy,
+            fileID: String,
+            functionName: String,
+            lineNumber: Int
+        ) {}
+    }
+}

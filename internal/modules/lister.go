@@ -154,10 +154,23 @@ func (l *Lister) detectSplitModuleType(interfacePath string) (ModuleType, error)
 		return ok
 	}
 
+	hasSuffix := func(suffix string) bool {
+		lower := strings.ToLower(suffix)
+		for name := range swiftFiles {
+			if strings.HasSuffix(name, lower) {
+				return true
+			}
+		}
+		return false
+	}
+
 	// New-style module detection: namespace + module + interface templates.
+	// Files now use module-name prefix: Auth.swift, Auth.Module.swift, Auth.Module+Interface.swift
 	hasNewModuleFiles := has("namespace.swift") ||
 		has("module.swift") ||
-		has("module+interface.swift")
+		has("module+interface.swift") ||
+		hasSuffix(".module.swift") ||
+		hasSuffix(".module+interface.swift")
 
 	if hasNewModuleFiles {
 		// All new-style split modules with Relux produce the same 4 files.
