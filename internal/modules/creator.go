@@ -66,8 +66,9 @@ func (c *Creator) Create(
 	}
 
 	if err := c.tuist.CreateModule(ctx, components.ModuleOpts{
-		Name: name,
-		Type: string(descriptor.Type),
+		Name:         name,
+		Type:         string(descriptor.Type),
+		ExternalDeps: convertExternalDeps(descriptor.ExternalDeps),
 	}); err != nil {
 		return fmt.Errorf("create module in tuist project: %w", err)
 	}
@@ -145,4 +146,20 @@ func modulePackageNames(moduleName string, descriptor ModuleTypeDescriptor) []st
 	}
 
 	return []string{moduleName}
+}
+
+func convertExternalDeps(deps []ExternalDep) []components.ExternalDep {
+	if len(deps) == 0 {
+		return nil
+	}
+	out := make([]components.ExternalDep, len(deps))
+	for i, d := range deps {
+		out[i] = components.ExternalDep{
+			PackageName: d.PackageName,
+			ProductName: d.ProductName,
+			URL:         d.URL,
+			Version:     d.Version,
+		}
+	}
+	return out
 }

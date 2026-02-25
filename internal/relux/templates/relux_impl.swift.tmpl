@@ -1,0 +1,17 @@
+import {{.InterfacePackageName}}
+import Relux
+
+extension {{.ModuleName}}.Module {
+    public struct Impl: {{.ModuleName}}.Module.Interface {
+        public let states: [any Relux.AnyState]
+        public let sagas: [any Relux.Saga]
+
+        @MainActor
+        public init() async {
+            let state = {{.ModuleName}}.Business.State()
+            let flow = {{.ModuleName}}.Business.Flow(state: state)
+            self.states = [state]
+            self.sagas = [flow]
+        }
+    }
+}

@@ -45,6 +45,7 @@ let project = Project(
                     ]),
 {{- end }}
                     "ProjectAppGroups": .array(appGroups),
+                    "UILaunchScreen": .dictionary([:]),
                 ]
             ),
             sources: [{{ swiftLiteral (printf "Targets/%s/Sources/**" .AppName) }}],

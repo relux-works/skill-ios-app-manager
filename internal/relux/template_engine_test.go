@@ -29,6 +29,13 @@ func TestTemplateNames(t *testing.T) {
 		"module.swift.tmpl",
 		"interface.swift.tmpl",
 		"impl.swift.tmpl",
+		"relux_namespace.swift.tmpl",
+		"relux_interface.swift.tmpl",
+		"relux_action.swift.tmpl",
+		"relux_effect.swift.tmpl",
+		"relux_impl.swift.tmpl",
+		"relux_state.swift.tmpl",
+		"relux_flow.swift.tmpl",
 	}
 
 	got := engine.TemplateNames()

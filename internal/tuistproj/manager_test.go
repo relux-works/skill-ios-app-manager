@@ -141,6 +141,80 @@ func TestTuistProjectManagerCreateModuleProductScaffoldsTwoPackages(t *testing.T
 	}
 }
 
+func TestTuistProjectManagerCreateModuleReluxFeatureScaffoldsTwoPackagesWithExternalDeps(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	// Create root Package.swift so external deps can be added
+	rootPkgPath := filepath.Join(root, "Package.swift")
+	writeFileForManagerTest(t, rootPkgPath, []byte(`// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "App",
+    products: [
+        .library(name: "App", type: .dynamic, targets: ["App"]),
+    ],
+    dependencies: [
+    ],
+    targets: [
+        .target(name: "App"),
+    ]
+)
+`))
+
+	manager := NewTuistProjectManager(
+		WithRootDir(root),
+		WithModulesDir("Packages"),
+		WithPackagePlatform("iOS(.v17)"),
+	)
+
+	err := manager.CreateModule(context.Background(), components.ModuleOpts{
+		Name: "Auth",
+		Type: "relux-feature",
+		ExternalDeps: []components.ExternalDep{{
+			PackageName: "swift-relux",
+			ProductName: "Relux",
+			URL:         "https://github.com/relux-works/swift-relux.git",
+			Version:     `from: "9.0.1"`,
+		}},
+	})
+	if err != nil {
+		t.Fatalf("CreateModule() error = %v", err)
+	}
+
+	// Two packages created
+	interfaceRoot := filepath.Join(root, "Packages", "Auth")
+	requireDir(t, interfaceRoot)
+	implRoot := filepath.Join(root, "Packages", "AuthImpl")
+	requireDir(t, implRoot)
+
+	// Interface Package.swift has swift-relux
+	interfaceManifestRaw := readFileStringForManagerTest(t, filepath.Join(interfaceRoot, "Package.swift"))
+	if !strings.Contains(interfaceManifestRaw, "swift-relux") {
+		t.Fatalf("interface Package.swift missing swift-relux dependency:\n%s", interfaceManifestRaw)
+	}
+	if !strings.Contains(interfaceManifestRaw, `"Relux"`) {
+		t.Fatalf("interface Package.swift missing Relux product:\n%s", interfaceManifestRaw)
+	}
+
+	// Impl Package.swift has swift-relux
+	implManifestRaw := readFileStringForManagerTest(t, filepath.Join(implRoot, "Package.swift"))
+	if !strings.Contains(implManifestRaw, "swift-relux") {
+		t.Fatalf("impl Package.swift missing swift-relux dependency:\n%s", implManifestRaw)
+	}
+	if !strings.Contains(implManifestRaw, `"Relux"`) {
+		t.Fatalf("impl Package.swift missing Relux product:\n%s", implManifestRaw)
+	}
+
+	// Root Package.swift has swift-relux
+	rootManifestRaw := readFileStringForManagerTest(t, rootPkgPath)
+	if !strings.Contains(rootManifestRaw, "swift-relux") {
+		t.Fatalf("root Package.swift missing swift-relux dependency:\n%s", rootManifestRaw)
+	}
+}
+
 func TestTuistProjectManagerCreateModuleUtilityScaffoldsSinglePackage(t *testing.T) {
 	t.Parallel()
 

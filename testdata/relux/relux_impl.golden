@@ -1,0 +1,17 @@
+import Auth
+import Relux
+
+extension Auth.Module {
+    public struct Impl: Auth.Module.Interface {
+        public let states: [any Relux.AnyState]
+        public let sagas: [any Relux.Saga]
+
+        @MainActor
+        public init() async {
+            let state = Auth.Business.State()
+            let flow = Auth.Business.Flow(state: state)
+            self.states = [state]
+            self.sagas = [flow]
+        }
+    }
+}

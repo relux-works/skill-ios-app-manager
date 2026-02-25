@@ -105,6 +105,65 @@ func TestInitCommandRunUsesExistingInterfaceAndImplDirs(t *testing.T) {
 	}
 }
 
+func TestInitCommandRunReluxFeatureTemplateSet(t *testing.T) {
+	engine, err := NewTemplateEngine()
+	if err != nil {
+		t.Fatalf("NewTemplateEngine() error = %v", err)
+	}
+
+	command, err := NewInitCommand(engine)
+	if err != nil {
+		t.Fatalf("NewInitCommand() error = %v", err)
+	}
+
+	modulePath := filepath.Join(t.TempDir(), "Auth")
+	reluxFeatureSet := []string{
+		"relux_namespace", "module", "relux_interface",
+		"relux_action", "relux_effect",
+		"relux_impl", "relux_state", "relux_flow",
+	}
+	written, err := command.Run(context.Background(), InitModuleInput{
+		ModuleName:  "Auth",
+		ModulePath:  modulePath,
+		TemplateSet: reluxFeatureSet,
+	})
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	implPath := modulePath + "Impl"
+	want := []string{
+		filepath.Join(modulePath, "Sources", "Auth", "Namespace.swift"),
+		filepath.Join(modulePath, "Sources", "Auth", "Module.swift"),
+		filepath.Join(modulePath, "Sources", "Auth", "Module+Interface.swift"),
+		filepath.Join(modulePath, "Sources", "Auth", "Business+Action.swift"),
+		filepath.Join(modulePath, "Sources", "Auth", "Business+Effect.swift"),
+		filepath.Join(implPath, "Sources", "AuthImpl", "Module+Impl.swift"),
+		filepath.Join(implPath, "Sources", "AuthImpl", "Business+State.swift"),
+		filepath.Join(implPath, "Sources", "AuthImpl", "Business+Flow.swift"),
+	}
+	sort.Strings(want)
+
+	if len(written) != len(want) {
+		t.Fatalf("Run() wrote %d files, want %d\nwrote: %v\nwant:  %v", len(written), len(want), written, want)
+	}
+	for i := range want {
+		if written[i] != want[i] {
+			t.Fatalf("Run() wrote path[%d] = %q, want %q", i, written[i], want[i])
+		}
+	}
+
+	for _, path := range want {
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatalf("ReadFile(%q) error = %v", path, readErr)
+		}
+		if strings.Contains(string(content), "{{") || strings.Contains(string(content), "}}") {
+			t.Fatalf("%q still contains template tokens", path)
+		}
+	}
+}
+
 func TestInitCommandRunTemplateSet(t *testing.T) {
 	engine, err := NewTemplateEngine()
 	if err != nil {

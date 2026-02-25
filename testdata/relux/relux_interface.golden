@@ -1,0 +1,5 @@
+import Relux
+
+extension Auth.Module {
+    public protocol Interface: Relux.Module {}
+}

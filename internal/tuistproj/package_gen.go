@@ -26,11 +26,20 @@ const (
 	PackageTypeImpl      PackageType = "impl"
 )
 
+// ExternalProductDep describes an external package dependency with a separate product name.
+type ExternalProductDep struct {
+	PackageName string // e.g., "swift-relux"
+	ProductName string // e.g., "Relux"
+	URL         string // e.g., "https://github.com/relux-works/swift-relux.git"
+	Version     string // e.g., `from: "9.0.0"`
+}
+
 // PackageGenerationInput configures Package.swift generation.
 type PackageGenerationInput struct {
 	ModuleName   string
 	Type         PackageType
 	Dependencies []string
+	ExternalDeps []ExternalProductDep
 	Platform     string
 }
 
@@ -41,6 +50,8 @@ type packageTemplateData struct {
 	Platform             string
 	PackageDependencies  []packageDependency
 	TargetDependencies   []packageDependency
+	ExternalDependencies []externalPackageDep
+	ExternalProducts     []externalProductDep
 	ManifestComment      string
 	SwiftToolsVersionTag string
 }
@@ -48,6 +59,16 @@ type packageTemplateData struct {
 type packageDependency struct {
 	Name string
 	Path string
+}
+
+type externalPackageDep struct {
+	URL     string
+	Version string
+}
+
+type externalProductDep struct {
+	ProductName string
+	PackageName string
 }
 
 // GeneratePackageSwift renders Package.swift using embedded templates.
@@ -69,9 +90,14 @@ func GeneratePackageSwift(input PackageGenerationInput) (string, error) {
 
 	additionalDependencies := normalizeDependencies(input.Dependencies)
 
+	externalDeps := buildExternalPackageDeps(input.ExternalDeps)
+	externalProducts := buildExternalProductDeps(input.ExternalDeps)
+
 	data := packageTemplateData{
 		Platform:             platform,
 		SwiftToolsVersionTag: "6.0",
+		ExternalDependencies: externalDeps,
+		ExternalProducts:     externalProducts,
 	}
 
 	switch moduleType {
@@ -169,4 +195,26 @@ func buildProductDependencies(names []string) []packageDependency {
 		})
 	}
 	return dependencies
+}
+
+func buildExternalPackageDeps(deps []ExternalProductDep) []externalPackageDep {
+	out := make([]externalPackageDep, 0, len(deps))
+	for _, d := range deps {
+		out = append(out, externalPackageDep{
+			URL:     d.URL,
+			Version: d.Version,
+		})
+	}
+	return out
+}
+
+func buildExternalProductDeps(deps []ExternalProductDep) []externalProductDep {
+	out := make([]externalProductDep, 0, len(deps))
+	for _, d := range deps {
+		out = append(out, externalProductDep{
+			ProductName: d.ProductName,
+			PackageName: d.PackageName,
+		})
+	}
+	return out
 }

@@ -1,0 +1,20 @@
+import {{.InterfacePackageName}}
+import Relux
+
+extension {{.ModuleName}}.Business {
+    @Observable
+    public final class State: Relux.HybridState {
+        public init() {}
+
+        public func reduce(with action: any Relux.Action) async {
+            guard let action = action as? {{.ModuleName}}.Business.Action else { return }
+            internalReduce(with: action)
+        }
+
+        public func cleanup() async {}
+
+        private func internalReduce(with action: {{.ModuleName}}.Business.Action) {
+            switch action {}
+        }
+    }
+}

@@ -97,7 +97,7 @@ func newModuleCommand(opts *RootOptions) *cobra.Command {
 		&moduleType,
 		"type",
 		"",
-		"Module type: feature|kit|shared|ui|utility",
+		"Module type: feature|relux-feature|kit|shared|ui|utility",
 	)
 
 	var forceDelete bool

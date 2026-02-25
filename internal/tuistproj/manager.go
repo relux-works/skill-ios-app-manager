@@ -13,21 +13,22 @@ import (
 )
 
 const (
-	defaultManagerRootDir      = "."
-	defaultManagerModulesDir   = "Packages"
-	defaultManagerProjectPath  = "Project.swift"
-	defaultManagerWorkspace    = "Workspace.swift"
-	defaultManagerPlatform     = "iOS(.v17)"
-	swiftManifestFileName      = "Package.swift"
-	swiftSourceDirectoryName   = "Sources"
-	swiftTestsDirectoryName    = "Tests"
-	moduleImplSuffix           = "Impl"
-	productModuleTypeFeature   = "feature"
-	productModuleTypeKit       = "kit"
-	productModuleTypeUI        = "ui"
-	productModuleTypeShared    = "shared"
-	productModuleTypeProduct   = "product"
-	manifestOperationSeparator = "_"
+	defaultManagerRootDir         = "."
+	defaultManagerModulesDir      = "Packages"
+	defaultManagerProjectPath     = "Project.swift"
+	defaultManagerWorkspace       = "Workspace.swift"
+	defaultManagerPlatform        = "iOS(.v17)"
+	swiftManifestFileName         = "Package.swift"
+	swiftSourceDirectoryName      = "Sources"
+	swiftTestsDirectoryName       = "Tests"
+	moduleImplSuffix              = "Impl"
+	productModuleTypeFeature      = "feature"
+	productModuleTypeKit          = "kit"
+	productModuleTypeUI           = "ui"
+	productModuleTypeShared       = "shared"
+	productModuleTypeProduct      = "product"
+	productModuleTypeReluxFeature = "relux-feature"
+	manifestOperationSeparator    = "_"
 )
 
 var (
@@ -36,10 +37,11 @@ var (
 )
 
 type modulePackageSpec struct {
-	ModuleName  string
-	PackageName string
-	TargetName  string
-	PackageType PackageType
+	ModuleName   string
+	PackageName  string
+	TargetName   string
+	PackageType  PackageType
+	ExternalDeps []ExternalProductDep
 }
 
 // ManagerOption configures TuistProjectManager.
@@ -256,7 +258,12 @@ func (m *TuistProjectManager) CreateModule(ctx context.Context, opts components.
 		return errors.New("module type is required")
 	}
 
+	externalDeps := convertComponentExternalDeps(opts.ExternalDeps)
+
 	specs := buildModulePackageSpecs(moduleName, moduleType)
+	for i := range specs {
+		specs[i].ExternalDeps = externalDeps
+	}
 	createdPaths := make([]string, 0, len(specs))
 	for _, spec := range specs {
 		packagePath, createErr := m.createModulePackage(spec)
@@ -274,6 +281,13 @@ func (m *TuistProjectManager) CreateModule(ctx context.Context, opts components.
 	if err := m.addModuleReferences(packageNames); err != nil {
 		m.rollbackCreatedPackages(createdPaths)
 		return err
+	}
+
+	if len(externalDeps) > 0 {
+		if err := m.addExternalDepsToRootManifest(externalDeps); err != nil {
+			m.rollbackCreatedPackages(createdPaths)
+			return err
+		}
 	}
 
 	return nil
@@ -370,9 +384,10 @@ func (m *TuistProjectManager) createModulePackage(spec modulePackageSpec) (strin
 	}
 
 	manifest, err := GeneratePackageSwift(PackageGenerationInput{
-		ModuleName: spec.ModuleName,
-		Type:       spec.PackageType,
-		Platform:   m.platform,
+		ModuleName:   spec.ModuleName,
+		Type:         spec.PackageType,
+		ExternalDeps: spec.ExternalDeps,
+		Platform:     m.platform,
 	})
 	if err != nil {
 		return "", fmt.Errorf("generate Package.swift for %q: %w", spec.PackageName, err)
@@ -647,6 +662,8 @@ func isProductModuleType(moduleType string) bool {
 		return true
 	case productModuleTypeProduct:
 		return true
+	case productModuleTypeReluxFeature:
+		return true
 	default:
 		return false
 	}
@@ -767,4 +784,59 @@ func isManifestSectionNotFoundError(err error) bool {
 
 	message := err.Error()
 	return strings.Contains(message, "manifest section") && strings.Contains(message, "not found")
+}
+
+func convertComponentExternalDeps(deps []components.ExternalDep) []ExternalProductDep {
+	if len(deps) == 0 {
+		return nil
+	}
+	out := make([]ExternalProductDep, len(deps))
+	for i, d := range deps {
+		out[i] = ExternalProductDep{
+			PackageName: d.PackageName,
+			ProductName: d.ProductName,
+			URL:         d.URL,
+			Version:     d.Version,
+		}
+	}
+	return out
+}
+
+func (m *TuistProjectManager) addExternalDepsToRootManifest(deps []ExternalProductDep) error {
+	rootPkgPath := m.resolvePath("Package.swift")
+	exists, err := m.pathExists(rootPkgPath)
+	if err != nil || !exists {
+		return nil
+	}
+
+	manifest, err := ReadManifestFile(rootPkgPath)
+	if err != nil {
+		return nil
+	}
+
+	existing := manifestItemNameSet(manifest.Dependencies)
+	edits := make([]ManifestEdit, 0, len(deps))
+	for _, dep := range deps {
+		if _, ok := existing[dep.PackageName]; ok {
+			continue
+		}
+		edits = append(edits, ManifestEdit{
+			Type:    AddDependency,
+			Name:    dep.PackageName,
+			Content: fmt.Sprintf(`.package(url: "%s", %s)`, dep.URL, dep.Version),
+		})
+	}
+
+	if len(edits) == 0 {
+		return nil
+	}
+
+	if err := ApplyManifestEditsToFile(rootPkgPath, edits...); err != nil {
+		if isManifestSectionNotFoundError(err) {
+			return nil
+		}
+		return fmt.Errorf("add external deps to root Package.swift: %w", err)
+	}
+
+	return nil
 }

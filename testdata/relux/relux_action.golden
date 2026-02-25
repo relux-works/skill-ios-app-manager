@@ -1,0 +1,5 @@
+import Relux
+
+extension Auth.Business {
+    public enum Action: Relux.Action {}
+}

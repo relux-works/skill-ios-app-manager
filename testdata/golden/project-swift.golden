@@ -40,6 +40,7 @@ let project = Project(
                         ])
                     ]),
                     "ProjectAppGroups": .array(appGroups),
+                    "UILaunchScreen": .dictionary([:]),
                 ]
             ),
             sources: ["Targets/DemoApp/Sources/**"],

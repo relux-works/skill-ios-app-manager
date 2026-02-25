@@ -148,8 +148,9 @@ func TestAppManagerCreateModuleOrchestrates(t *testing.T) {
 	if !reflect.DeepEqual(order, []string{"tuist", "relux"}) {
 		t.Fatalf("order = %#v, want %#v", order, []string{"tuist", "relux"})
 	}
-	if gotOpts != (ModuleOpts{Name: "FeatureA", Type: "feature"}) {
-		t.Fatalf("create opts = %#v, want %#v", gotOpts, ModuleOpts{Name: "FeatureA", Type: "feature"})
+	wantOpts := ModuleOpts{Name: "FeatureA", Type: "feature"}
+	if !reflect.DeepEqual(gotOpts, wantOpts) {
+		t.Fatalf("create opts = %#v, want %#v", gotOpts, wantOpts)
 	}
 	if gotInitName != "FeatureA" || gotInitType != "feature" {
 		t.Fatalf(

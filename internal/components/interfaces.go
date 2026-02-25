@@ -11,10 +11,19 @@ type GenerateOpts struct {
 	ConfigPath string
 }
 
+// ExternalDep describes an external package dependency with distinct package/product names.
+type ExternalDep struct {
+	PackageName string // e.g., "swift-relux"
+	ProductName string // e.g., "Relux"
+	URL         string // e.g., "https://github.com/relux-works/swift-relux.git"
+	Version     string // e.g., `from: "9.0.0"`
+}
+
 // ModuleOpts identifies a module operation target.
 type ModuleOpts struct {
-	Name string
-	Type string
+	Name         string
+	Type         string
+	ExternalDeps []ExternalDep
 }
 
 // ManifestEdit describes one manifest mutation.

@@ -12,9 +12,19 @@ const (
 	ModuleTypeShared ModuleType = "shared"
 	// ModuleTypeUI is a SwiftUI-only module with interface/impl split.
 	ModuleTypeUI ModuleType = "ui"
+	// ModuleTypeReluxFeature is a Relux feature module with state management (interface + implementation split).
+	ModuleTypeReluxFeature ModuleType = "relux-feature"
 	// ModuleTypeUtility is a single-package utility module without Relux or split.
 	ModuleTypeUtility ModuleType = "utility"
 )
+
+// ExternalDep describes an external package dependency for module scaffolding.
+type ExternalDep struct {
+	PackageName string
+	ProductName string
+	URL         string
+	Version     string
+}
 
 // ModuleTypeDescriptor describes scaffolding behavior for one module type.
 type ModuleTypeDescriptor struct {
@@ -23,5 +33,6 @@ type ModuleTypeDescriptor struct {
 	HasRelux              bool
 	HasUI                 bool
 	TemplateSet           []string
+	ExternalDeps          []ExternalDep
 	Description           string
 }

@@ -62,6 +62,83 @@ func TestTemplates(t *testing.T) {
 				ImplPackageName:      "AuthImpl",
 			},
 		},
+		{
+			name:         "relux_namespace",
+			templateName: "relux_namespace.swift.tmpl",
+			goldenName:   "relux/relux_namespace",
+			vars: TemplateVariables{
+				ModuleName:           "Auth",
+				ModuleNameLower:      "auth",
+				InterfacePackageName: "Auth",
+				ImplPackageName:      "AuthImpl",
+			},
+		},
+		{
+			name:         "relux_interface",
+			templateName: "relux_interface.swift.tmpl",
+			goldenName:   "relux/relux_interface",
+			vars: TemplateVariables{
+				ModuleName:           "Auth",
+				ModuleNameLower:      "auth",
+				InterfacePackageName: "Auth",
+				ImplPackageName:      "AuthImpl",
+			},
+		},
+		{
+			name:         "relux_action",
+			templateName: "relux_action.swift.tmpl",
+			goldenName:   "relux/relux_action",
+			vars: TemplateVariables{
+				ModuleName:           "Auth",
+				ModuleNameLower:      "auth",
+				InterfacePackageName: "Auth",
+				ImplPackageName:      "AuthImpl",
+			},
+		},
+		{
+			name:         "relux_effect",
+			templateName: "relux_effect.swift.tmpl",
+			goldenName:   "relux/relux_effect",
+			vars: TemplateVariables{
+				ModuleName:           "Auth",
+				ModuleNameLower:      "auth",
+				InterfacePackageName: "Auth",
+				ImplPackageName:      "AuthImpl",
+			},
+		},
+		{
+			name:         "relux_impl",
+			templateName: "relux_impl.swift.tmpl",
+			goldenName:   "relux/relux_impl",
+			vars: TemplateVariables{
+				ModuleName:           "Auth",
+				ModuleNameLower:      "auth",
+				InterfacePackageName: "Auth",
+				ImplPackageName:      "AuthImpl",
+			},
+		},
+		{
+			name:         "relux_state",
+			templateName: "relux_state.swift.tmpl",
+			goldenName:   "relux/relux_state",
+			vars: TemplateVariables{
+				ModuleName:           "Auth",
+				ModuleNameLower:      "auth",
+				InterfacePackageName: "Auth",
+				ImplPackageName:      "AuthImpl",
+			},
+		},
+		{
+			name:         "relux_flow",
+			templateName: "relux_flow.swift.tmpl",
+			goldenName:   "relux/relux_flow",
+			vars: TemplateVariables{
+				ModuleName:           "Auth",
+				ModuleNameLower:      "auth",
+				InterfacePackageName: "Auth",
+				ImplPackageName:      "AuthImpl",
+			},
+		},
 	}
 
 	for _, tc := range tests {
