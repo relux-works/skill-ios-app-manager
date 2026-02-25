@@ -1,0 +1,5 @@
+import Foundation
+
+public protocol {{.ModuleName}}Service: Sendable {
+    func fetchItems() async throws -> [{{.ModuleName}}DTO]
+}

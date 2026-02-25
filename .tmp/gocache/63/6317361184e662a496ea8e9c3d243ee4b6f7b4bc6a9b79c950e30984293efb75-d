@@ -1,0 +1,4 @@
+./root.go
+./status.go
+./root_test.go
+./status_test.go

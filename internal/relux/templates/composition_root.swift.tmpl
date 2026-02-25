@@ -1,0 +1,35 @@
+import SwiftIoC
+
+extension {{ .ModuleName }} {
+    @MainActor
+    enum CompositionRoot {
+        static let ioc = IoC(logger: IoC.Logger(enabled: false))
+
+        static func configure() {
+{{- range .Dependencies }}
+            {{ . }}.Registry.register(in: ioc)
+{{- end }}
+            {{ .ModuleName }}.Registry.register(in: ioc)
+
+            ioc.register({{ .ServiceProtocol }}.self, lifecycle: .container, resolver: {
+                {{ .ServiceImplementation }}()
+            })
+        }
+
+        static func resolve<T>(_ type: T.Type) -> T {
+            ioc.get(by: type)!
+        }
+
+        static func resolveAsync<T: Sendable>(_ type: T.Type) async -> T where T.Type: Sendable {
+            await ioc.getAsync(by: type)!
+        }
+
+        static func optionalResolve<T>(_ type: T.Type) -> T? {
+            ioc.get(by: type)
+        }
+
+        static func optionalResolveAsync<T: Sendable>(_ type: T.Type) async -> T? where T.Type: Sendable {
+            await ioc.getAsync(by: type)
+        }
+    }
+}

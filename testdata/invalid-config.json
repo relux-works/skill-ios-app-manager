@@ -1,0 +1,16 @@
+{
+  "app_name": " ",
+  "bundle_id": "invalid_bundle_id",
+  "team_id": "",
+  "marketing_version": "",
+  "swift_version": "6",
+  "min_target": "17",
+  "app_groups": [
+    "",
+    "group.com.example.invalid"
+  ],
+  "configurations": [
+    "Debug",
+    ""
+  ]
+}

@@ -1,0 +1,12 @@
+./graph.go
+./manifest.go
+./manifest_edit.go
+./package_gen.go
+./runner.go
+./version.go
+./graph_test.go
+./manifest_test.go
+./mock_test.go
+./package_gen_test.go
+./runner_test.go
+./version_test.go

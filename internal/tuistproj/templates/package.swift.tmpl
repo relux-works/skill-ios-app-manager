@@ -1,0 +1,28 @@
+// swift-tools-version: {{ .SwiftToolsVersionTag }}
+import PackageDescription
+
+// {{ .ManifestComment }}
+let package = Package(
+    name: "{{ .PackageName }}",
+    platforms: [
+        {{ .Platform }},
+    ],
+    products: [
+        .library(name: "{{ .ProductName }}", type: .dynamic, targets: ["{{ .TargetName }}"]),
+    ],
+    dependencies: [
+{{- range .PackageDependencies }}
+        .package(path: "{{ .Path }}"),
+{{- end }}
+    ],
+    targets: [
+        .target(
+            name: "{{ .TargetName }}",
+            dependencies: [
+{{- range .TargetDependencies }}
+                .product(name: "{{ .Name }}", package: "{{ .Name }}"),
+{{- end }}
+            ]
+        ),
+    ]
+)

@@ -1,0 +1,24 @@
+{
+  "app_name": "FullDemoApp",
+  "bundle_id": "com.example.fulldemo",
+  "team_id": "FGHIJ67890",
+  "organization_name": "Full Example Org",
+  "marketing_version": "2.3.4",
+  "project_version": "42",
+  "swift_version": "6.2",
+  "min_target": "18.0",
+  "url_scheme": "fulldemoapp",
+  "app_groups": [
+    "group.com.example.fulldemo",
+    "group.com.example.shared"
+  ],
+  "product_name": "Full Demo Product",
+  "configurations": [
+    "Debug",
+    "Release",
+    "Beta"
+  ],
+  "modules_path": "VendorPackages",
+  "push_key_path": "certs/AuthKey_FULL123.p8",
+  "push_key_id": "FULL123DEF4"
+}

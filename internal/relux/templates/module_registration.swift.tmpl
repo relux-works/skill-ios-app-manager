@@ -1,0 +1,27 @@
+import Foundation
+import SwiftIoC
+import {{.InterfacePackageName}}
+import {{.ImplPackageName}}
+
+public enum {{.ModuleName}}ModuleRegistration {
+    public static func register(
+        into ioc: IoC,
+        serviceFactory: @escaping @Sendable () -> any {{.ModuleName}}Service
+    ) {
+        ioc.register((any {{.ModuleName}}Service).self, lifecycle: .container) {
+            serviceFactory()
+        }
+
+        ioc.register((any {{.ModuleName}}MiddlewareProtocol).self, lifecycle: .container) {
+            let service = ioc.get(by: (any {{.ModuleName}}Service).self)
+                ?? serviceFactory()
+            return {{.ModuleName}}Middleware(service: service)
+        }
+
+        ioc.register({{.ModuleName}}Store.self, lifecycle: .container) {
+            let middleware = ioc.get(by: (any {{.ModuleName}}MiddlewareProtocol).self)
+                ?? {{.ModuleName}}Middleware(service: serviceFactory())
+            return {{.ModuleName}}Store(middleware: middleware)
+        }
+    }
+}

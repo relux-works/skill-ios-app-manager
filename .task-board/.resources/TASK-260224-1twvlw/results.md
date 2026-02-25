@@ -1,0 +1,1 @@
+Implemented root commands: config loader+validator, config writer with pretty JSON, status command module scan, component interfaces, and local Cobra shim. Verified: go test internal/config, go test internal/cli, go test cmd/ios-app-manager, go vet on updated packages, and go build cmd/ios-app-manager.

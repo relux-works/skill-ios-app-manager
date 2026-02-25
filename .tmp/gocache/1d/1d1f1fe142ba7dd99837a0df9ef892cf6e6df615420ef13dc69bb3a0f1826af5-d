@@ -1,0 +1,6 @@
+./loader.go
+./placeholder.go
+./writer.go
+./cicd_stubs_test.go
+./loader_test.go
+./writer_test.go

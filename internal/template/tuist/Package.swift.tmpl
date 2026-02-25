@@ -1,0 +1,14 @@
+// swift-tools-version: {{ .SwiftVersion }}
+import PackageDescription
+
+let modulesPath = {{ swiftLiteral .ModulesPath }}
+
+let package = Package(
+    name: {{ swiftLiteral (printf "%sDependencies" .AppName) }},
+    dependencies: [
+{{- range .LocalPackages }}
+        .package(path: {{ swiftLiteral (packagePath $.ModulesPath .) }}),
+{{- end }}
+    ],
+    targets: []
+)

@@ -1,0 +1,69 @@
+import ProjectDescription
+
+let appName = {{ swiftLiteral .AppName }}
+let bundleID = {{ swiftLiteral .BundleID }}
+let developmentTeam = {{ swiftLiteral .TeamID }}
+let appGroups: [Plist.Value] = [
+{{- range .AppGroups }}
+    .string({{ swiftLiteral . }}),
+{{- end }}
+]
+
+let configurations: [Configuration] = [
+{{- range .Configurations }}
+    .{{ configKind . }}(name: {{ swiftLiteral . }}),
+{{- end }}
+]
+
+let project = Project(
+    name: appName,
+    organizationName: {{ swiftLiteral .OrgName }},
+    settings: .settings(
+        configurations: configurations
+    ),
+    targets: [
+        .target(
+            name: appName,
+            destinations: .iOS,
+            product: .app,
+            bundleId: bundleID,
+            deploymentTargets: .iOS({{ swiftLiteral .MinTarget }}),
+            infoPlist: .extendingDefault(
+                with: [
+                    "CFBundleDisplayName": .string(appName),
+                    "CFBundleShortVersionString": .string({{ swiftLiteral .MarketingVersion }}),
+                    "CFBundleVersion": .string({{ swiftLiteral .ProjectVersion }}),
+{{- if .URLScheme }}
+                    "CFBundleURLTypes": .array([
+                        .dictionary([
+                            "CFBundleURLName": .string(bundleID),
+                            "CFBundleTypeRole": .string("Editor"),
+                            "CFBundleURLSchemes": .array([
+                                .string({{ swiftLiteral .URLScheme }})
+                            ])
+                        ])
+                    ]),
+{{- end }}
+                    "ProjectAppGroups": .array(appGroups),
+                ]
+            ),
+            sources: [{{ swiftLiteral (printf "Targets/%s/Sources/**" .AppName) }}],
+            resources: [{{ swiftLiteral (printf "Targets/%s/Resources/**" .AppName) }}],
+            entitlements: .file(path: {{ swiftLiteral (printf "%s.entitlements" .AppName) }}),
+            dependencies: [
+{{- range .LocalPackages }}
+                .package(product: {{ swiftLiteral . }}),
+{{- end }}
+            ],
+            settings: .settings(
+                base: [
+                    "SWIFT_VERSION": .string({{ swiftLiteral .SwiftVersion }}),
+                    "IPHONEOS_DEPLOYMENT_TARGET": .string({{ swiftLiteral .MinTarget }}),
+                    "DEVELOPMENT_TEAM": .string(developmentTeam),
+                    "MARKETING_VERSION": .string({{ swiftLiteral .MarketingVersion }}),
+                    "CURRENT_PROJECT_VERSION": .string({{ swiftLiteral .ProjectVersion }}),
+                ]
+            )
+        )
+    ]
+)

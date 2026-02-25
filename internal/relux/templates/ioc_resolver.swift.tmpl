@@ -1,0 +1,43 @@
+import SwiftIoC
+
+extension {{ .ModuleName }} {
+    @MainActor
+    enum Resolver {
+        static func optionalResolve<T>(_ type: T.Type, from ioc: IoC) -> T? {
+            ioc.get(by: type)
+        }
+
+        static func resolve<T>(_ type: T.Type, from ioc: IoC) -> T {
+            ioc.get(by: type)!
+        }
+
+        static func optionalResolveAsync<T: Sendable>(_ type: T.Type, from ioc: IoC) async -> T? where T.Type: Sendable {
+            await ioc.getAsync(by: type)
+        }
+
+        static func resolveAsync<T: Sendable>(_ type: T.Type, from ioc: IoC) async -> T where T.Type: Sendable {
+            await ioc.getAsync(by: type)!
+        }
+
+        @discardableResult
+        static func waitForResolve<T: Sendable>(_ type: T.Type, from ioc: IoC) async -> T where T.Type: Sendable {
+            await ioc.waitForResolve(type)
+        }
+
+        static func resolveService(from ioc: IoC) -> {{ .ServiceProtocol }} {
+            resolve({{ .ServiceProtocol }}.self, from: ioc)
+        }
+
+{{- if .Dependencies }}
+        static func preflightDependencies(in ioc: IoC) {
+{{- range .Dependencies }}
+            _ = resolve({{ . }}.self, from: ioc)
+{{- end }}
+        }
+{{- else }}
+        static func preflightDependencies(in ioc: IoC) {
+            _ = ioc
+        }
+{{- end }}
+    }
+}

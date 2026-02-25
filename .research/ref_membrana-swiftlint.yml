@@ -1,0 +1,97 @@
+# .swiftlint.yml
+excluded: # пути к файлам и директориям, которые SwiftLint должен игнорировать
+  - DerivedData
+  - Packages
+  - Pods
+  - SourcePackages
+  - /packages
+  - AppUnitTests
+  - NetworkStubs
+  - Application/Sources/Modules/ProductMetrics/pm_proj
+  - Application/Sources/Modules/FssAnalytics/fss_proj
+  - Application/Sources/Modules/AppsFlyer/af_proj
+  - Application/Sources/Modules/ProductMetrics
+  
+disabled_rules:
+  - trailing_newline
+  - trailing_comma
+  - nesting
+  - redundant_string_enum_value
+  - void_return
+  - syntactic_sugar
+  - multiple_closures_with_trailing_closure
+  - cyclomatic_complexity
+  - unused_control_flow_label
+  - switch_case_alignment
+  - statement_position
+  - large_tuple
+
+line_length: # максимальная длина строки
+  warning: 160
+  error: 180
+  ignores_function_declarations: false
+  ignores_comments: true
+
+file_length: # ограничение на количество строк в файле
+  warning: 600
+  error: 800
+
+type_body_length: # ограничение на количество строк в теле типа (класса, структуры, перечисления)
+  warning: 300
+  error: 400
+
+function_body_length: # ограничение на количество строк в теле функции
+  warning: 70
+  error: 80
+
+identifier_name: # правила для имен переменных и функций
+  allowed_symbols: "_"
+  min_length: 3
+  max_length:
+    warning: 60
+    error: 80
+  excluded: ["id", "ls", "os", "to", "vc", "nc", "in", "bg", "fg", "ns", "gb", "mb", "kb", "ru", "en"] # исключения для коротких имен
+
+type_name: # правила для имен типов (классов, структур, перечислений)
+  allowed_symbols: "_"
+  min_length: 3
+  max_length:
+    warning: 40
+    error: 50
+  excluded: ["Id", "UI", "F", "LS"] # исключения для коротких имен
+
+trailing_whitespace: # запрет на пробелы в конце строк
+  severity: warning
+  ignores_empty_lines: false
+  ignores_comments: true
+
+colon: # правильное использование двоеточия (например, в типах переменных)
+  severity: warning
+  apply_to_dictionaries: true
+  flexible_right_spacing: false
+
+comma: # запрет на пробелы перед запятыми и требование пробелов после запятых
+  severity: warning
+
+force_cast: # запрет на использование принудительного приведения типов
+  severity: warning
+
+force_try: # запрет на использование принудительного try
+  severity: warning
+
+function_parameter_count: # ограничение на количество параметров функции
+  warning: 5
+  error: 7
+
+redundant_discardable_let: # запрет на лишние игнорируемые связывания let
+  severity: warning
+
+unused_optional_binding: # предупреждения о неиспользуемых опциональных связываниях, которые не приводят к разворачиванию
+  severity: warning
+
+vertical_whitespace: # ограничение на количество пустых строк
+  max_empty_lines: 2
+  severity: warning
+
+mark: # требование, чтобы метки разделов были окружены пустыми строками
+  severity: warning

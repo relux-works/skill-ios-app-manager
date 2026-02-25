@@ -1,0 +1,26 @@
+# test log
+getenv PWD
+stat /Users/alexis/src/relux-works/tuist-starter/internal/dsl/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/internal/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/go.mod
+open /Users/alexis/src/relux-works/tuist-starter/testdata/dsl/parser_summary.golden
+getenv PWD
+stat /Users/alexis/src/relux-works/tuist-starter/internal/dsl/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/internal/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/go.mod
+open /Users/alexis/src/relux-works/tuist-starter/testdata/dsl/parser_quoted_values.golden
+getenv PWD
+stat /Users/alexis/src/relux-works/tuist-starter/internal/dsl/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/internal/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/go.mod
+getenv PWD
+open /Users/alexis/src/relux-works/tuist-starter/testdata/dsl/parser_nested_parentheses.golden
+stat /Users/alexis/src/relux-works/tuist-starter/internal/dsl/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/internal/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/go.mod
+open /Users/alexis/src/relux-works/tuist-starter/testdata/dsl/parser_modules_filtered.golden
+getenv PWD
+stat /Users/alexis/src/relux-works/tuist-starter/internal/dsl/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/internal/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/go.mod
+open /Users/alexis/src/relux-works/tuist-starter/testdata/dsl/parser_get_projection.golden

@@ -1,0 +1,7 @@
+./graph.go
+./manager.go
+./manifest.go
+./manifest_edit.go
+./package_gen.go
+./runner.go
+./version.go

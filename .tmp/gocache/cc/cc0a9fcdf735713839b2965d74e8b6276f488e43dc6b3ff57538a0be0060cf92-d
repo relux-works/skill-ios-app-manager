@@ -1,0 +1,19 @@
+# test log
+open testdata/graph.json
+open testdata/manifest_package.swift
+getenv PWD
+stat /Users/alexis/src/relux-works/tuist-starter/internal/tuistproj/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/internal/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/go.mod
+open /Users/alexis/src/relux-works/tuist-starter/testdata/tuistproj/package_interface.golden
+open testdata/manifest_edit_input.swift
+getenv PWD
+stat /Users/alexis/src/relux-works/tuist-starter/internal/tuistproj/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/internal/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/go.mod
+open /Users/alexis/src/relux-works/tuist-starter/testdata/tuistproj/package_impl.golden
+getenv PWD
+stat /Users/alexis/src/relux-works/tuist-starter/internal/tuistproj/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/internal/go.mod
+stat /Users/alexis/src/relux-works/tuist-starter/go.mod
+open /Users/alexis/src/relux-works/tuist-starter/testdata/tuistproj/manifest_edit.golden

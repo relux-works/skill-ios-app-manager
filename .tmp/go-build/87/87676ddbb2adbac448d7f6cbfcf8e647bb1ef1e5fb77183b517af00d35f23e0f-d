@@ -1,0 +1,3 @@
+./creator_test.go
+./deleter_test.go
+./lister_test.go

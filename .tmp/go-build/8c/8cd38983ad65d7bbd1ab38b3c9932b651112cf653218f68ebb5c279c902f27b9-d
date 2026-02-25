@@ -1,0 +1,4 @@
+./golden.go
+./helpers.go
+./golden_test.go
+./helpers_test.go

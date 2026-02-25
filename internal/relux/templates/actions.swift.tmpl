@@ -1,0 +1,10 @@
+import Foundation
+import {{.InterfacePackageName}}
+
+public enum {{.ModuleName}}Action: Sendable, Equatable {
+    case appeared
+    case setLoading(Bool)
+    case setItems([{{.ModuleName}}DTO])
+    case setError(String?)
+    case forward({{.ModuleName}}PublicAction)
+}

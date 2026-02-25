@@ -1,0 +1,20 @@
+{
+  "app_name": "XFlow",
+  "bundle_id": "org.xflow.app",
+  "team_id": "H446YY77RR",
+  "organization_name": "XFlow",
+  "marketing_version": "0.1.9",
+  "project_version": "2",
+  "swift_version": "6.0",
+  "min_target": "17.6",
+  "url_scheme": "xflow",
+  "app_groups": [
+    "group.org.xflow.app"
+  ],
+  "product_name": "xflow-ios",
+  "configurations": [
+    "Debug",
+    "Release"
+  ],
+  "modules_path": "XFlowShared"
+}

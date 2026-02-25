@@ -1,0 +1,25 @@
+.temp/
+.cache/
+
+# Go binaries and build output
+bin/
+dist/
+/ios-app-manager
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.out
+
+# Dependency directories
+vendor/
+
+# IDE/editor settings
+.idea/
+.vscode/
+
+# macOS
+.DS_Store

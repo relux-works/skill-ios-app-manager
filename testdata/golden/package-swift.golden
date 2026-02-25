@@ -1,0 +1,13 @@
+// swift-tools-version: 6.2
+import PackageDescription
+
+let modulesPath = "Packages"
+
+let package = Package(
+    name: "DemoAppDependencies",
+    dependencies: [
+        .package(path: "./Packages/Auth"),
+        .package(path: "./Packages/CoreKit"),
+    ],
+    targets: []
+)

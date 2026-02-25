@@ -1,0 +1,36 @@
+{
+  "targets": [
+    {
+      "id": "App",
+      "name": "App",
+      "product": "app",
+      "moduleType": "app"
+    },
+    {
+      "id": "FeatureOne",
+      "name": "FeatureOne",
+      "product": "framework",
+      "moduleType": "feature"
+    },
+    {
+      "id": "CoreKit",
+      "name": "CoreKit",
+      "product": "framework",
+      "moduleType": "core"
+    }
+  ],
+  "dependencies": [
+    {
+      "from": "App",
+      "to": "FeatureOne"
+    },
+    {
+      "from": "FeatureOne",
+      "to": "CoreKit"
+    },
+    {
+      "from": "App",
+      "to": "CoreKit"
+    }
+  ]
+}

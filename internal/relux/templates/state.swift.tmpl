@@ -1,0 +1,22 @@
+import Foundation
+import {{.InterfacePackageName}}
+
+public struct {{.ModuleName}}State: Equatable, Sendable {
+    public static let moduleKey = "{{.ModuleNameLower}}"
+
+    public var isLoading: Bool
+    public var items: [{{.ModuleName}}DTO]
+    public var errorMessage: String?
+
+    public init(
+        isLoading: Bool = false,
+        items: [{{.ModuleName}}DTO] = [],
+        errorMessage: String? = nil
+    ) {
+        self.isLoading = isLoading
+        self.items = items
+        self.errorMessage = errorMessage
+    }
+
+    public static let initial = {{.ModuleName}}State()
+}

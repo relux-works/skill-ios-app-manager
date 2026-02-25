@@ -1,0 +1,1 @@
+Implemented init command end-to-end with new scaffold package, overwrite protection, and --force. Added scaffold tests + CLI init tests and updated Project.swift template paths. Verified go test ./internal/scaffold/..., go test ./internal/cli/..., go test ./..., go vet ./..., go build ./cmd/ios-app-manager/, and manual init run with/without --force.

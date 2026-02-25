@@ -1,0 +1,15 @@
+# test log
+getenv TMPDIR
+getenv TMPDIR
+stat /var/folders/31/0y3t5xv92xvbkc2r6hhfk_jw0000gn/T/TestAppManagerStatusLoadsConfigAndScansModules76663326/001/Packages/FeatureA
+stat /var/folders/31/0y3t5xv92xvbkc2r6hhfk_jw0000gn/T/TestAppManagerStatusLoadsConfigAndScansModules76663326/001/Packages
+stat /var/folders/31/0y3t5xv92xvbkc2r6hhfk_jw0000gn/T/TestAppManagerStatusLoadsConfigAndScansModules76663326/001
+open /var/folders/31/0y3t5xv92xvbkc2r6hhfk_jw0000gn/T/TestAppManagerStatusMissingPackagesDir1381924756/001/Packages
+open /var/folders/31/0y3t5xv92xvbkc2r6hhfk_jw0000gn/T
+stat /var/folders/31/0y3t5xv92xvbkc2r6hhfk_jw0000gn/T/TestAppManagerStatusLoadsConfigAndScansModules76663326/001/Packages/CoreKit
+stat /var/folders/31/0y3t5xv92xvbkc2r6hhfk_jw0000gn/T/TestAppManagerStatusLoadsConfigAndScansModules76663326/001/Packages
+stat /var/folders/31/0y3t5xv92xvbkc2r6hhfk_jw0000gn/T/TestAppManagerStatusLoadsConfigAndScansModules76663326/001/Packages/.hidden
+stat /var/folders/31/0y3t5xv92xvbkc2r6hhfk_jw0000gn/T/TestAppManagerStatusLoadsConfigAndScansModules76663326/001/Packages
+open /var/folders/31/0y3t5xv92xvbkc2r6hhfk_jw0000gn/T/TestAppManagerStatusLoadsConfigAndScansModules76663326/001/Packages/README.md
+open /var/folders/31/0y3t5xv92xvbkc2r6hhfk_jw0000gn/T/TestAppManagerStatusLoadsConfigAndScansModules76663326/001/Packages
+open /var/folders/31/0y3t5xv92xvbkc2r6hhfk_jw0000gn/T

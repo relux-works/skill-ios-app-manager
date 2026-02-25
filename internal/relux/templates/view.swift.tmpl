@@ -1,0 +1,40 @@
+import Observation
+import SwiftUI
+
+public struct {{.ModuleName}}View: View {
+    @Bindable private var store: {{.ModuleName}}Store
+
+    public init(store: {{.ModuleName}}Store) {
+        self.store = store
+    }
+
+    public var body: some View {
+        content
+            .navigationTitle("{{.ModuleName}}")
+            .task {
+                store.dispatch(.appeared)
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if store.state.isLoading {
+            ProgressView("Loading {{.ModuleName}}...")
+        } else if let errorMessage = store.state.errorMessage {
+            VStack(spacing: 8) {
+                Text("Failed to load")
+                    .font(.headline)
+                Text(errorMessage)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        } else if store.state.items.isEmpty {
+            Text("No {{.ModuleNameLower}} items")
+                .foregroundStyle(.secondary)
+        } else {
+            List(store.state.items) { item in
+                Text(item.title)
+            }
+        }
+    }
+}

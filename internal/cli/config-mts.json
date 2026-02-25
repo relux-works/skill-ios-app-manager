@@ -1,0 +1,15 @@
+{
+  "AppName": "DemoApp",
+  "BundleID": "com.example.demo",
+  "TeamID": "ABCDE12345",
+  "URLScheme": "demoapp",
+  "AppGroups": [
+    "group.com.example.demo"
+  ],
+  "MinTarget": "17.0",
+  "SwiftVersion": "6.0",
+  "MarketingVersion": "1.2.3",
+  "ProjectVersion": "123",
+  "ProductName": "Demo Product",
+  "OrgName": "Example Org"
+}

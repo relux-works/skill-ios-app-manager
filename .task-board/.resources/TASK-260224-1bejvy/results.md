@@ -1,0 +1,1 @@
+Implemented external dependency add/remove/list with version modes from/exact/branch/revision, CLI wiring for dep add-external and dep remove-external, and comprehensive deps+cli tests. Validation: go test ./..., go vet ./..., go build ./... passed.

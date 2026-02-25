@@ -1,0 +1,11 @@
+./list.go
+./loader.go
+./placeholder.go
+./schema.go
+./validator.go
+./writer.go
+./cicd_stubs_test.go
+./list_test.go
+./loader_test.go
+./validator_test.go
+./writer_test.go

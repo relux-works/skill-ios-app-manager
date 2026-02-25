@@ -1,0 +1,189 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+func TestLoadConfig(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config-mts.json")
+
+	want := validProjectConfig()
+	if err := WriteProjectConfig(path, want); err != nil {
+		t.Fatalf("WriteProjectConfig() error = %v", err)
+	}
+
+	got, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("LoadConfig() = %#v, want %#v", got, want)
+	}
+}
+
+func TestLoadConfigDefaultPath(t *testing.T) {
+	dir := t.TempDir()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("os.Getwd() error = %v", err)
+	}
+
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("os.Chdir(%q) error = %v", dir, err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(oldWD)
+	})
+
+	want := validProjectConfig()
+	if err := WriteProjectConfig(DefaultConfigPath, want); err != nil {
+		t.Fatalf("WriteProjectConfig() error = %v", err)
+	}
+
+	got, err := LoadConfig("")
+	if err != nil {
+		t.Fatalf("LoadConfig(\"\") error = %v", err)
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("LoadConfig(\"\") = %#v, want %#v", got, want)
+	}
+}
+
+func TestLoadProjectConfigCompatibilityWrapper(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config-fc.json")
+	want := validProjectConfig()
+
+	if err := WriteProjectConfig(path, want); err != nil {
+		t.Fatalf("WriteProjectConfig() error = %v", err)
+	}
+
+	got, err := LoadProjectConfig(path)
+	if err != nil {
+		t.Fatalf("LoadProjectConfig() error = %v", err)
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("LoadProjectConfig() = %#v, want %#v", got, want)
+	}
+}
+
+func TestLoadConfigMissingFile(t *testing.T) {
+	t.Parallel()
+
+	_, err := LoadConfig("nope.json")
+	if err == nil {
+		t.Fatal("LoadConfig() error = nil, want missing file error")
+	}
+
+	if !strings.Contains(err.Error(), `config file "nope.json" does not exist`) {
+		t.Fatalf("LoadConfig() error = %q, want missing file message", err.Error())
+	}
+}
+
+func TestLoadConfigAppliesDefaults(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config-defaults.json")
+	content := `{
+  "app_name": "DemoApp",
+  "bundle_id": "com.example.demo",
+  "team_id": "ABCDE12345",
+  "marketing_version": "1.0.0",
+  "swift_version": "6.2",
+  "min_target": "17.0"
+}`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if cfg.ProductName != cfg.AppName {
+		t.Fatalf("ProductName = %q, want %q", cfg.ProductName, cfg.AppName)
+	}
+	if cfg.ModulesPath != "Packages" {
+		t.Fatalf("ModulesPath = %q, want %q", cfg.ModulesPath, "Packages")
+	}
+}
+
+func TestSampleConfigIsValid(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(repoRoot(t), "testdata", "sample-config.json")
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig(%q) error = %v", path, err)
+	}
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("sample config Validate() error = %v", err)
+	}
+}
+
+func TestXFlowConfigIsValid(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(repoRoot(t), "testdata", "xflow-config.json")
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig(%q) error = %v", path, err)
+	}
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("xflow config Validate() error = %v", err)
+	}
+
+	if cfg.BundleID != "org.xflow.app" {
+		t.Fatalf("BundleID = %q, want %q", cfg.BundleID, "org.xflow.app")
+	}
+	if cfg.TeamID != "H446YY77RR" {
+		t.Fatalf("TeamID = %q, want %q", cfg.TeamID, "H446YY77RR")
+	}
+	if cfg.SwiftVersion != "6.0" {
+		t.Fatalf("SwiftVersion = %q, want %q", cfg.SwiftVersion, "6.0")
+	}
+	if cfg.MinTarget != "17.6" {
+		t.Fatalf("MinTarget = %q, want %q", cfg.MinTarget, "17.6")
+	}
+	if cfg.MarketingVersion != "0.1.9" {
+		t.Fatalf("MarketingVersion = %q, want %q", cfg.MarketingVersion, "0.1.9")
+	}
+}
+
+func validProjectConfig() ProjectConfig {
+	return ProjectConfig{
+		AppName:          "DemoApp",
+		BundleID:         "com.example.demo",
+		TeamID:           "ABCDE12345",
+		OrgName:          "Example Org",
+		MarketingVersion: "1.2.3",
+		ProjectVersion:   "123",
+		SwiftVersion:     "6.2",
+		MinTarget:        "17.0",
+		URLScheme:        "demoapp",
+		AppGroups:        []string{"group.com.example.demo"},
+		ProductName:      "Demo Product",
+		Configurations:   []string{"Debug", "Release"},
+		ModulesPath:      "Packages",
+		PushKeyPath:      "certs/AuthKey_ABC123.p8",
+		PushKeyID:        "ABC123DEF4",
+	}
+}

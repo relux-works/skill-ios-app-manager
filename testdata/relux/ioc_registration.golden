@@ -1,0 +1,16 @@
+import SwiftIoC
+
+extension Auth {
+    @MainActor
+    enum Registry {
+        static func register(in ioc: IoC) {
+            // Interface package exposes protocol; implementation package binds concrete type.
+            ioc.register(Auth.Business.IService.self, lifecycle: .container, resolver: {
+                Auth.Business.Service(
+                    ioc.get(by: Auth.Business.IRouter.self)!,
+                    ioc.get(by: Auth.Data.Api.IFetcher.self)!,
+                )
+            })
+        }
+    }
+}

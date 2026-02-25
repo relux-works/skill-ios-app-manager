@@ -1,0 +1,21 @@
+import SwiftIoC
+
+extension {{ .ModuleName }} {
+    @MainActor
+    enum Registry {
+        static func register(in ioc: IoC) {
+            // Interface package exposes protocol; implementation package binds concrete type.
+            ioc.register({{ .ServiceProtocol }}.self, lifecycle: .container, resolver: {
+{{- if .Dependencies }}
+                {{ .ServiceImplementation }}(
+{{- range .Dependencies }}
+                    ioc.get(by: {{ . }}.self)!,
+{{- end }}
+                )
+{{- else }}
+                {{ .ServiceImplementation }}()
+{{- end }}
+            })
+        }
+    }
+}

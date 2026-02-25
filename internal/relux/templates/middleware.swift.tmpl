@@ -1,0 +1,28 @@
+import Foundation
+import {{.InterfacePackageName}}
+
+public protocol {{.ModuleName}}MiddlewareProtocol: Actor {
+    func handle(action: {{.ModuleName}}Action, state: {{.ModuleName}}State) async -> {{.ModuleName}}Action?
+}
+
+public actor {{.ModuleName}}Middleware: {{.ModuleName}}MiddlewareProtocol {
+    private let service: any {{.ModuleName}}Service
+
+    public init(service: any {{.ModuleName}}Service) {
+        self.service = service
+    }
+
+    public func handle(action: {{.ModuleName}}Action, state: {{.ModuleName}}State) async -> {{.ModuleName}}Action? {
+        switch action {
+        case .appeared:
+            do {
+                let items = try await service.fetchItems()
+                return .setItems(items)
+            } catch {
+                return .setError(String(describing: error))
+            }
+        case .setLoading, .setItems, .setError, .forward:
+            return nil
+        }
+    }
+}

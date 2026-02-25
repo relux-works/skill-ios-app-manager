@@ -1,0 +1,26 @@
+// swift-tools-version: 6.0
+import PackageDescription
+
+// Interface package
+let package = Package(
+    name: "Auth",
+    platforms: [
+        .iOS(.v16),
+    ],
+    products: [
+        .library(name: "Auth", type: .dynamic, targets: ["Auth"]),
+    ],
+    dependencies: [
+        .package(path: "../CoreKit"),
+        .package(path: "../Analytics"),
+    ],
+    targets: [
+        .target(
+            name: "Auth",
+            dependencies: [
+                .product(name: "CoreKit", package: "CoreKit"),
+                .product(name: "Analytics", package: "Analytics"),
+            ]
+        ),
+    ]
+)

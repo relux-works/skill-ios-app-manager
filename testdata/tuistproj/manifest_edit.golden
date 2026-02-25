@@ -1,0 +1,19 @@
+import PackageDescription
+
+let package = Package(
+    name: "Auth",
+    products: [
+        .library(name: "AuthImpl", type: .dynamic, targets: ["AuthImpl"]),
+    ],
+    dependencies: [
+        .package(path: "../Networking"),
+    ],
+    targets: [
+        .target(
+            name: "AuthImpl",
+            dependencies: [
+                .product(name: "Networking", package: "Networking"),
+            ]
+        ),
+    ]
+)

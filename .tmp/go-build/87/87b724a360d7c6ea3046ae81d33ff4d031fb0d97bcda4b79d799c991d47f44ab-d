@@ -1,0 +1,14 @@
+./app_stub.go
+./entitlements.go
+./gitignore.go
+./makefile.go
+./periphery.go
+./scaffold.go
+./swiftlint.go
+./app_stub_test.go
+./entitlements_test.go
+./gitignore_test.go
+./makefile_test.go
+./periphery_test.go
+./scaffold_test.go
+./swiftlint_test.go

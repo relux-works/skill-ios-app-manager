@@ -1,0 +1,36 @@
+import SwiftIoC
+
+extension SampleApp {
+    @MainActor
+    enum CompositionRoot {
+        static let ioc = IoC(logger: IoC.Logger(enabled: false))
+
+        static func configure() {
+            ErrorHandling.Registry.register(in: ioc)
+            Navigation.Registry.register(in: ioc)
+            Auth.Registry.register(in: ioc)
+            Notes.Registry.register(in: ioc)
+            SampleApp.Registry.register(in: ioc)
+
+            ioc.register(Relux.self, lifecycle: .container, resolver: {
+                Relux()
+            })
+        }
+
+        static func resolve<T>(_ type: T.Type) -> T {
+            ioc.get(by: type)!
+        }
+
+        static func resolveAsync<T: Sendable>(_ type: T.Type) async -> T where T.Type: Sendable {
+            await ioc.getAsync(by: type)!
+        }
+
+        static func optionalResolve<T>(_ type: T.Type) -> T? {
+            ioc.get(by: type)
+        }
+
+        static func optionalResolveAsync<T: Sendable>(_ type: T.Type) async -> T? where T.Type: Sendable {
+            await ioc.getAsync(by: type)
+        }
+    }
+}

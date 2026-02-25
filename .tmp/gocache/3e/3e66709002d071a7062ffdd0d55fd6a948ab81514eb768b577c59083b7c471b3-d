@@ -1,0 +1,11 @@
+./clean.go
+./dep.go
+./entitlements.go
+./generate.go
+./init.go
+./m.go
+./module.go
+./q.go
+./root.go
+./status.go
+./stub.go

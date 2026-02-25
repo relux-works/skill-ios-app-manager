@@ -1,0 +1,13 @@
+./clean.go
+./dep.go
+./dsl_output.go
+./entitlements.go
+./generate.go
+./init.go
+./module.go
+./mutate.go
+./push.go
+./query.go
+./root.go
+./status.go
+./stub.go

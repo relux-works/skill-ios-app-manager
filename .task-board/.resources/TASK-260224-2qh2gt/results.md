@@ -1,0 +1,1 @@
+Implemented module list/delete with new module lister and deleter, wired CLI module list/delete (with --force and confirmation), and added tests for module-layer and CLI behaviors. Verification succeeded: go test ./internal/modules/..., go test ./..., go vet ./..., go build ./cmd/ios-app-manager/.

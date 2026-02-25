@@ -1,0 +1,6 @@
+./keys.go
+./manager.go
+./plist.go
+./keys_test.go
+./manager_test.go
+./plist_test.go

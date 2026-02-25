@@ -1,0 +1,13 @@
+import ProjectDescription
+
+let localPackagesPath = {{ swiftLiteral .ModulesPath }}
+
+let workspace = Workspace(
+    name: {{ swiftLiteral .AppName }},
+    projects: [
+        "."
+    ],
+    additionalFiles: [
+        "\(localPackagesPath)/**"
+    ]
+)

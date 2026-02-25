@@ -1,0 +1,19 @@
+# STUB — not yet wired to real project
+name: Build (Stub)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup
+        run: make setup
+      - name: Build
+        run: make build

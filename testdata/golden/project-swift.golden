@@ -1,0 +1,63 @@
+import ProjectDescription
+
+let appName = "DemoApp"
+let bundleID = "com.example.demo"
+let developmentTeam = "ABCDE12345"
+let appGroups: [Plist.Value] = [
+    .string("group.com.example.demo"),
+]
+
+let configurations: [Configuration] = [
+    .debug(name: "Debug"),
+    .release(name: "Release"),
+]
+
+let project = Project(
+    name: appName,
+    organizationName: "Example Org",
+    settings: .settings(
+        configurations: configurations
+    ),
+    targets: [
+        .target(
+            name: appName,
+            destinations: .iOS,
+            product: .app,
+            bundleId: bundleID,
+            deploymentTargets: .iOS("17.0"),
+            infoPlist: .extendingDefault(
+                with: [
+                    "CFBundleDisplayName": .string(appName),
+                    "CFBundleShortVersionString": .string("1.0.0"),
+                    "CFBundleVersion": .string("1"),
+                    "CFBundleURLTypes": .array([
+                        .dictionary([
+                            "CFBundleURLName": .string(bundleID),
+                            "CFBundleTypeRole": .string("Editor"),
+                            "CFBundleURLSchemes": .array([
+                                .string("demoapp")
+                            ])
+                        ])
+                    ]),
+                    "ProjectAppGroups": .array(appGroups),
+                ]
+            ),
+            sources: ["Targets/DemoApp/Sources/**"],
+            resources: ["Targets/DemoApp/Resources/**"],
+            entitlements: .file(path: "DemoApp.entitlements"),
+            dependencies: [
+                .package(product: "Auth"),
+                .package(product: "CoreKit"),
+            ],
+            settings: .settings(
+                base: [
+                    "SWIFT_VERSION": .string("6.2"),
+                    "IPHONEOS_DEPLOYMENT_TARGET": .string("17.0"),
+                    "DEVELOPMENT_TEAM": .string(developmentTeam),
+                    "MARKETING_VERSION": .string("1.0.0"),
+                    "CURRENT_PROJECT_VERSION": .string("1"),
+                ]
+            )
+        )
+    ]
+)

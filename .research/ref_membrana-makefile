@@ -1,0 +1,364 @@
+SHELL := /bin/bash
+
+## Команда для инициализации проекта, выполняйте всегда перед первым стартом!
+init:
+	/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+	# Добавление Homebrew в PATH (если не добавлен)
+	@if ! echo "$$PATH" | grep -q "/opt/homebrew/bin"; then \
+	echo 'export PATH="/opt/homebrew/bin:$$PATH"' >> ~/.zshrc; \
+	echo "Homebrew добавлен в PATH (файл ~/.zshrc)."; \
+	else \
+	echo "Homebrew уже добавлен в PATH."; \
+	fi
+
+	# Применение изменений
+	@source ~/.zshrc
+	@echo "Установка завершена. Проверьте Homebrew: brew --version"
+	brew install git
+	brew install xcodegen
+	brew install swiftlint
+	brew install xcode-build-server
+	brew install xcbeautify
+	brew install swiftformat
+	$(MAKE) install.creds
+	$(MAKE) setup
+	$(MAKE) xcgen
+
+# Добавит сертификаты и профайлы в связку ключей
+install.creds:
+	eval `ssh-agent -s`
+	ssh-add ~/.ssh/id_rsa
+
+# Относительный путь к директории packages (от расположения Makefile)
+PACKAGES_DIR := ../packages
+
+setup:
+	@echo "Создание директории для пакетов..."
+	mkdir -p $(PACKAGES_DIR)
+
+	@echo "Клонирование репозиториев Membrane..."
+	@if [ ! -d "$(PACKAGES_DIR)/ios-unitydatadiagram" ]; then \
+		cd $(PACKAGES_DIR) && git clone git@gitlab.services.mts.ru:neolink-ios/apps/membrane/packages/ios-unitydatadiagram.git; \
+	else \
+		echo "Репо ios-unitydatadiagram уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/ios-membranematerials" ]; then \
+		cd $(PACKAGES_DIR) && git clone git@gitlab.services.mts.ru:neolink-ios/apps/membrane/packages/ios-membranematerials.git; \
+	else \
+		echo "Репо ios-membranematerials уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/ios-membranetypography" ]; then \
+		cd $(PACKAGES_DIR) && git clone git@gitlab.services.mts.ru:neolink-ios/apps/membrane/packages/ios-membranetypography.git; \
+	else \
+		echo "Репо ios-membranetypography уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/ios-membranestories" ]; then \
+		cd $(PACKAGES_DIR) && git clone git@gitlab.services.mts.ru:neolink-ios/apps/membrane/packages/ios-membranestories.git; \
+	else \
+		echo "Репо ios-membranestories уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/ios-membraneui" ]; then \
+		cd $(PACKAGES_DIR) && git clone git@gitlab.services.mts.ru:neolink-ios/apps/membrane/packages/ios-membraneui.git; \
+	else \
+		echo "Репо ios-membraneui уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/ios-membrane-contactmanagement" ]; then \
+		cd $(PACKAGES_DIR) && git clone git@gitlab.services.mts.ru:neolink-ios/apps/membrane/packages/ios-membrane-contactmanagement.git; \
+	else \
+		echo "Репо ios-membrane-contactmanagement уже существует, пропускаем..."; \
+	fi
+
+	@echo "Клонирование репозиториев MTS..."
+	@if [ ! -d "$(PACKAGES_DIR)/mts-analytics" ]; then \
+		cd $(PACKAGES_DIR) && git clone git@gitlab.services.mts.ru:fc-telecom/mobile/ios/packages/mts-analytics.git; \
+	else \
+		echo "Репо mts-analytics уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/mts-fssanalytics" ]; then \
+		cd $(PACKAGES_DIR) && git clone git@gitlab.services.mts.ru:fc-telecom/mobile/ios/packages/mts-fssanalytics.git; \
+	else \
+		echo "Репо mts-fssanalytics уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/mts-errorhandling" ]; then \
+		cd $(PACKAGES_DIR) && git clone git@gitlab.services.mts.ru:fc-telecom/mobile/ios/packages/mts-errorhandling.git; \
+	else \
+		echo "Репо mts-errorhandling уже существует, пропускаем..."; \
+	fi
+
+	@echo "Клонирование репозиториев ivalx1s..."
+	@if [ ! -d "$(PACKAGES_DIR)/darwin-foundationplus" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/darwin-foundationplus.git; \
+	else \
+		echo "Репо darwin-foundationplus уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/darwin-logger" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/darwin-logger.git; \
+	else \
+		echo "Репо darwin-logger уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/swiftui-relux" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/swiftui-relux.git; \
+	else \
+		echo "Репо swiftui-relux уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/darwin-httpclient" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/darwin-httpclient.git; \
+	else \
+		echo "Репо darwin-httpclient уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/ios-hapticshelper" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/ios-hapticshelper.git; \
+	else \
+		echo "Репо ios-hapticshelper уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/objc-libphonenumber" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/objc-libphonenumber.git; \
+	else \
+		echo "Репо objc-libphonenumber уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/swift-countries" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/swift-countries.git; \
+	else \
+		echo "Репо swift-countries уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/swift-stdlibplus" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/swift-stdlibplus.git; \
+	else \
+		echo "Репо swift-stdlibplus уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/swiftui-plus" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/swiftui-plus.git; \
+	else \
+		echo "Репо swiftui-plus уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/ios-cdkvfacade" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/ios-cdkvfacade.git; \
+	else \
+		echo "Репо ios-cdkvfacade уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/ios-environmental-conditions" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/ios-environmental-conditions.git; \
+	else \
+		echo "Репо ios-environmental-conditions уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/ios-filemanagement" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/ios-filemanagement.git; \
+	else \
+		echo "Репо ios-filemanagement уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/darwin-keychainaccess" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/darwin-keychainaccess.git; \
+	else \
+		echo "Репо darwin-keychainaccess уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/ios-featuremanagement" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/ios-featuremanagement.git; \
+	else \
+		echo "Репо ios-featuremanagement уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/relux-appsflyer" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/relux-appsflyer.git; \
+	else \
+		echo "Репо relux-appsflyer уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/swift-ioc" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/swift-ioc.git; \
+	else \
+		echo "Репо swift-ioc уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/SwiftMocks" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/SwiftMocks.git; \
+	else \
+		echo "Репо SwiftMocks уже существует, пропускаем..."; \
+	fi
+
+	@echo "Клонирование и настройка внешних зависимостей..."
+	@if [ ! -d "$(PACKAGES_DIR)/sentry-cocoa" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/getsentry/sentry-cocoa.git; \
+		cd $(PACKAGES_DIR)/sentry-cocoa && git checkout 8.37.0; \
+	else \
+		echo "Репо sentry-cocoa уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/swift-algorithms" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/apple/swift-algorithms.git; \
+		cd $(PACKAGES_DIR)/swift-algorithms && git checkout 1.2.0; \
+	else \
+		echo "Репо swift-algorithms уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/swift-async-algorithms" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/apple/swift-async-algorithms.git; \
+		cd $(PACKAGES_DIR)/swift-async-algorithms && git checkout 1.0.2; \
+	else \
+		echo "Репо swift-async-algorithms уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/swift-collections" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/apple/swift-collections.git; \
+		cd $(PACKAGES_DIR)/swift-collections && git checkout 1.1.4; \
+	else \
+		echo "Репо swift-collections уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/swift-numerics" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/apple/swift-numerics.git; \
+		cd $(PACKAGES_DIR)/swift-numerics && git checkout 1.0.2; \
+	else \
+		echo "Репо swift-numerics уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/SwiftLint" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/realm/SwiftLint.git; \
+		cd $(PACKAGES_DIR)/SwiftLint && git checkout 0.53.0; \
+	else \
+		echo "Репо SwiftLint уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/darwin-relux" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/darwin-relux.git; \
+	else \
+		echo "Репо darwin-relux уже существует, пропускаем..."; \
+	fi
+		@if [ ! -d "$(PACKAGES_DIR)/swiftui-reluxrouter" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/swiftui-reluxrouter.git; \
+	else \
+		echo "Репо swiftui-reluxrouter уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/ios-membrane-notifications" ]; then \
+		cd $(PACKAGES_DIR) && git clone git@gitlab.services.mts.ru:neolink-ios/apps/membrane/packages/ios-membrane-notifications.git; \
+	else \
+		echo "Репо ios-membrane-notifications уже существует, пропускаем..."; \
+	fi
+		@if [ ! -d "$(PACKAGES_DIR)/swift-static-url" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/ivalx1s/swift-static-url; \
+	else \
+		echo "Репо swift-static-url уже существует, пропускаем..."; \
+	fi
+	@if [ ! -d "$(PACKAGES_DIR)/swift-snapshot-testing" ]; then \
+		cd $(PACKAGES_DIR) && git clone https://github.com/pointfreeco/swift-snapshot-testing.git; \
+		cd $(PACKAGES_DIR)/swift-snapshot-testing && git checkout 1.18.3; \
+	else \
+		echo "Репо swift-snapshot-testing уже существует, пропускаем..."; \
+	fi
+
+	@echo "Настройка завершена!"
+
+## Генерация проекта
+xcgen:
+	$(MAKE) kill_xcode
+	$(MAKE) generate_manifest
+	$(MAKE) generate_project
+	$(MAKE) install_pods
+
+# Завершение Xcode
+kill_xcode:
+	@echo "Завершение Xcode..."
+	@-pkill Xcode 2>/dev/null || true
+
+# Генерация манифеста
+generate_manifest:
+	@echo "Генерация манифеста..."
+	@cd scripts/prepareProjManifest && \
+	swift run prepareProjManifest -- \
+		template:../../proj_manifest_template.xcodeprojless \
+		config:../../proj_config_fc.xcodeprojless \
+		destination:../../proj_manifest.xcodeprojless
+	@cd ../..
+
+# Генерация проекта
+generate_project:
+	@echo "Создание Xcode-проекта..."
+	@xcodegen generate --spec proj_manifest.xcodeprojless
+
+## Установка зависимостей
+install_pods:
+	@echo "Установка CocoaPods..."
+	@pod install || pod install --repo-update
+
+# Список репозиториев для checkout
+REPOS := \
+	swift-ioc \
+	darwin-foundationplus \
+	darwin-logger \
+	darwin-relux \
+	swiftui-reluxrouter \
+	swiftui-relux \
+	darwin-httpclient \
+	ios-hapticshelper \
+	ios-membranematerials \
+	ios-membranetypography \
+	ios-membranestories \
+	ios-membraneui \
+	objc-libphonenumber \
+	swift-countries \
+	swift-stdlibplus \
+	swiftui-plus \
+	ios-cdkvfacade \
+	mts-analytics \
+	mts-fssanalytics \
+	mts-errorhandling \
+	ios-environmental-conditions \
+	ios-unitydatadiagram \
+	ios-filemanagement \
+	ios-featuremanagement \
+	darwin-keychainaccess \
+	relux-appsflyer \
+	ios-membrane-contactmanagement \
+	ios-membrane-notifications \
+	SwiftMocks
+
+## Обновление всех репозиториев зависимостей
+checkout:
+	@echo "Переход в директорию packages..."
+	@cd .. && cd packages && \
+	for repo in $(REPOS); do \
+		echo "Обработка репозитория $$repo..."; \
+		if [ -d "$$repo" ]; then \
+			echo "Репозиторий $$repo найден, обновляем..."; \
+			(cd "$$repo" && \
+			git checkout main && \
+			git pull origin main && \
+			cd ..) || (echo "Ошибка при обработке репозитория $$repo!" && exit 1); \
+		else \
+			echo "Репозиторий $$repo не найден, пропускаем..."; \
+		fi; \
+	done && \
+	echo "Все репозитории успешно обновлены."
+
+## Настройка шаблонов Xcode
+setup.templates:
+	@echo "Переход в директорию packages..."
+	@cd .. && cd packages || (echo "Директория packages не найдена!" && exit 1)
+
+	@echo "Клонирование ios-infrastructure..."
+	@if [ ! -d "ios-infrastructure" ]; then \
+		git clone git@gitlab.services.mts.ru:fc-telecom/mobile/ios/packages/ios-infrastructure.git || (echo "Ошибка при клонировании ios-infrastructure!" && exit 1); \
+	else \
+		echo "Репозиторий ios-infrastructure уже существует, пропускаем клонирование..."; \
+	fi
+
+	@echo "Переход в директорию ios-infrastructure/xcode..."
+	@cd ios-infrastructure && \
+	if [ -d "xcode" ]; then \
+		cd xcode && \
+		echo "Копирование шаблонов Xcode..."; \
+		cp -R Templates ~/Library/Developer/Xcode || (echo "Ошибка при копировании шаблонов!" && exit 1); \
+	else \
+		echo "Директория xcode не найдена в ios-infrastructure!"; \
+		exit 1; \
+	fi
+
+	@echo "Шаблоны Xcode успешно настроены."
+
+
+## Очистка кэшей и временных файлов
+clean:
+	@echo "Очистка кэшей и временных файлов..."
+	@rm -rf ~/Library/org.swift.swiftpm
+	@rm -rf ~/Library/Caches/org.swift.swiftpm
+	@rm -rf ~/Library/Developer/Xcode/DerivedData
+	@rm -rf DerivedData
+	@echo "Очистка завершена."
+
+lint:
+	swiftlint lint --quiet
+
+check_localization:
+	@cd scripts && \
+	cd checkLocalization && \
+	swift run checkLocalization --sources=../../Application/Sources --localizationResources=../../Application/Resources/Localization --mode=console --ignore="NS*,l10n.app.owner.*" --validThreshold=2

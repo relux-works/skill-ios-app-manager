@@ -1,0 +1,1 @@
+Implemented DSL scaffold for q/m commands with parser, executors, registry handlers, compact formatting, and stub operation handlers. Added parser golden tests plus executor and CLI tests. Verification passed: go test ./internal/dsl/...; go test ./...; go vet ./...; go build ./cmd/ios-app-manager; smoke checks for q summary(), m create_module(...), q get(...) field projection.

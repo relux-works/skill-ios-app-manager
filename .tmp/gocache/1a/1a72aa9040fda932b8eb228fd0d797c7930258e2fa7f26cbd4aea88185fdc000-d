@@ -1,0 +1,7 @@
+./add_action.go
+./add_middleware.go
+./command_shared.go
+./init_cmd.go
+./manager.go
+./placeholder.go
+./template_engine.go

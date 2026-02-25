@@ -1,0 +1,22 @@
+{
+  "app_name": "DemoApp",
+  "bundle_id": "com.example.demo",
+  "team_id": "ABCDE12345",
+  "organization_name": "Example Org",
+  "marketing_version": "1.0.0",
+  "project_version": "1",
+  "swift_version": "6.2",
+  "min_target": "17.0",
+  "url_scheme": "demoapp",
+  "app_groups": [
+    "group.com.example.demo"
+  ],
+  "product_name": "Demo Product",
+  "configurations": [
+    "Debug",
+    "Release"
+  ],
+  "modules_path": "Packages",
+  "push_key_path": "certs/AuthKey_ABC123.p8",
+  "push_key_id": "ABC123DEF4"
+}

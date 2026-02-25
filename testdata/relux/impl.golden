@@ -1,0 +1,11 @@
+import Auth
+
+extension Auth.Module {
+    public struct Impl: Auth.Module.Interface {
+        public init() {}
+
+        public func register() {
+            print("Auth module registered")
+        }
+    }
+}

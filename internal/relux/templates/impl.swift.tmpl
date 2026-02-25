@@ -1,0 +1,11 @@
+import {{.InterfacePackageName}}
+
+extension {{.ModuleName}}.Module {
+    public struct Impl: {{.ModuleName}}.Module.Interface {
+        public init() {}
+
+        public func register() {
+            print("{{.ModuleName}} module registered")
+        }
+    }
+}

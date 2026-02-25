@@ -1,0 +1,9 @@
+{
+  "operation": "create_module",
+  "params": {
+    "name": "Auth(Core)",
+    "note": "needs, commas and (parens)",
+    "type": "feature"
+  },
+  "fields": []
+}

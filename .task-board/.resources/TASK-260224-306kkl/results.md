@@ -1,0 +1,1 @@
+go-module-init complete. Module: github.com/relux-works/ios-app-manager. Created cmd/internal/pkg/testdata skeleton with placeholder packages. Added cobra dependency in go.mod. Verification passed: go fmt ./..., go test ./..., go vet ./..., go build ./cmd/ios-app-manager/, runtime output ios-app-manager v0.0.1-dev.

@@ -1,0 +1,5 @@
+./app_stub.go
+./entitlements.go
+./gitignore.go
+./makefile.go
+./scaffold.go

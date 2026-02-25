@@ -1,0 +1,7 @@
+{
+  "operation": "deps",
+  "params": {
+    "module": "resolve(name=Auth, level=2)"
+  },
+  "fields": []
+}
