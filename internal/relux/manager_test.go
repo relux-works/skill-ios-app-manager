@@ -26,9 +26,9 @@ func TestReluxManagerInitAndAddAction(t *testing.T) {
 
 	for _, expected := range []string{
 		filepath.Join(interfaceDir, moduleName+".swift"),
-		filepath.Join(interfaceDir, moduleName+".Module.swift"),
-		filepath.Join(interfaceDir, moduleName+".Module+Interface.swift"),
-		filepath.Join(implDir, moduleName+".Module+Impl.swift"),
+		filepath.Join(interfaceDir, "Module", moduleName+".Module.swift"),
+		filepath.Join(interfaceDir, "Module", moduleName+".Module+Interface.swift"),
+		filepath.Join(implDir, "Module", moduleName+".Module+Impl.swift"),
 	} {
 		if _, err := os.Stat(expected); err != nil {
 			t.Fatalf("InitModule() expected file %q: %v", expected, err)

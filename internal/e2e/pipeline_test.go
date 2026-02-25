@@ -101,10 +101,10 @@ func verifyTodoListModule(t *testing.T, projectRoot string, modulesPath string) 
 	implSources := filepath.Join(modulesRoot, "TodoListImpl", "Sources", "TodoListImpl")
 
 	requireFile(t, filepath.Join(interfaceSources, "TodoList.swift"))
-	requireFile(t, filepath.Join(interfaceSources, "TodoList.Module.swift"))
-	requireFile(t, filepath.Join(interfaceSources, "TodoList.Module+Interface.swift"))
+	requireFile(t, filepath.Join(interfaceSources, "Module", "TodoList.Module.swift"))
+	requireFile(t, filepath.Join(interfaceSources, "Module", "TodoList.Module+Interface.swift"))
 
-	requireFile(t, filepath.Join(implSources, "TodoList.Module+Impl.swift"))
+	requireFile(t, filepath.Join(implSources, "Module", "TodoList.Module+Impl.swift"))
 }
 
 func verifyNoTemplateArtifactsInSwiftFiles(t *testing.T, root string) {

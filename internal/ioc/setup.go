@@ -304,34 +304,24 @@ func EditAppSwift(content string, modules []DiscoveredModule) string {
 // hasReluxImport checks if any Swift source in the package directory imports Relux.
 func hasReluxImport(packageDir string) bool {
 	sourcesDir := filepath.Join(packageDir, "Sources")
-	entries, err := os.ReadDir(sourcesDir)
-	if err != nil {
-		return false
-	}
-	// Walk one level into Sources/<target>/
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
+	found := false
+	_ = filepath.WalkDir(sourcesDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil || found {
+			return err
 		}
-		targetDir := filepath.Join(sourcesDir, entry.Name())
-		files, err := os.ReadDir(targetDir)
-		if err != nil {
-			continue
+		if d.IsDir() || !strings.HasSuffix(d.Name(), ".swift") {
+			return nil
 		}
-		for _, f := range files {
-			if f.IsDir() || !strings.HasSuffix(f.Name(), ".swift") {
-				continue
-			}
-			data, err := os.ReadFile(filepath.Join(targetDir, f.Name()))
-			if err != nil {
-				continue
-			}
-			if strings.Contains(string(data), "import Relux") {
-				return true
-			}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil
 		}
-	}
-	return false
+		if strings.Contains(string(data), "import Relux") {
+			found = true
+		}
+		return nil
+	})
+	return found
 }
 
 // EnsureImport adds an import statement if not already present.

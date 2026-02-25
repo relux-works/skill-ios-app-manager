@@ -32,9 +32,9 @@ func TestInitCommandRunCreatesAllFiles(t *testing.T) {
 	implPath := modulePath + "Impl"
 	want := []string{
 		filepath.Join(modulePath, "Sources", "Notes", "Notes.swift"),
-		filepath.Join(modulePath, "Sources", "Notes", "Notes.Module.swift"),
-		filepath.Join(modulePath, "Sources", "Notes", "Notes.Module+Interface.swift"),
-		filepath.Join(implPath, "Sources", "NotesImpl", "Notes.Module+Impl.swift"),
+		filepath.Join(modulePath, "Sources", "Notes", "Module", "Notes.Module.swift"),
+		filepath.Join(modulePath, "Sources", "Notes", "Module", "Notes.Module+Interface.swift"),
+		filepath.Join(implPath, "Sources", "NotesImpl", "Module", "Notes.Module+Impl.swift"),
 	}
 	sort.Strings(want)
 
@@ -93,9 +93,9 @@ func TestInitCommandRunUsesExistingInterfaceAndImplDirs(t *testing.T) {
 	// When Interface/Sources/ and Impl/Sources/ exist, they are used as the layout dirs.
 	checks := []string{
 		filepath.Join(interfaceSources, "Notes.swift"),
-		filepath.Join(interfaceSources, "Notes.Module.swift"),
-		filepath.Join(interfaceSources, "Notes.Module+Interface.swift"),
-		filepath.Join(implSources, "Notes.Module+Impl.swift"),
+		filepath.Join(interfaceSources, "Module", "Notes.Module.swift"),
+		filepath.Join(interfaceSources, "Module", "Notes.Module+Interface.swift"),
+		filepath.Join(implSources, "Module", "Notes.Module+Impl.swift"),
 	}
 
 	for _, path := range checks {
@@ -134,13 +134,13 @@ func TestInitCommandRunReluxFeatureTemplateSet(t *testing.T) {
 	implPath := modulePath + "Impl"
 	want := []string{
 		filepath.Join(modulePath, "Sources", "Auth", "Auth.swift"),
-		filepath.Join(modulePath, "Sources", "Auth", "Auth.Module.swift"),
-		filepath.Join(modulePath, "Sources", "Auth", "Auth.Module+Interface.swift"),
-		filepath.Join(modulePath, "Sources", "Auth", "Auth.Business+Action.swift"),
-		filepath.Join(modulePath, "Sources", "Auth", "Auth.Business+Effect.swift"),
-		filepath.Join(implPath, "Sources", "AuthImpl", "Auth.Module+Impl.swift"),
-		filepath.Join(implPath, "Sources", "AuthImpl", "Auth.Business+State.swift"),
-		filepath.Join(implPath, "Sources", "AuthImpl", "Auth.Business+Flow.swift"),
+		filepath.Join(modulePath, "Sources", "Auth", "Module", "Auth.Module.swift"),
+		filepath.Join(modulePath, "Sources", "Auth", "Module", "Auth.Module+Interface.swift"),
+		filepath.Join(modulePath, "Sources", "Auth", "Business", "Auth.Business+Action.swift"),
+		filepath.Join(modulePath, "Sources", "Auth", "Business", "Auth.Business+Effect.swift"),
+		filepath.Join(implPath, "Sources", "AuthImpl", "Module", "Auth.Module+Impl.swift"),
+		filepath.Join(implPath, "Sources", "AuthImpl", "Business", "Auth.Business+State.swift"),
+		filepath.Join(implPath, "Sources", "AuthImpl", "Business", "Auth.Business+Flow.swift"),
 	}
 	sort.Strings(want)
 
@@ -188,7 +188,7 @@ func TestInitCommandRunTemplateSet(t *testing.T) {
 	implPath := modulePath + "Impl"
 	want := []string{
 		filepath.Join(modulePath, "Sources", "Notes", "Notes.swift"),
-		filepath.Join(implPath, "Sources", "NotesImpl", "Notes.Module+Impl.swift"),
+		filepath.Join(implPath, "Sources", "NotesImpl", "Module", "Notes.Module+Impl.swift"),
 	}
 	sort.Strings(want)
 
