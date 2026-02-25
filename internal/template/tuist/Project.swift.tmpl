@@ -63,6 +63,7 @@ let project = Project(
                     "DEVELOPMENT_TEAM": .string(developmentTeam),
                     "MARKETING_VERSION": .string({{ swiftLiteral .MarketingVersion }}),
                     "CURRENT_PROJECT_VERSION": .string({{ swiftLiteral .ProjectVersion }}),
+                    "CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION": "YES",
                 ]
             )
         )

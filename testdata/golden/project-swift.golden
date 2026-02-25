@@ -57,6 +57,7 @@ let project = Project(
                     "DEVELOPMENT_TEAM": .string(developmentTeam),
                     "MARKETING_VERSION": .string("1.0.0"),
                     "CURRENT_PROJECT_VERSION": .string("1"),
+                    "CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION": "YES",
                 ]
             )
         )
