@@ -17,7 +17,7 @@ import (
 
 const (
 	swiftUIReluxURL     = "https://github.com/relux-works/swiftui-relux.git"
-	swiftUIReluxVersion = "from: 8.0.0"
+	swiftUIReluxVersion = "from: 8.0.1"
 	swiftUIReluxPackage = "swiftui-relux"
 	swiftUIReluxProduct = "SwiftUIRelux"
 )
