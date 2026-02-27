@@ -111,6 +111,7 @@ func (r *Renderer) renderTemplate(templateName string, data rendererTemplateData
 		Option("missingkey=error").
 		Funcs(template.FuncMap{
 			"configKind":   configKind,
+			"infoPlistKey": InfoPlistKey,
 			"packagePath":  packagePath,
 			"swiftLiteral": swiftLiteral,
 		}).
@@ -232,4 +233,10 @@ func packagePath(modulesPath, packageName string) string {
 
 func swiftLiteral(value string) string {
 	return strconv.Quote(value)
+}
+
+// InfoPlistKey converts a dotted identifier to an uppercase underscore-separated key.
+// Example: "group.com.example.demo" → "GROUP_COM_EXAMPLE_DEMO"
+func InfoPlistKey(s string) string {
+	return strings.ToUpper(strings.ReplaceAll(s, ".", "_"))
 }

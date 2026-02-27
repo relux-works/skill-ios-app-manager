@@ -49,6 +49,9 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		filepath.Join(outputDir, cfg.AppName+".entitlements"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "App.swift"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration.swift"),
+		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+Keychain.swift"),
+		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+AppGroups.swift"),
+		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Helpers", "Bundle+InfoPlist.swift"),
 		filepath.Join(assetsPath, "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "AppIcon.png"),
@@ -162,6 +165,50 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 	}
 	if len(cfg.AppGroups) > 0 && !strings.Contains(entitlements, cfg.AppGroups[0]) {
 		t.Fatalf("entitlements missing app group %q:\n%s", cfg.AppGroups[0], entitlements)
+	}
+	expectedKeychainGroup := "$(AppIdentifierPrefix)" + cfg.BundleID + ".shared"
+	if !strings.Contains(entitlements, expectedKeychainGroup) {
+		t.Fatalf("entitlements missing keychain group %q:\n%s", expectedKeychainGroup, entitlements)
+	}
+
+	keychainConfig := readFile(t, filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+Keychain.swift"))
+	keychainChecks := []string{
+		"Configuration",
+		"Keychain",
+		`serviceName = "` + cfg.BundleID + `"`,
+		`accessGroup = "` + cfg.TeamID + "." + cfg.BundleID + `.shared"`,
+	}
+	for _, want := range keychainChecks {
+		if !strings.Contains(keychainConfig, want) {
+			t.Fatalf("Configuration+Keychain.swift missing %q:\n%s", want, keychainConfig)
+		}
+	}
+
+	appGroupsConfig := readFile(t, filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+AppGroups.swift"))
+	appGroupsChecks := []string{
+		"Configuration",
+		"AppGroups",
+		`serviceName: String = "` + cfg.BundleID + `"`,
+		"GROUP_COM_EXAMPLE_DEMO",
+		"readInfoPlistValue",
+	}
+	for _, want := range appGroupsChecks {
+		if !strings.Contains(appGroupsConfig, want) {
+			t.Fatalf("Configuration+AppGroups.swift missing %q:\n%s", want, appGroupsConfig)
+		}
+	}
+
+	infoPlistHelper := readFile(t, filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Helpers", "Bundle+InfoPlist.swift"))
+	infoPlistChecks := []string{
+		"import Foundation",
+		"extension Bundle",
+		"readInfoPlistValue",
+		"infoDictionary",
+	}
+	for _, want := range infoPlistChecks {
+		if !strings.Contains(infoPlistHelper, want) {
+			t.Fatalf("Bundle+InfoPlist.swift missing %q:\n%s", want, infoPlistHelper)
+		}
 	}
 
 	appStub := readFile(t, filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "App.swift"))

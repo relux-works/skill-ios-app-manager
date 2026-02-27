@@ -26,10 +26,28 @@ func GenerateEntitlements(cfg config.ProjectConfig) string {
 		b.WriteString(`	</array>` + "\n")
 	}
 
+	keychainGroup := keychainAccessGroup(cfg.BundleID)
+	if keychainGroup != "" {
+		b.WriteString(`	<key>keychain-access-groups</key>` + "\n")
+		b.WriteString(`	<array>` + "\n")
+		b.WriteString(`		<string>` + xmlEscape(keychainGroup) + `</string>` + "\n")
+		b.WriteString(`	</array>` + "\n")
+	}
+
 	b.WriteString(`</dict>` + "\n")
 	b.WriteString(`</plist>` + "\n")
 
 	return b.String()
+}
+
+// keychainAccessGroup returns the keychain sharing group identifier.
+// Format: $(AppIdentifierPrefix)<bundleId>.shared
+func keychainAccessGroup(bundleID string) string {
+	trimmed := strings.TrimSpace(bundleID)
+	if trimmed == "" {
+		return ""
+	}
+	return "$(AppIdentifierPrefix)" + trimmed + ".shared"
 }
 
 func compactStrings(values []string) []string {
