@@ -17,8 +17,8 @@ func TestAddInternalDepAddsPackageAndProduct(t *testing.T) {
 	writeInterfaceModuleManifest(t, modulesRoot, "Auth", nil)
 	writeInterfaceModuleManifest(t, modulesRoot, "CoreKit", nil)
 
-	if err := AddInternalDep("Auth", "CoreKit", modulesRoot); err != nil {
-		t.Fatalf("AddInternalDep(Auth, CoreKit) error = %v", err)
+	if err := addInternalDep("Auth", "CoreKit", modulesRoot, manifestGraphSource); err != nil {
+		t.Fatalf("addInternalDep(Auth, CoreKit) error = %v", err)
 	}
 
 	manifest := readStringFile(t, filepath.Join(modulesRoot, "Auth", moduleManifestName))
@@ -38,9 +38,9 @@ func TestAddInternalDepDetectsCircularDependency(t *testing.T) {
 	writeInterfaceModuleManifest(t, modulesRoot, "CoreKit", []string{"Auth"})
 
 	before := readStringFile(t, filepath.Join(modulesRoot, "Auth", moduleManifestName))
-	err := AddInternalDep("Auth", "CoreKit", modulesRoot)
+	err := addInternalDep("Auth", "CoreKit", modulesRoot, manifestGraphSource)
 	if err == nil {
-		t.Fatal("AddInternalDep(Auth, CoreKit) error = nil, want cycle error")
+		t.Fatal("addInternalDep(Auth, CoreKit) error = nil, want cycle error")
 	}
 	if !strings.Contains(err.Error(), "circular dependency: Auth → CoreKit → Auth") {
 		t.Fatalf("error = %q, want cycle path", err.Error())
@@ -58,9 +58,9 @@ func TestAddInternalDepRejectsImplementationPackage(t *testing.T) {
 	modulesRoot := filepath.Join(t.TempDir(), "Packages")
 	writeInterfaceModuleManifest(t, modulesRoot, "Auth", nil)
 
-	err := AddInternalDep("Auth", "CoreKitImpl", modulesRoot)
+	err := addInternalDep("Auth", "CoreKitImpl", modulesRoot, manifestGraphSource)
 	if err == nil {
-		t.Fatal("AddInternalDep(Auth, CoreKitImpl) error = nil, want validation error")
+		t.Fatal("addInternalDep(Auth, CoreKitImpl) error = nil, want validation error")
 	}
 	if !strings.Contains(err.Error(), "interface package") {
 		t.Fatalf("error = %q, want interface package validation", err.Error())
@@ -95,9 +95,9 @@ func TestListInternalDeps(t *testing.T) {
 	writeInterfaceModuleManifest(t, modulesRoot, "CoreKit", nil)
 	writeInterfaceModuleManifest(t, modulesRoot, "Analytics", nil)
 
-	allDeps, err := ListInternalDeps("", modulesRoot)
+	allDeps, err := listInternalDeps("", modulesRoot, manifestGraphSource)
 	if err != nil {
-		t.Fatalf("ListInternalDeps(\"\") error = %v", err)
+		t.Fatalf("listInternalDeps(\"\") error = %v", err)
 	}
 
 	if got := allDeps["Auth"]; !reflect.DeepEqual(got, []string{"Analytics", "CoreKit"}) {
@@ -110,9 +110,9 @@ func TestListInternalDeps(t *testing.T) {
 		t.Fatalf(`allDeps["Analytics"] = %#v, want empty slice`, got)
 	}
 
-	authDeps, err := ListInternalDeps("Auth", modulesRoot)
+	authDeps, err := listInternalDeps("Auth", modulesRoot, manifestGraphSource)
 	if err != nil {
-		t.Fatalf("ListInternalDeps(Auth) error = %v", err)
+		t.Fatalf("listInternalDeps(Auth) error = %v", err)
 	}
 	if len(authDeps) != 1 {
 		t.Fatalf("len(authDeps) = %d, want 1", len(authDeps))
