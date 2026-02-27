@@ -1,5 +1,0 @@
-./creator.go
-./deleter.go
-./lister.go
-./registry.go
-./types.go

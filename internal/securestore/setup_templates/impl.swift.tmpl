@@ -5,9 +5,11 @@ import Security
 extension SecureStore.Module {
     public actor Impl: SecureStoring {
         private let serviceName: String
+        private let accessGroup: String
 
-        public init(serviceName: String = Bundle.main.bundleIdentifier ?? "com.app.securestore") {
+        public init(serviceName: String, accessGroup: String) {
             self.serviceName = serviceName
+            self.accessGroup = accessGroup
         }
 
         // MARK: - SecureStoring
@@ -17,6 +19,7 @@ extension SecureStore.Module {
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: serviceName,
                 kSecAttrAccount as String: key,
+                kSecAttrAccessGroup as String: accessGroup,
             ]
 
             let status = SecItemCopyMatching(query as CFDictionary, nil)
@@ -46,6 +49,7 @@ extension SecureStore.Module {
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: serviceName,
                 kSecAttrAccount as String: key,
+                kSecAttrAccessGroup as String: accessGroup,
                 kSecReturnData as String: true,
                 kSecMatchLimit as String: kSecMatchLimitOne,
             ]
@@ -69,6 +73,7 @@ extension SecureStore.Module {
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: serviceName,
                 kSecAttrAccount as String: key,
+                kSecAttrAccessGroup as String: accessGroup,
             ]
 
             let status = SecItemDelete(query as CFDictionary)
@@ -81,6 +86,7 @@ extension SecureStore.Module {
             let query: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: serviceName,
+                kSecAttrAccessGroup as String: accessGroup,
             ]
 
             let status = SecItemDelete(query as CFDictionary)

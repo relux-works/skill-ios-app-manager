@@ -234,7 +234,7 @@ func verifyScaffoldOutput(t *testing.T, projectRoot string, cfg config.ProjectCo
 		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "App.swift"),
 		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration.swift"),
 		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+AppGroups.swift"),
-		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Helpers", "Bundle+InfoPlist.swift"),
+		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Configuration", "Bundle+InfoPlist.swift"),
 		filepath.Join(assetsPath, "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "AppIcon.png"),

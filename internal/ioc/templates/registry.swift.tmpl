@@ -85,7 +85,7 @@ extension {{ .AppTypeName }}.Registry {
 extension {{ .AppTypeName }}.Registry {
 {{- range .Groups.Foundation }}
     private static func build{{ .Name }}() {{ if .IsAsync }}async {{ end }}-> {{ .InterfacePackage }}.Module.Interface {
-        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl()
+        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl({{ .BuilderArgs }})
     }
 {{ end -}}
 }
@@ -94,7 +94,7 @@ extension {{ .AppTypeName }}.Registry {
 extension {{ .AppTypeName }}.Registry {
 {{- range .Groups.Features }}
     private static func build{{ .Name }}() {{ if .IsAsync }}async {{ end }}-> {{ .InterfacePackage }}.Module.Interface {
-        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl()
+        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl({{ .BuilderArgs }})
     }
 {{ end -}}
 }
@@ -103,7 +103,7 @@ extension {{ .AppTypeName }}.Registry {
 extension {{ .AppTypeName }}.Registry {
 {{- range .Groups.Network }}
     private static func build{{ .Name }}() {{ if .IsAsync }}async {{ end }}-> {{ .InterfacePackage }}.Module.Interface {
-        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl()
+        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl({{ .BuilderArgs }})
     }
 {{ end -}}
 }
@@ -112,7 +112,7 @@ extension {{ .AppTypeName }}.Registry {
 extension {{ .AppTypeName }}.Registry {
 {{- range .Groups.Utils }}
     private static func build{{ .Name }}() {{ if .IsAsync }}async {{ end }}-> {{ .InterfacePackage }}.Module.Interface {
-        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl()
+        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl({{ .BuilderArgs }})
     }
 {{ end -}}
 }

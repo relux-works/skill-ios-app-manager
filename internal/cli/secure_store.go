@@ -17,6 +17,8 @@ func newSecureStoreCommand(opts *RootOptions) *cobra.Command {
 		RunE:  runNotImplemented,
 	}
 
+	var accessGroup string
+
 	setupCommand := &cobra.Command{
 		Use:   "setup",
 		Short: "Create SecureStore kit module with Keychain wrapper",
@@ -36,10 +38,17 @@ func newSecureStoreCommand(opts *RootOptions) *cobra.Command {
 				return fmt.Errorf("app name is required in config")
 			}
 
+			// Validate --access-group flag against config app_groups.
+			accessGroup = strings.TrimSpace(accessGroup)
+			if err := validateAccessGroup(accessGroup, cfg.AppGroups); err != nil {
+				return err
+			}
+
 			if err := securestore.Setup(securestore.SetupInput{
 				ProjectRoot: projectRoot,
 				AppName:     appName,
 				ModulesPath: normalizedModulesPath,
+				AccessGroup: accessGroup,
 			}); err != nil {
 				return err
 			}
@@ -49,6 +58,25 @@ func newSecureStoreCommand(opts *RootOptions) *cobra.Command {
 		},
 	}
 
+	setupCommand.Flags().StringVar(&accessGroup, "access-group", "", "app group for shared keychain access (must exist in config app_groups)")
+
 	cmd.AddCommand(setupCommand)
 	return cmd
+}
+
+func validateAccessGroup(group string, configGroups []string) error {
+	if group == "" {
+		if len(configGroups) == 0 {
+			return fmt.Errorf("--access-group is required but no app_groups defined in config\nadd groups via \"app_groups\" field in ios-app-manager.json, e.g.:\n  \"app_groups\": [\"group.com.example.app\"]")
+		}
+		return fmt.Errorf("--access-group is required\navailable groups in config: %v", configGroups)
+	}
+
+	for _, g := range configGroups {
+		if g == group {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("access group %q not found in config\navailable groups: %v", group, configGroups)
 }

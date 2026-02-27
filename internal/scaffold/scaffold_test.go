@@ -51,7 +51,7 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration.swift"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+Keychain.swift"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+AppGroups.swift"),
-		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Helpers", "Bundle+InfoPlist.swift"),
+		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Bundle+InfoPlist.swift"),
 		filepath.Join(assetsPath, "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "AppIcon.png"),
@@ -198,7 +198,7 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		}
 	}
 
-	infoPlistHelper := readFile(t, filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Helpers", "Bundle+InfoPlist.swift"))
+	infoPlistHelper := readFile(t, filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Bundle+InfoPlist.swift"))
 	infoPlistChecks := []string{
 		"import Foundation",
 		"extension Bundle",
