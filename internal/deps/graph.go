@@ -20,81 +20,33 @@ const (
 // Graph is a directed module dependency graph: module -> dependencies.
 type Graph map[string][]string
 
-// BuildDependencyGraph scans interface module manifests and builds dependency edges.
+// BuildDependencyGraph builds the internal module dependency graph.
+// It tries tuist graph first, falling back to manifest parsing if tuist is unavailable.
 func BuildDependencyGraph(modulesPath string) (Graph, error) {
-	modulesRoot := normalizeModulesPath(modulesPath)
-	entries, err := os.ReadDir(modulesRoot)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return Graph{}, nil
-		}
-		return nil, fmt.Errorf("scan modules directory %q: %w", modulesRoot, err)
+	return buildDependencyGraph(modulesPath, defaultGraphSource)
+}
+
+// buildDependencyGraph builds the graph using the provided source function.
+func buildDependencyGraph(modulesPath string, source GraphSourceFunc) (Graph, error) {
+	return source(modulesPath)
+}
+
+// defaultGraphSource tries tuist graph first, falls back to manifest parsing.
+func defaultGraphSource(modulesPath string) (Graph, error) {
+	graph, err := tuistGraphSource(modulesPath)
+	if err == nil {
+		return graph, nil
 	}
-
-	moduleNames := make([]string, 0, len(entries))
-	moduleSet := make(map[string]struct{}, len(entries))
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		name := strings.TrimSpace(entry.Name())
-		if name == "" || strings.HasPrefix(name, ".") || strings.HasSuffix(name, moduleImplSuffix) {
-			continue
-		}
-
-		manifestPath := filepath.Join(modulesRoot, name, moduleManifestName)
-		exists, statErr := pathExists(manifestPath)
-		if statErr != nil {
-			return nil, fmt.Errorf("stat module manifest %q: %w", manifestPath, statErr)
-		}
-		if !exists {
-			continue
-		}
-
-		moduleNames = append(moduleNames, name)
-		moduleSet[name] = struct{}{}
-	}
-	sort.Strings(moduleNames)
-
-	graph := make(Graph, len(moduleNames))
-	for _, moduleName := range moduleNames {
-		graph[moduleName] = []string{}
-	}
-
-	for _, moduleName := range moduleNames {
-		manifestPath := filepath.Join(modulesRoot, moduleName, moduleManifestName)
-		manifest, manifestErr := tuistproj.ReadManifestFile(manifestPath)
-		if manifestErr != nil {
-			return nil, fmt.Errorf("read module manifest %q: %w", manifestPath, manifestErr)
-		}
-
-		dependencySet := make(map[string]struct{}, len(manifest.Dependencies))
-		for _, item := range manifest.Dependencies {
-			dependencyName := strings.TrimSpace(item.Name)
-			if dependencyName == "" || strings.HasSuffix(dependencyName, moduleImplSuffix) {
-				continue
-			}
-			if _, ok := moduleSet[dependencyName]; !ok {
-				continue
-			}
-			dependencySet[dependencyName] = struct{}{}
-		}
-
-		dependencies := make([]string, 0, len(dependencySet))
-		for dependencyName := range dependencySet {
-			dependencies = append(dependencies, dependencyName)
-		}
-		sort.Strings(dependencies)
-		graph[moduleName] = dependencies
-	}
-
-	return graph, nil
+	return manifestGraphSource(modulesPath)
 }
 
 // DetectCircularDependencies detects cycles in the module dependency graph.
 func DetectCircularDependencies(modulesPath string) error {
-	graph, err := BuildDependencyGraph(modulesPath)
+	return detectCircularDependencies(modulesPath, defaultGraphSource)
+}
+
+func detectCircularDependencies(modulesPath string, source GraphSourceFunc) error {
+	graph, err := buildDependencyGraph(modulesPath, source)
 	if err != nil {
 		return err
 	}
@@ -169,6 +121,79 @@ func detectCyclePath(graph Graph) ([]string, bool) {
 	}
 
 	return nil, false
+}
+
+// manifestGraphSource builds the graph by scanning Package.swift files with regex parsing.
+// Used in unit tests where tuist CLI is not available.
+func manifestGraphSource(modulesPath string) (Graph, error) {
+	modulesRoot := normalizeModulesPath(modulesPath)
+	entries, err := os.ReadDir(modulesRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return Graph{}, nil
+		}
+		return nil, fmt.Errorf("scan modules directory %q: %w", modulesRoot, err)
+	}
+
+	moduleNames := make([]string, 0, len(entries))
+	moduleSet := make(map[string]struct{}, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		name := strings.TrimSpace(entry.Name())
+		if name == "" || strings.HasPrefix(name, ".") || strings.HasSuffix(name, moduleImplSuffix) {
+			continue
+		}
+
+		manifestPath := filepath.Join(modulesRoot, name, moduleManifestName)
+		exists, statErr := pathExists(manifestPath)
+		if statErr != nil {
+			return nil, fmt.Errorf("stat module manifest %q: %w", manifestPath, statErr)
+		}
+		if !exists {
+			continue
+		}
+
+		moduleNames = append(moduleNames, name)
+		moduleSet[name] = struct{}{}
+	}
+	sort.Strings(moduleNames)
+
+	graph := make(Graph, len(moduleNames))
+	for _, moduleName := range moduleNames {
+		graph[moduleName] = []string{}
+	}
+
+	for _, moduleName := range moduleNames {
+		manifestPath := filepath.Join(modulesRoot, moduleName, moduleManifestName)
+		manifest, manifestErr := tuistproj.ReadManifestFile(manifestPath)
+		if manifestErr != nil {
+			return nil, fmt.Errorf("read module manifest %q: %w", manifestPath, manifestErr)
+		}
+
+		dependencySet := make(map[string]struct{}, len(manifest.Dependencies))
+		for _, item := range manifest.Dependencies {
+			dependencyName := strings.TrimSpace(item.Name)
+			if dependencyName == "" || strings.HasSuffix(dependencyName, moduleImplSuffix) {
+				continue
+			}
+			if _, ok := moduleSet[dependencyName]; !ok {
+				continue
+			}
+			dependencySet[dependencyName] = struct{}{}
+		}
+
+		dependencies := make([]string, 0, len(dependencySet))
+		for dependencyName := range dependencySet {
+			dependencies = append(dependencies, dependencyName)
+		}
+		sort.Strings(dependencies)
+		graph[moduleName] = dependencies
+	}
+
+	return graph, nil
 }
 
 func normalizeModulesPath(raw string) string {

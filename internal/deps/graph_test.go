@@ -17,9 +17,9 @@ func TestBuildDependencyGraphUsesInterfaceModulesOnly(t *testing.T) {
 	writeInterfaceModuleManifest(t, modulesRoot, "Feed", []string{"Auth", "RemoteSDK"})
 	writeImplementationModuleManifest(t, modulesRoot, "Auth")
 
-	graph, err := BuildDependencyGraph(modulesRoot)
+	graph, err := manifestGraphSource(modulesRoot)
 	if err != nil {
-		t.Fatalf("BuildDependencyGraph() error = %v", err)
+		t.Fatalf("manifestGraphSource() error = %v", err)
 	}
 
 	if _, exists := graph["AuthImpl"]; exists {
@@ -42,9 +42,9 @@ func TestDetectCircularDependenciesReportsPath(t *testing.T) {
 	writeInterfaceModuleManifest(t, modulesRoot, "B", []string{"C"})
 	writeInterfaceModuleManifest(t, modulesRoot, "C", []string{"A"})
 
-	err := DetectCircularDependencies(modulesRoot)
+	err := detectCircularDependencies(modulesRoot, manifestGraphSource)
 	if err == nil {
-		t.Fatal("DetectCircularDependencies() error = nil, want cycle error")
+		t.Fatal("detectCircularDependencies() error = nil, want cycle error")
 	}
 
 	const expected = "circular dependency: A → B → C → A"

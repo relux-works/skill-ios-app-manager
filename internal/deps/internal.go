@@ -16,6 +16,10 @@ var dependenciesLabelPattern = regexp.MustCompile(`\bdependencies\s*:`)
 
 // AddInternalDep wires moduleName -> dependsOn via interface package dependency.
 func AddInternalDep(moduleName string, dependsOn string, modulesPath string) error {
+	return addInternalDep(moduleName, dependsOn, modulesPath, defaultGraphSource)
+}
+
+func addInternalDep(moduleName string, dependsOn string, modulesPath string, source GraphSourceFunc) error {
 	sourceModule, err := normalizeInterfaceModuleName(moduleName)
 	if err != nil {
 		return err
@@ -37,7 +41,7 @@ func AddInternalDep(moduleName string, dependsOn string, modulesPath string) err
 		return err
 	}
 
-	graph, err := BuildDependencyGraph(modulesRoot)
+	graph, err := buildDependencyGraph(modulesRoot, source)
 	if err != nil {
 		return err
 	}
@@ -91,8 +95,12 @@ func RemoveInternalDep(moduleName string, dependsOn string, modulesPath string) 
 
 // ListInternalDeps lists internal interface dependencies for one module or all modules.
 func ListInternalDeps(moduleName string, modulesPath string) (map[string][]string, error) {
+	return listInternalDeps(moduleName, modulesPath, defaultGraphSource)
+}
+
+func listInternalDeps(moduleName string, modulesPath string, source GraphSourceFunc) (map[string][]string, error) {
 	modulesRoot := normalizeModulesPath(modulesPath)
-	graph, err := BuildDependencyGraph(modulesRoot)
+	graph, err := buildDependencyGraph(modulesRoot, source)
 	if err != nil {
 		return nil, err
 	}
