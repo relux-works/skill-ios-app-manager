@@ -35,6 +35,13 @@ ios-app-manager [command] [flags]
 | `clean [--deep] [--kill-xcode]` | Clean local/global build artifacts | `ios-app-manager clean --deep` |
 | `push send --token <token> [--env dev\|prod] [--payload <file>]` | Send APNs push using project credentials | `ios-app-manager push send --token "$TOKEN" --env dev` |
 | `push token` | Print latest device token from logs/fallback file | `ios-app-manager push token` |
+| `ioc setup` | Set up SwiftIoC container and Registry.swift | `ios-app-manager ioc setup` |
+| `relux setup` | Set up Relux state management scaffolding | `ios-app-manager relux setup` |
+| `secure-store setup --access-group <group>` | Create SecureStore keychain wrapper module | `ios-app-manager secure-store setup --access-group group.org.xflow.app` |
+| `token-provider setup` | Create TokenProvider module | `ios-app-manager token-provider setup` |
+| `utilities setup` | Create Utilities module | `ios-app-manager utilities setup` |
+| `http-client setup` | Add HttpClient IoC registration with swift-httpclient | `ios-app-manager http-client setup` |
+| `app-config setup` | Scaffold AppConfig manager with env switching and ApiConfigurator | `ios-app-manager app-config setup` |
 | `status` | Project status placeholder command | `ios-app-manager status` |
 | `q '<query>'` | Run DSL query expression | `ios-app-manager q 'modules(type=feature) { operation params }'` |
 | `m '<mutation>'` | Run DSL mutation expression | `ios-app-manager m 'create_module(name=Auth,type=feature)'` |

@@ -6,21 +6,31 @@ This guide contains practical agent workflows using the current CLI.
 
 ```bash
 # 1) Initialize scaffold from config
-ios-app-manager init --config ios-app-manager.json --output .
+ios-app-manager init
 
-# 2) Generate helper targets
-ios-app-manager generate makefile
+# 2) Set up infrastructure (order matters — see diagrams/scaffolding-pipeline.puml)
+ios-app-manager ioc setup
+ios-app-manager relux setup
+ios-app-manager secure-store setup --access-group group.org.xflow.app
+ios-app-manager token-provider setup
+ios-app-manager utilities setup
 
-# 3) Run bootstrap/build/test
-make setup
-make build
-make test
+# 3) Create feature modules
+ios-app-manager module create Auth --type relux-feature
+ios-app-manager module create Profile --type feature
+
+# 4) Set up components that patch Registry (must be AFTER module create)
+ios-app-manager http-client setup
+ios-app-manager app-config setup
+
+# 5) Generate Xcode project
+tuist install && tuist generate
 ```
 
 If scaffold files already exist and overwrite is intentional:
 
 ```bash
-ios-app-manager init --config ios-app-manager.json --output . --force
+ios-app-manager init --force
 ```
 
 ## 2) Add a new feature module
