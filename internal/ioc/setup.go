@@ -20,6 +20,19 @@ const (
 	swiftIoCVersion = "from: 1.0.1"
 	swiftIoCPackage = "SwiftIoC"
 	implSuffix      = "Impl"
+
+	// ModuleTypeFile is the marker file written in each module's interface package root.
+	ModuleTypeFile = ".module-type"
+)
+
+// ModuleCategory represents a semantic grouping for registry sections.
+type ModuleCategory string
+
+const (
+	CategoryFoundation ModuleCategory = "foundation"
+	CategoryFeature    ModuleCategory = "feature"
+	CategoryNetwork    ModuleCategory = "network"
+	CategoryUtils      ModuleCategory = "utils"
 )
 
 //go:embed templates/*.tmpl
@@ -37,7 +50,16 @@ type DiscoveredModule struct {
 	Name             string
 	InterfacePackage string
 	ImplPackage      string
-	IsAsync          bool // true for relux modules (Impl has async init)
+	IsAsync          bool           // true for relux modules (Impl has async init)
+	Category         ModuleCategory // semantic category read from .module-type
+}
+
+// GroupedModules holds modules grouped by semantic category.
+type GroupedModules struct {
+	Foundation []DiscoveredModule
+	Features   []DiscoveredModule
+	Network    []DiscoveredModule
+	Utils      []DiscoveredModule
 }
 
 // RegistryTemplateData holds parameters for the Registry.swift template.
@@ -46,6 +68,7 @@ type RegistryTemplateData struct {
 	Imports     []string
 	Modules     []DiscoveredModule
 	HasRelux    bool
+	Groups      GroupedModules
 }
 
 // Setup integrates SwiftIoC into a Tuist project.
@@ -121,6 +144,7 @@ func DiscoverModules(modulesRoot string) ([]DiscoveredModule, error) {
 			InterfacePackage: name,
 			ImplPackage:      implName,
 			IsAsync:          hasReluxImport(filepath.Join(modulesRoot, name)),
+			Category:         readModuleCategory(filepath.Join(modulesRoot, name)),
 		})
 	}
 
@@ -211,6 +235,9 @@ func RenderRegistry(appTypeName string, modules []DiscoveredModule) (string, err
 
 // RenderRegistryWithData renders the Registry.swift content from the template using full data.
 func RenderRegistryWithData(data RegistryTemplateData) (string, error) {
+	// Always compute groups from modules.
+	data.Groups = GroupModulesByCategory(data.Modules)
+
 	tmplContent, err := templatesFS.ReadFile("templates/registry.swift.tmpl")
 	if err != nil {
 		return "", fmt.Errorf("read registry template: %w", err)
@@ -260,16 +287,13 @@ func updateAppSwift(appSwiftPath string, modules []DiscoveredModule) error {
 	return os.WriteFile(appSwiftPath, []byte(updated), 0o644)
 }
 
-// EditAppSwift injects Registry.configure() init and module imports into App.swift content.
+// EditAppSwift injects Registry.configure() init into App.swift content.
+// Module imports are NOT added here — Registry.swift handles all module imports.
 func EditAppSwift(content string, modules []DiscoveredModule) string {
 	result := content
 
-	// Add imports if not already present.
+	// Only add SwiftIoC import — module imports live in Registry.swift.
 	result = EnsureImport(result, "SwiftIoC")
-	for _, m := range modules {
-		result = EnsureImport(result, m.InterfacePackage)
-		result = EnsureImport(result, m.ImplPackage)
-	}
 
 	// Add init() { Registry.configure() } if not already present.
 	if strings.Contains(result, "Registry.configure()") {
@@ -322,6 +346,56 @@ func hasReluxImport(packageDir string) bool {
 		return nil
 	})
 	return found
+}
+
+// MapModuleTypeToCategory maps a module type string to a registry category.
+func MapModuleTypeToCategory(moduleType string) ModuleCategory {
+	switch strings.ToLower(strings.TrimSpace(moduleType)) {
+	case "kit", "shared":
+		return CategoryFoundation
+	case "utility":
+		return CategoryUtils
+	case "feature", "relux-feature", "ui":
+		return CategoryFeature
+	default:
+		return CategoryFeature
+	}
+}
+
+// GroupModulesByCategory splits modules into semantic groups.
+func GroupModulesByCategory(modules []DiscoveredModule) GroupedModules {
+	var g GroupedModules
+	for _, m := range modules {
+		switch m.Category {
+		case CategoryFoundation:
+			g.Foundation = append(g.Foundation, m)
+		case CategoryNetwork:
+			g.Network = append(g.Network, m)
+		case CategoryUtils:
+			g.Utils = append(g.Utils, m)
+		default:
+			g.Features = append(g.Features, m)
+		}
+	}
+	return g
+}
+
+// readModuleCategory reads the .module-type marker file from a module directory.
+func readModuleCategory(moduleDir string) ModuleCategory {
+	data, err := os.ReadFile(filepath.Join(moduleDir, ModuleTypeFile))
+	if err != nil {
+		return CategoryFeature
+	}
+	return MapModuleTypeToCategory(string(data))
+}
+
+// WriteModuleType writes the .module-type marker file for a module.
+func WriteModuleType(moduleDir, moduleType string) error {
+	return os.WriteFile(
+		filepath.Join(moduleDir, ModuleTypeFile),
+		[]byte(moduleType+"\n"),
+		0o644,
+	)
 }
 
 // EnsureImport adds an import statement if not already present.

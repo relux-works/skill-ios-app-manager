@@ -182,13 +182,21 @@ struct DemoApp: App {
 
 	for _, expected := range []string{
 		"import SwiftIoC",
-		"import Auth",
-		"import AuthImpl",
 		"Registry.configure()",
 		"init() {",
 	} {
 		if !strings.Contains(result, expected) {
 			t.Fatalf("result missing %q:\n%s", expected, result)
+		}
+	}
+
+	// Module imports should NOT be in App.swift (they live in Registry.swift).
+	for _, unexpected := range []string{
+		"import Auth",
+		"import AuthImpl",
+	} {
+		if strings.Contains(result, unexpected) {
+			t.Fatalf("result should not contain %q (module imports belong in Registry.swift):\n%s", unexpected, result)
 		}
 	}
 
@@ -333,6 +341,136 @@ func TestBuildModuleImports(t *testing.T) {
 		if imp != expected[i] {
 			t.Fatalf("imports[%d] = %q, want %q", i, imp, expected[i])
 		}
+	}
+}
+
+func TestDiscoverModulesReadsModuleType(t *testing.T) {
+	t.Parallel()
+
+	modulesRoot := t.TempDir()
+	mkdirs(t,
+		filepath.Join(modulesRoot, "SecureStore"),
+		filepath.Join(modulesRoot, "SecureStoreImpl"),
+		filepath.Join(modulesRoot, "Auth"),
+		filepath.Join(modulesRoot, "AuthImpl"),
+		filepath.Join(modulesRoot, "Utilities"),
+		filepath.Join(modulesRoot, "UtilitiesImpl"),
+	)
+
+	// Write .module-type markers.
+	writeModuleType(t, filepath.Join(modulesRoot, "SecureStore"), "kit")
+	writeModuleType(t, filepath.Join(modulesRoot, "Auth"), "feature")
+
+	modules, err := DiscoverModules(modulesRoot)
+	if err != nil {
+		t.Fatalf("DiscoverModules() error = %v", err)
+	}
+
+	catMap := make(map[string]ModuleCategory, len(modules))
+	for _, m := range modules {
+		catMap[m.Name] = m.Category
+	}
+
+	if catMap["SecureStore"] != CategoryFoundation {
+		t.Fatalf("SecureStore category = %q, want %q", catMap["SecureStore"], CategoryFoundation)
+	}
+	if catMap["Auth"] != CategoryFeature {
+		t.Fatalf("Auth category = %q, want %q", catMap["Auth"], CategoryFeature)
+	}
+	// No .module-type file → defaults to feature.
+	if catMap["Utilities"] != CategoryFeature {
+		t.Fatalf("Utilities category = %q, want %q (default)", catMap["Utilities"], CategoryFeature)
+	}
+}
+
+func TestGroupModulesByCategory(t *testing.T) {
+	t.Parallel()
+
+	modules := []DiscoveredModule{
+		{Name: "Auth", Category: CategoryFeature},
+		{Name: "SecureStore", Category: CategoryFoundation},
+		{Name: "TokenProvider", Category: CategoryFoundation},
+		{Name: "TodoList", Category: CategoryFeature},
+	}
+
+	groups := GroupModulesByCategory(modules)
+
+	if len(groups.Foundation) != 2 {
+		t.Fatalf("Foundation = %d, want 2", len(groups.Foundation))
+	}
+	if len(groups.Features) != 2 {
+		t.Fatalf("Features = %d, want 2", len(groups.Features))
+	}
+	if len(groups.Network) != 0 {
+		t.Fatalf("Network = %d, want 0", len(groups.Network))
+	}
+	if len(groups.Utils) != 0 {
+		t.Fatalf("Utils = %d, want 0", len(groups.Utils))
+	}
+}
+
+func TestMapModuleTypeToCategory(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  ModuleCategory
+	}{
+		{"kit", CategoryFoundation},
+		{"shared", CategoryFoundation},
+		{"feature", CategoryFeature},
+		{"relux-feature", CategoryFeature},
+		{"ui", CategoryFeature},
+		{"utility", CategoryUtils},
+		{"unknown", CategoryFeature},
+		{"", CategoryFeature},
+	}
+
+	for _, tc := range cases {
+		got := MapModuleTypeToCategory(tc.input)
+		if got != tc.want {
+			t.Fatalf("MapModuleTypeToCategory(%q) = %q, want %q", tc.input, got, tc.want)
+		}
+	}
+}
+
+func TestRenderRegistryWithSections(t *testing.T) {
+	t.Parallel()
+
+	modules := []DiscoveredModule{
+		{Name: "Auth", InterfacePackage: "Auth", ImplPackage: "AuthImpl", Category: CategoryFeature},
+		{Name: "SecureStore", InterfacePackage: "SecureStore", ImplPackage: "SecureStoreImpl", Category: CategoryFoundation},
+	}
+
+	content, err := RenderRegistryWithData(RegistryTemplateData{
+		AppTypeName: "DemoApp",
+		Imports:     BuildModuleImports(modules),
+		Modules:     modules,
+		HasRelux:    false,
+	})
+	if err != nil {
+		t.Fatalf("RenderRegistryWithData() error = %v", err)
+	}
+
+	for _, expected := range []string{
+		"// MARK: - Foundation (scaffolding anchor: foundation)",
+		"// MARK: - Features (scaffolding anchor: features)",
+		"SecureStore.Module.Interface.self",
+		"Auth.Module.Interface.self",
+		"Foundation Builders (scaffolding anchor: foundation-builders)",
+		"Feature Builders (scaffolding anchor: feature-builders)",
+	} {
+		if !strings.Contains(content, expected) {
+			t.Fatalf("content missing %q:\n%s", expected, content)
+		}
+	}
+}
+
+func writeModuleType(t *testing.T, moduleDir, moduleType string) {
+	t.Helper()
+	path := filepath.Join(moduleDir, ModuleTypeFile)
+	if err := os.WriteFile(path, []byte(moduleType+"\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", path, err)
 	}
 }
 

@@ -274,6 +274,13 @@ func (m *TuistProjectManager) CreateModule(ctx context.Context, opts components.
 		createdPaths = append(createdPaths, packagePath)
 	}
 
+	// Write .module-type marker in the interface package root for IoC registry grouping.
+	moduleTypeFilePath := filepath.Join(m.modulesRootPath(), moduleName, ".module-type")
+	if writeErr := m.writeFile(moduleTypeFilePath, []byte(moduleType+"\n"), 0o644); writeErr != nil {
+		m.rollbackCreatedPackages(createdPaths)
+		return fmt.Errorf("write .module-type: %w", writeErr)
+	}
+
 	packageNames := make([]string, 0, len(specs))
 	for _, spec := range specs {
 		packageNames = append(packageNames, spec.PackageName)
