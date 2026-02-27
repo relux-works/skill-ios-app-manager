@@ -1,0 +1,54 @@
+import Foundation
+import SecureStore
+
+extension AppConfig.Business {
+    public final class Manager: IApiConfigManager, @unchecked Sendable {
+        private let lock = NSLock()
+        private let secureStore: SecureStoring
+        private let envKey = "appconfig.env"
+
+        private var currentEnv: Env
+
+        public init(secureStore: SecureStoring) {
+            self.secureStore = secureStore
+            self.currentEnv = Self.loadEnv(from: secureStore, key: envKey)
+        }
+
+        public var apiConfiguration: ApiConfiguration {
+            lock.lock()
+            defer { lock.unlock() }
+            return currentEnv.configuration.api
+        }
+
+        public func resolver() -> ApiConfiguration {
+            apiConfiguration
+        }
+
+        public var env: Env {
+            lock.lock()
+            defer { lock.unlock() }
+            return currentEnv
+        }
+
+        public func updateEnv(_ newEnv: Env) {
+            lock.lock()
+            currentEnv = newEnv
+            lock.unlock()
+            Self.persistEnv(newEnv, to: secureStore, key: envKey)
+        }
+
+        private static func loadEnv(from store: SecureStoring, key: String) -> Env {
+            guard let data = try? store.load(key: key),
+                  let raw = String(data: data, encoding: .utf8),
+                  let env = Env(rawValue: raw) else {
+                return .prod
+            }
+            return env
+        }
+
+        private static func persistEnv(_ env: Env, to store: SecureStoring, key: String) {
+            guard let data = env.rawValue.data(using: .utf8) else { return }
+            try? store.save(key: key, data: data)
+        }
+    }
+}

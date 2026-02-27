@@ -1,0 +1,10 @@
+extension AppConfig.Business {
+    public typealias ApiConfiguration = Env.Configuration.Api
+
+    public protocol IApiConfigManager: Sendable {
+        var apiConfiguration: ApiConfiguration { get }
+        func resolver() -> ApiConfiguration
+    }
+}
+
+public typealias IApiConfigManager = AppConfig.Business.IApiConfigManager

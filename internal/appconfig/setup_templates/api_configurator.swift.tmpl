@@ -1,0 +1,9 @@
+extension AppConfig.Data {
+    public struct ApiConfigurator: Sendable {
+        public let resolveConfig: @Sendable () -> AppConfig.Business.ApiConfiguration
+
+        public init(resolveConfig: @Sendable @escaping () -> AppConfig.Business.ApiConfiguration) {
+            self.resolveConfig = resolveConfig
+        }
+    }
+}

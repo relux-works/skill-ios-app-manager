@@ -40,15 +40,16 @@ cloud "External Dependencies" as ExtDeps #E8F0FE {
 package "Infrastructure Setup" as InfraSetup {
   [ioc setup] as IoCSetup <<cli>> #FFF3CD
   [relux setup] as ReluxSetup <<cli>> #FFF3CD
+  [app-config setup] as AppConfigSetup <<cli>> #FFF3CD
 }
 
 ' ──────────────────────────────────────
-'  Foundation Modules (future)
+'  Foundation Modules
 ' ──────────────────────────────────────
 package "Foundation Modules" as FoundationMods {
   [SecureStore] as SecureStore <<module>> #D6EAF8
   [TokenProvider] as TokenProvider <<module>> #D6EAF8
-  [ApiConfigurator] as ApiConfigurator <<module>> #D6EAF8
+  [AppConfig\n(Manager + ApiConfigurator)] as ApiConfigurator <<module>> #D6EAF8
   [HttpClient] as HttpClient <<module>> #D6EAF8
   [Utilities\n(HttpClientUtils, ...)] as Utilities <<module>> #D6EAF8
 }
@@ -82,8 +83,12 @@ SecureStore --> IoCSetup
 TokenProvider --> IoCSetup
 TokenProvider --> SecureStore
 
-' ApiConfigurator depends on ioc
-ApiConfigurator --> IoCSetup
+' app-config setup depends on ioc (needs Registry) + SecureStore (Manager uses keychain)
+AppConfigSetup --> IoCSetup
+AppConfigSetup --> SecureStore
+
+' ApiConfigurator is scaffolded by app-config setup
+ApiConfigurator --> AppConfigSetup
 
 ' HttpClient (base) is a plain transport wrapper
 HttpClient --> SwiftHTTP
@@ -109,7 +114,7 @@ legend right
   |= Color |= Meaning |
   | <#D4EDDA> | Root command (init) |
   | <#FFF3CD> | CLI setup command |
-  | <#D6EAF8> | Foundation module (future) |
+  | <#D6EAF8> | Foundation module |
   | <#F5E6CC> | Feature module |
   | <#E8F0FE> | External Swift library |
   --
