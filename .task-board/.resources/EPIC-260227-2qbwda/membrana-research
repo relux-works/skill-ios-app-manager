@@ -1,0 +1,1 @@
+See research/260227_membrana_api_config_pattern md — full breakdown of AppConfigManager and ApiConfigurator base class and per-module Config pattern and IoC registration and env switching
