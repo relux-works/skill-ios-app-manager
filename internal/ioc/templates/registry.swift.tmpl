@@ -15,11 +15,30 @@ extension {{ .AppTypeName }} {
 
         static func configure() {
 {{- if .HasRelux }}
+
+            // MARK: - Infrastructure (scaffolding anchor: infra)
             ioc.register(Relux.self, lifecycle: .container, resolver: Self.buildRelux)
             ioc.register(Relux.Store.self, lifecycle: .container, resolver: Self.buildReluxStore)
             ioc.register(Relux.RootSaga.self, lifecycle: .container, resolver: Self.buildReluxRootSaga)
 {{- end }}
-{{- range .Modules }}
+
+            // MARK: - Foundation (scaffolding anchor: foundation)
+{{- range .Groups.Foundation }}
+            ioc.register({{ .InterfacePackage }}.Module.Interface.self, lifecycle: .container, resolver: Self.build{{ .Name }})
+{{- end }}
+
+            // MARK: - Features (scaffolding anchor: features)
+{{- range .Groups.Features }}
+            ioc.register({{ .InterfacePackage }}.Module.Interface.self, lifecycle: .container, resolver: Self.build{{ .Name }})
+{{- end }}
+
+            // MARK: - Network (scaffolding anchor: network)
+{{- range .Groups.Network }}
+            ioc.register({{ .InterfacePackage }}.Module.Interface.self, lifecycle: .container, resolver: Self.build{{ .Name }})
+{{- end }}
+
+            // MARK: - Utils (scaffolding anchor: utils)
+{{- range .Groups.Utils }}
             ioc.register({{ .InterfacePackage }}.Module.Interface.self, lifecycle: .container, resolver: Self.build{{ .Name }})
 {{- end }}
         }
@@ -33,16 +52,10 @@ extension {{ .AppTypeName }} {
         }
     }
 }
-
-// MARK: - Module Builders
-extension {{ .AppTypeName }}.Registry {
-{{- range .Modules }}
-    private static func build{{ .Name }}() {{ if .IsAsync }}async {{ end }}-> {{ .InterfacePackage }}.Module.Interface {
-        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl()
-    }
-{{ end -}}
 {{- if .HasRelux }}
 
+// MARK: - Infrastructure Builders (scaffolding anchor: infra-builders)
+extension {{ .AppTypeName }}.Registry {
     private static func buildRelux() async -> Relux {
         await Relux.init(
             logger: {{ .AppTypeName }}.ReluxLogger(),
@@ -65,5 +78,45 @@ extension {{ .AppTypeName }}.Registry {
     private static func buildReluxRootSaga() -> Relux.RootSaga {
         Relux.RootSaga()
     }
-{{- end }}
 }
+{{- end }}
+{{ if .Groups.Foundation }}
+// MARK: - Foundation Builders (scaffolding anchor: foundation-builders)
+extension {{ .AppTypeName }}.Registry {
+{{- range .Groups.Foundation }}
+    private static func build{{ .Name }}() {{ if .IsAsync }}async {{ end }}-> {{ .InterfacePackage }}.Module.Interface {
+        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl()
+    }
+{{ end -}}
+}
+{{ end -}}
+{{ if .Groups.Features }}
+// MARK: - Feature Builders (scaffolding anchor: feature-builders)
+extension {{ .AppTypeName }}.Registry {
+{{- range .Groups.Features }}
+    private static func build{{ .Name }}() {{ if .IsAsync }}async {{ end }}-> {{ .InterfacePackage }}.Module.Interface {
+        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl()
+    }
+{{ end -}}
+}
+{{ end -}}
+{{ if .Groups.Network }}
+// MARK: - Network Builders (scaffolding anchor: network-builders)
+extension {{ .AppTypeName }}.Registry {
+{{- range .Groups.Network }}
+    private static func build{{ .Name }}() {{ if .IsAsync }}async {{ end }}-> {{ .InterfacePackage }}.Module.Interface {
+        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl()
+    }
+{{ end -}}
+}
+{{ end -}}
+{{ if .Groups.Utils }}
+// MARK: - Utils Builders (scaffolding anchor: utils-builders)
+extension {{ .AppTypeName }}.Registry {
+{{- range .Groups.Utils }}
+    private static func build{{ .Name }}() {{ if .IsAsync }}async {{ end }}-> {{ .InterfacePackage }}.Module.Interface {
+        {{ if .IsAsync }}await {{ end }}{{ .InterfacePackage }}.Module.Impl()
+    }
+{{ end -}}
+}
+{{ end -}}
