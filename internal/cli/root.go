@@ -81,6 +81,9 @@ func NewRootCommandWithAppManager(appManager components.AppManager) *cobra.Comma
 		newMutationCommand(opts),
 		newIocCommand(opts),
 		newReluxCommand(opts),
+		newSecureStoreCommand(opts),
+		newUtilitiesCommand(opts),
+		newTokenProviderCommand(opts),
 	)
 
 	return cmd

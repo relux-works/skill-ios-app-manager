@@ -1,0 +1,17 @@
+import TokenProvider
+
+extension TokenProvider.Module {
+    public actor Impl: TokenProvider.Module.Interface {
+        private var authData: TokenProvider.AuthData?
+
+        public init() {}
+
+        public func setAuthData(_ data: TokenProvider.AuthData) {
+            self.authData = data
+        }
+
+        public func getAccessToken() -> String? {
+            authData?.accessToken
+        }
+    }
+}

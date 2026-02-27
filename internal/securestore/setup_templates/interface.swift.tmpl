@@ -1,0 +1,15 @@
+import Foundation
+
+extension SecureStore.Module {
+    public protocol Interface: Sendable {
+        func save(key: String, data: Data) throws
+        func load(key: String) throws -> Data?
+        func delete(key: String) throws
+        func clear() throws
+
+        func save<T: Codable>(key: String, value: T) throws
+        func load<T: Codable>(key: String) throws -> T?
+    }
+}
+
+public typealias SecureStoring = SecureStore.Module.Interface

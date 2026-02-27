@@ -36,6 +36,7 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		requireDir(t, dir)
 	}
 
+	assetsPath := filepath.Join(outputDir, "Targets", cfg.AppName, "Resources", "Assets.xcassets")
 	requiredFiles := []string{
 		filepath.Join(outputDir, "Tuist.swift"),
 		filepath.Join(outputDir, "Project.swift"),
@@ -47,6 +48,9 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		filepath.Join(outputDir, ".gitignore"),
 		filepath.Join(outputDir, cfg.AppName+".entitlements"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "App.swift"),
+		filepath.Join(assetsPath, "Contents.json"),
+		filepath.Join(assetsPath, "AppIcon.appiconset", "Contents.json"),
+		filepath.Join(assetsPath, "AppIcon.appiconset", "AppIcon.png"),
 	}
 	for _, path := range requiredFiles {
 		requireFile(t, path)

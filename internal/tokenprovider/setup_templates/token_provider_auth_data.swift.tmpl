@@ -1,0 +1,22 @@
+import Foundation
+
+extension TokenProvider {
+    public struct AuthData: Sendable {
+        public let accessToken: String
+        public let refreshToken: String
+        public let acquireDate: Date
+        public let ttl: TimeInterval
+
+        public init(
+            accessToken: String,
+            refreshToken: String,
+            acquireDate: Date,
+            ttl: TimeInterval
+        ) {
+            self.accessToken = accessToken
+            self.refreshToken = refreshToken
+            self.acquireDate = acquireDate
+            self.ttl = ttl
+        }
+    }
+}

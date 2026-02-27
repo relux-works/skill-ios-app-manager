@@ -102,6 +102,171 @@ func TestCreatorCreateReluxFeatureModule(t *testing.T) {
 	}
 }
 
+func TestCreatorCreateKitModule(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	creator := newCreatorForTest(t, root, "Packages")
+
+	err := creator.Create(context.Background(), "Networking", "kit", config.ProjectConfig{
+		ModulesPath: filepath.Join(root, "Packages"),
+	})
+	if err != nil {
+		t.Fatalf("Create(kit) error = %v", err)
+	}
+
+	requireDir(t, filepath.Join(root, "Packages", "Networking"))
+	requireDir(t, filepath.Join(root, "Packages", "NetworkingImpl"))
+
+	requireFile(t, filepath.Join(root, "Packages", "Networking", "Sources", "Networking", "Networking.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Networking", "Sources", "Networking", "Module", "Networking.Module.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Networking", "Sources", "Networking", "Module", "Networking.Module+Interface.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "NetworkingImpl", "Sources", "NetworkingImpl", "Module", "Networking.Module+Impl.swift"))
+
+	// Kit modules should not have swift-relux dependency
+	interfaceManifest := readFileString(t, filepath.Join(root, "Packages", "Networking", "Package.swift"))
+	if strings.Contains(interfaceManifest, "swift-relux") {
+		t.Fatalf("kit interface Package.swift should not have swift-relux dependency:\n%s", interfaceManifest)
+	}
+}
+
+func TestCreatorCreateSharedModule(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	creator := newCreatorForTest(t, root, "Packages")
+
+	err := creator.Create(context.Background(), "Storage", "shared", config.ProjectConfig{
+		ModulesPath: filepath.Join(root, "Packages"),
+	})
+	if err != nil {
+		t.Fatalf("Create(shared) error = %v", err)
+	}
+
+	requireDir(t, filepath.Join(root, "Packages", "Storage"))
+	requireDir(t, filepath.Join(root, "Packages", "StorageImpl"))
+
+	requireFile(t, filepath.Join(root, "Packages", "Storage", "Sources", "Storage", "Storage.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Storage", "Sources", "Storage", "Module", "Storage.Module.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Storage", "Sources", "Storage", "Module", "Storage.Module+Interface.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "StorageImpl", "Sources", "StorageImpl", "Module", "Storage.Module+Impl.swift"))
+}
+
+func TestCreatorCreateUIModule(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	creator := newCreatorForTest(t, root, "Packages")
+
+	err := creator.Create(context.Background(), "DesignSystem", "ui", config.ProjectConfig{
+		ModulesPath: filepath.Join(root, "Packages"),
+	})
+	if err != nil {
+		t.Fatalf("Create(ui) error = %v", err)
+	}
+
+	requireDir(t, filepath.Join(root, "Packages", "DesignSystem"))
+	requireDir(t, filepath.Join(root, "Packages", "DesignSystemImpl"))
+
+	requireFile(t, filepath.Join(root, "Packages", "DesignSystem", "Sources", "DesignSystem", "DesignSystem.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "DesignSystem", "Sources", "DesignSystem", "Module", "DesignSystem.Module.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "DesignSystem", "Sources", "DesignSystem", "Module", "DesignSystem.Module+Interface.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "DesignSystemImpl", "Sources", "DesignSystemImpl", "Module", "DesignSystem.Module+Impl.swift"))
+}
+
+func TestCreatorCreateReluxFeatureModuleContent(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	creator := newCreatorForTest(t, root, "Packages")
+
+	err := creator.Create(context.Background(), "Auth", "relux-feature", config.ProjectConfig{
+		ModulesPath: filepath.Join(root, "Packages"),
+	})
+	if err != nil {
+		t.Fatalf("Create(relux-feature) error = %v", err)
+	}
+
+	interfaceSrc := filepath.Join(root, "Packages", "Auth", "Sources", "Auth")
+	implSrc := filepath.Join(root, "Packages", "AuthImpl", "Sources", "AuthImpl")
+
+	// Verify namespace has Business enum
+	namespace := readFileString(t, filepath.Join(interfaceSrc, "Auth.swift"))
+	for _, want := range []string{"public enum Auth", "public enum Business"} {
+		if !strings.Contains(namespace, want) {
+			t.Fatalf("namespace file missing %q:\n%s", want, namespace)
+		}
+	}
+
+	// Verify interface has Relux.Module
+	iface := readFileString(t, filepath.Join(interfaceSrc, "Module", "Auth.Module+Interface.swift"))
+	for _, want := range []string{"import Relux", "Relux.Module"} {
+		if !strings.Contains(iface, want) {
+			t.Fatalf("interface file missing %q:\n%s", want, iface)
+		}
+	}
+
+	// Verify action has Relux.Action
+	action := readFileString(t, filepath.Join(interfaceSrc, "Business", "Auth.Business+Action.swift"))
+	for _, want := range []string{"import Relux", "Relux.Action"} {
+		if !strings.Contains(action, want) {
+			t.Fatalf("action file missing %q:\n%s", want, action)
+		}
+	}
+
+	// Verify effect has Relux.Effect
+	effect := readFileString(t, filepath.Join(interfaceSrc, "Business", "Auth.Business+Effect.swift"))
+	for _, want := range []string{"import Relux", "Relux.Effect"} {
+		if !strings.Contains(effect, want) {
+			t.Fatalf("effect file missing %q:\n%s", want, effect)
+		}
+	}
+
+	// Verify impl has Relux.AnyState and Relux.Saga
+	impl := readFileString(t, filepath.Join(implSrc, "Module", "Auth.Module+Impl.swift"))
+	for _, want := range []string{"import Auth", "import Relux", "Relux.AnyState", "Relux.Saga"} {
+		if !strings.Contains(impl, want) {
+			t.Fatalf("impl file missing %q:\n%s", want, impl)
+		}
+	}
+
+	// Verify state has Relux.HybridState
+	state := readFileString(t, filepath.Join(implSrc, "Business", "Auth.Business+State.swift"))
+	for _, want := range []string{"import Auth", "import Relux", "Relux.HybridState", "@Observable"} {
+		if !strings.Contains(state, want) {
+			t.Fatalf("state file missing %q:\n%s", want, state)
+		}
+	}
+
+	// Verify flow has Relux.Flow
+	flow := readFileString(t, filepath.Join(implSrc, "Business", "Auth.Business+Flow.swift"))
+	for _, want := range []string{"import Auth", "import Relux", "Relux.Flow", "public actor Flow"} {
+		if !strings.Contains(flow, want) {
+			t.Fatalf("flow file missing %q:\n%s", want, flow)
+		}
+	}
+
+	// Verify no template artifacts in any generated file
+	allFiles := []string{
+		filepath.Join(interfaceSrc, "Auth.swift"),
+		filepath.Join(interfaceSrc, "Module", "Auth.Module.swift"),
+		filepath.Join(interfaceSrc, "Module", "Auth.Module+Interface.swift"),
+		filepath.Join(interfaceSrc, "Business", "Auth.Business+Action.swift"),
+		filepath.Join(interfaceSrc, "Business", "Auth.Business+Effect.swift"),
+		filepath.Join(implSrc, "Module", "Auth.Module+Impl.swift"),
+		filepath.Join(implSrc, "Business", "Auth.Business+State.swift"),
+		filepath.Join(implSrc, "Business", "Auth.Business+Flow.swift"),
+	}
+	for _, path := range allFiles {
+		content := readFileString(t, path)
+		for _, token := range []string{"{{", "}}", "{%", "%}", "<#"} {
+			if strings.Contains(content, token) {
+				t.Fatalf("file %q contains template artifact %q", path, token)
+			}
+		}
+	}
+}
+
 func TestCreatorCreateDetectsConflicts(t *testing.T) {
 	t.Parallel()
 
