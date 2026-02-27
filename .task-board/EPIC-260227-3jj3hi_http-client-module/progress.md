@@ -1,5 +1,5 @@
 ## Status
-backlog
+done
 
 ## Assigned To
 (none)
@@ -8,10 +8,10 @@ backlog
 2026-02-26T21:13:57Z
 
 ## Last Update
-2026-02-27T10:54:14Z
+2026-02-27T13:04:59Z
 
 ## Blocked By
-- (none)
+- EPIC-260227-1tb6jx
 
 ## Blocks
 - (none)

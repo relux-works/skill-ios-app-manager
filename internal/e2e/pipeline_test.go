@@ -78,6 +78,17 @@ func TestPipelineInitModuleCreateAndValidation(t *testing.T) {
 	}
 
 	verifyTokenProviderModule(t, projectRoot, cfg.ModulesPath)
+
+	// Set up HttpClient (direct IoC registration, not a module).
+	hcOutput, err := executeRootCommand("--config", configPath, "http-client", "setup")
+	if err != nil {
+		t.Fatalf("executeRootCommand(http-client setup) error = %v", err)
+	}
+	if !strings.Contains(hcOutput, "HttpClient setup complete") {
+		t.Fatalf("http-client setup output = %q, want completion message", hcOutput)
+	}
+
+	verifyHttpClientSetup(t, projectRoot, cfg)
 	verifyNoTemplateArtifactsInSwiftFiles(t, projectRoot)
 	verifyGoBuild(t, repoRoot)
 }
@@ -221,6 +232,7 @@ func verifyScaffoldOutput(t *testing.T, projectRoot string, cfg config.ProjectCo
 		filepath.Join(projectRoot, ".swiftlint.yml"),
 		filepath.Join(projectRoot, cfg.AppName+".entitlements"),
 		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "App.swift"),
+		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration.swift"),
 		filepath.Join(assetsPath, "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "AppIcon.png"),
@@ -350,6 +362,43 @@ func verifyTokenProviderModule(t *testing.T, projectRoot string, modulesPath str
 	protoContent := readFile(t, filepath.Join(interfaceSources, "Module", "TokenProvider.Module+Interface.swift"))
 	if !strings.Contains(protoContent, "func setAuthData") {
 		t.Fatalf("TokenProvider interface missing setAuthData:\n%s", protoContent)
+	}
+}
+
+func verifyHttpClientSetup(t *testing.T, projectRoot string, cfg config.ProjectConfig) {
+	t.Helper()
+
+	// Verify Configuration+HttpClient.swift exists.
+	configPath := filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+HttpClient.swift")
+	requireFile(t, configPath)
+	configContent := readFile(t, configPath)
+	if !strings.Contains(configContent, "timeoutForResponse") {
+		t.Fatalf("Configuration+HttpClient.swift missing timeoutForResponse:\n%s", configContent)
+	}
+
+	// Verify Package.swift has swift-httpclient.
+	packageContent := readFile(t, filepath.Join(projectRoot, "Package.swift"))
+	if !strings.Contains(packageContent, "swift-httpclient") {
+		t.Fatalf("Package.swift missing swift-httpclient:\n%s", packageContent)
+	}
+
+	// Verify Project.swift has HttpClient.
+	projectContent := readFile(t, filepath.Join(projectRoot, "Project.swift"))
+	if !strings.Contains(projectContent, "HttpClient") {
+		t.Fatalf("Project.swift missing HttpClient:\n%s", projectContent)
+	}
+
+	// Verify Registry.swift has HttpClient registration and builder.
+	registryPath := filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "App", cfg.AppName+".Registry.swift")
+	registryContent := readFile(t, registryPath)
+	for _, expected := range []string{
+		"import HttpClient",
+		"IRpcAsyncClient.self",
+		"buildHttpClient",
+	} {
+		if !strings.Contains(registryContent, expected) {
+			t.Fatalf("Registry.swift missing %q:\n%s", expected, registryContent)
+		}
 	}
 }
 
