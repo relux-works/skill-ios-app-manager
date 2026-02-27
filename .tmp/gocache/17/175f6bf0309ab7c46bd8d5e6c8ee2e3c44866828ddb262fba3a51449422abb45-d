@@ -1,7 +1,0 @@
-./graph.go
-./runner.go
-./version.go
-./graph_test.go
-./mock_test.go
-./runner_test.go
-./version_test.go

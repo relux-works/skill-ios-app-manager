@@ -141,7 +141,7 @@ The demo/test app lives in `.temp/demo-project/` and is **generated output** of 
    ../../ios-app-manager init
    ../../ios-app-manager ioc setup
    ../../ios-app-manager relux setup
-   ../../ios-app-manager secure-store setup
+   ../../ios-app-manager secure-store setup --access-group group.org.xflow.app
    ../../ios-app-manager token-provider setup
    ../../ios-app-manager utilities setup
    ../../ios-app-manager module create <Name> --type relux-feature
@@ -163,7 +163,7 @@ cd .temp/demo-project
 ../../ios-app-manager init
 ../../ios-app-manager ioc setup
 ../../ios-app-manager relux setup
-../../ios-app-manager secure-store setup
+../../ios-app-manager secure-store setup --access-group group.org.xflow.app
 ../../ios-app-manager token-provider setup
 ../../ios-app-manager utilities setup
 ../../ios-app-manager module create Auth --type relux-feature

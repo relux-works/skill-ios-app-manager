@@ -10,6 +10,7 @@ import (
 
 	"github.com/relux-works/ios-app-manager/internal/ioc"
 	"github.com/relux-works/ios-app-manager/internal/scaffold"
+	tmplutil "github.com/relux-works/ios-app-manager/internal/template"
 	"github.com/relux-works/ios-app-manager/internal/tuistproj"
 )
 
@@ -28,6 +29,7 @@ type SetupInput struct {
 	AppName     string
 	ModulesPath string
 	Platform    string // SwiftPM platform, e.g. "iOS(.v17)"
+	AccessGroup string // App group for shared keychain access, e.g. "group.org.xflow.app"
 }
 
 // templateFile maps a template name to its output path relative to a sources dir.
@@ -70,6 +72,16 @@ func Setup(input SetupInput) error {
 	// Write .module-type marker for IoC registry grouping.
 	if err := ioc.WriteModuleType(interfacePkgDir, "kit"); err != nil {
 		return fmt.Errorf("write %s: %w", ioc.ModuleTypeFile, err)
+	}
+
+	// Write .builder-config for IoC registry to pass serviceName and accessGroup.
+	accessGroupKey := tmplutil.InfoPlistKey(input.AccessGroup)
+	builderArgs := fmt.Sprintf(
+		"serviceName: Configuration.Keychain.serviceName, accessGroup: Configuration.AppGroups.%s",
+		accessGroupKey,
+	)
+	if err := ioc.WriteBuilderConfig(interfacePkgDir, builderArgs); err != nil {
+		return fmt.Errorf("write %s: %w", ioc.BuilderConfigFile, err)
 	}
 
 	// 2. Create impl package: SecureStoreImpl (with Package.swift).
@@ -142,6 +154,9 @@ func validateInput(input SetupInput) error {
 	}
 	if strings.TrimSpace(input.AppName) == "" {
 		return fmt.Errorf("app name is required")
+	}
+	if strings.TrimSpace(input.AccessGroup) == "" {
+		return fmt.Errorf("access group is required")
 	}
 	return nil
 }

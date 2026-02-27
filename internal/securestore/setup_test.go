@@ -9,6 +9,8 @@ import (
 	"github.com/relux-works/ios-app-manager/internal/testutil"
 )
 
+const testAccessGroup = "group.com.example.demo"
+
 func TestSetupCreatesAllFiles(t *testing.T) {
 	t.Parallel()
 
@@ -18,6 +20,7 @@ func TestSetupCreatesAllFiles(t *testing.T) {
 	err := Setup(SetupInput{
 		ProjectRoot: projectRoot,
 		AppName:     "DemoApp",
+		AccessGroup: testAccessGroup,
 	})
 	if err != nil {
 		t.Fatalf("Setup() error = %v", err)
@@ -65,6 +68,7 @@ func TestSetupCreatesPackageSwift(t *testing.T) {
 	err := Setup(SetupInput{
 		ProjectRoot: projectRoot,
 		AppName:     "DemoApp",
+		AccessGroup: testAccessGroup,
 	})
 	if err != nil {
 		t.Fatalf("Setup() error = %v", err)
@@ -85,6 +89,7 @@ func TestSetupUpdatesManifests(t *testing.T) {
 		ProjectRoot: projectRoot,
 		AppName:     "DemoApp",
 		ModulesPath: modulesPath,
+		AccessGroup: testAccessGroup,
 	})
 	if err != nil {
 		t.Fatalf("Setup() error = %v", err)
@@ -121,6 +126,7 @@ func TestSetupWithCustomModulesPath(t *testing.T) {
 		ProjectRoot: projectRoot,
 		AppName:     "DemoApp",
 		ModulesPath: "Modules",
+		AccessGroup: testAccessGroup,
 	})
 	if err != nil {
 		t.Fatalf("Setup() error = %v", err)
@@ -142,18 +148,23 @@ func TestSetupValidatesInput(t *testing.T) {
 	}{
 		{
 			name:  "empty project root",
-			input: SetupInput{AppName: "Demo"},
+			input: SetupInput{AppName: "Demo", AccessGroup: testAccessGroup},
 			want:  "project root is required",
 		},
 		{
 			name:  "whitespace project root",
-			input: SetupInput{ProjectRoot: "   ", AppName: "Demo"},
+			input: SetupInput{ProjectRoot: "   ", AppName: "Demo", AccessGroup: testAccessGroup},
 			want:  "project root is required",
 		},
 		{
 			name:  "empty app name",
-			input: SetupInput{ProjectRoot: "/tmp"},
+			input: SetupInput{ProjectRoot: "/tmp", AccessGroup: testAccessGroup},
 			want:  "app name is required",
+		},
+		{
+			name:  "empty access group",
+			input: SetupInput{ProjectRoot: "/tmp", AppName: "Demo"},
+			want:  "access group is required",
 		},
 	}
 
@@ -176,7 +187,7 @@ func TestSetupIdempotent(t *testing.T) {
 	projectRoot := t.TempDir()
 	setupProjectFiles(t, projectRoot, "Packages")
 
-	input := SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp"}
+	input := SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp", AccessGroup: testAccessGroup}
 
 	if err := Setup(input); err != nil {
 		t.Fatalf("first Setup() error = %v", err)
@@ -205,7 +216,7 @@ func TestNamespaceContent(t *testing.T) {
 	projectRoot := t.TempDir()
 	setupProjectFiles(t, projectRoot, "Packages")
 
-	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp"}); err != nil {
+	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp", AccessGroup: testAccessGroup}); err != nil {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
@@ -227,7 +238,7 @@ func TestInterfaceContent(t *testing.T) {
 	projectRoot := t.TempDir()
 	setupProjectFiles(t, projectRoot, "Packages")
 
-	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp"}); err != nil {
+	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp", AccessGroup: testAccessGroup}); err != nil {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
@@ -261,7 +272,7 @@ func TestImplContent(t *testing.T) {
 	projectRoot := t.TempDir()
 	setupProjectFiles(t, projectRoot, "Packages")
 
-	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp"}); err != nil {
+	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp", AccessGroup: testAccessGroup}); err != nil {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
@@ -283,10 +294,12 @@ func TestImplContent(t *testing.T) {
 		"SecItemDelete",
 		"SecItemUpdate",
 		"serviceName",
-		"bundleIdentifier",
 		"KeychainError",
 		"JSONEncoder",
 		"JSONDecoder",
+		"accessGroup",
+		"kSecAttrAccessGroup",
+		"init(serviceName: String, accessGroup: String)",
 	} {
 		if !strings.Contains(s, expected) {
 			t.Fatalf("Impl missing %q:\n%s", expected, s)
@@ -300,7 +313,7 @@ func TestModuleContent(t *testing.T) {
 	projectRoot := t.TempDir()
 	setupProjectFiles(t, projectRoot, "Packages")
 
-	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp"}); err != nil {
+	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp", AccessGroup: testAccessGroup}); err != nil {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
@@ -328,7 +341,7 @@ func TestDirectoryStructure(t *testing.T) {
 	projectRoot := t.TempDir()
 	setupProjectFiles(t, projectRoot, "Packages")
 
-	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp"}); err != nil {
+	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp", AccessGroup: testAccessGroup}); err != nil {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
@@ -357,7 +370,7 @@ func TestGoldenNamespace(t *testing.T) {
 	projectRoot := t.TempDir()
 	setupProjectFiles(t, projectRoot, "Packages")
 
-	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp"}); err != nil {
+	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp", AccessGroup: testAccessGroup}); err != nil {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
@@ -376,7 +389,7 @@ func TestGoldenModule(t *testing.T) {
 	projectRoot := t.TempDir()
 	setupProjectFiles(t, projectRoot, "Packages")
 
-	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp"}); err != nil {
+	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp", AccessGroup: testAccessGroup}); err != nil {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
@@ -395,7 +408,7 @@ func TestGoldenInterface(t *testing.T) {
 	projectRoot := t.TempDir()
 	setupProjectFiles(t, projectRoot, "Packages")
 
-	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp"}); err != nil {
+	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp", AccessGroup: testAccessGroup}); err != nil {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
@@ -414,7 +427,7 @@ func TestGoldenImpl(t *testing.T) {
 	projectRoot := t.TempDir()
 	setupProjectFiles(t, projectRoot, "Packages")
 
-	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp"}); err != nil {
+	if err := Setup(SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp", AccessGroup: testAccessGroup}); err != nil {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
@@ -432,7 +445,7 @@ func TestSetupIdempotentContentUnchanged(t *testing.T) {
 
 	projectRoot := t.TempDir()
 	setupProjectFiles(t, projectRoot, "Packages")
-	input := SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp"}
+	input := SetupInput{ProjectRoot: projectRoot, AppName: "DemoApp", AccessGroup: testAccessGroup}
 
 	if err := Setup(input); err != nil {
 		t.Fatalf("first Setup() error = %v", err)

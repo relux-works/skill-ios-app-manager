@@ -6,13 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/relux-works/ios-app-manager/internal/config"
+	"github.com/relux-works/ios-app-manager/internal/ioc"
 	"github.com/relux-works/ios-app-manager/internal/modules"
 	"github.com/relux-works/ios-app-manager/internal/relux"
+	"github.com/relux-works/ios-app-manager/internal/scaffold"
 	"github.com/relux-works/ios-app-manager/internal/tuistproj"
 	"github.com/spf13/cobra"
 )
@@ -81,6 +84,11 @@ func newModuleCommand(opts *RootOptions) *cobra.Command {
 			creator := modules.NewCreator(tuistManager, reluxManager)
 			cfg.ModulesPath = modulesRoot
 			if err := creator.Create(context.Background(), moduleName, string(descriptor.Type), cfg); err != nil {
+				return err
+			}
+
+			// Re-scaffold Registry.swift if IoC is set up.
+			if err := regenerateRegistryIfExists(projectRoot, cfg.AppName, modulesRoot); err != nil {
 				return err
 			}
 
@@ -284,6 +292,45 @@ func printModuleListTable(output io.Writer, modulesList []modules.ModuleInfo) er
 	}
 
 	return writer.Flush()
+}
+
+func regenerateRegistryIfExists(projectRoot, appName, modulesRoot string) error {
+	appTypeName := scaffold.SwiftTypeName(appName)
+	registryPath := filepath.Join(
+		projectRoot, "Targets", appName, "Sources", "App",
+		appTypeName+".Registry.swift",
+	)
+
+	if _, err := os.Stat(registryPath); err != nil {
+		return nil // Registry doesn't exist yet — nothing to regenerate.
+	}
+
+	discoveredModules, err := ioc.DiscoverModules(modulesRoot)
+	if err != nil {
+		return fmt.Errorf("discover modules: %w", err)
+	}
+
+	hasRelux := registryHasRelux(registryPath)
+
+	if err := ioc.ScaffoldRegistryWithData(registryPath, ioc.RegistryTemplateData{
+		AppTypeName: appTypeName,
+		Imports:     ioc.BuildModuleImports(discoveredModules),
+		Modules:     discoveredModules,
+		HasRelux:    hasRelux,
+	}); err != nil {
+		return fmt.Errorf("regenerate Registry.swift: %w", err)
+	}
+
+	return nil
+}
+
+func registryHasRelux(registryPath string) bool {
+	data, err := os.ReadFile(registryPath)
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(data), "import Relux") ||
+		strings.Contains(string(data), "@_exported import Relux")
 }
 
 func cliDeleteConfirmationPrompt(cmd *cobra.Command) func(module modules.ModuleInfo) (bool, error) {

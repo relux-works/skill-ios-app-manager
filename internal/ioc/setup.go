@@ -23,6 +23,11 @@ const (
 
 	// ModuleTypeFile is the marker file written in each module's interface package root.
 	ModuleTypeFile = ".module-type"
+
+	// BuilderConfigFile is an optional marker file that specifies custom builder args
+	// for the IoC registry builder function. Contents are injected verbatim into the
+	// Impl() constructor call in Registry.swift.
+	BuilderConfigFile = ".builder-config"
 )
 
 // ModuleCategory represents a semantic grouping for registry sections.
@@ -52,6 +57,7 @@ type DiscoveredModule struct {
 	ImplPackage      string
 	IsAsync          bool           // true for relux modules (Impl has async init)
 	Category         ModuleCategory // semantic category read from .module-type
+	BuilderArgs      string         // optional args injected into Impl() call in Registry
 }
 
 // GroupedModules holds modules grouped by semantic category.
@@ -145,6 +151,7 @@ func DiscoverModules(modulesRoot string) ([]DiscoveredModule, error) {
 			ImplPackage:      implName,
 			IsAsync:          hasReluxImport(filepath.Join(modulesRoot, name)),
 			Category:         readModuleCategory(filepath.Join(modulesRoot, name)),
+			BuilderArgs:      readBuilderConfig(filepath.Join(modulesRoot, name)),
 		})
 	}
 
@@ -396,6 +403,25 @@ func WriteModuleType(moduleDir, moduleType string) error {
 		[]byte(moduleType+"\n"),
 		0o644,
 	)
+}
+
+// WriteBuilderConfig writes the .builder-config marker file for a module.
+// The content is injected verbatim into Impl() in Registry.swift.
+func WriteBuilderConfig(moduleDir, args string) error {
+	return os.WriteFile(
+		filepath.Join(moduleDir, BuilderConfigFile),
+		[]byte(args+"\n"),
+		0o644,
+	)
+}
+
+// readBuilderConfig reads the .builder-config marker file from a module directory.
+func readBuilderConfig(moduleDir string) string {
+	data, err := os.ReadFile(filepath.Join(moduleDir, BuilderConfigFile))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
 }
 
 // EnsureImport adds an import statement if not already present.
