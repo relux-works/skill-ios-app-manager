@@ -1,0 +1,6 @@
+extension TokenProvider.Module {
+    public protocol Interface: Sendable {
+        func setAuthData(_ data: TokenProvider.AuthData) async
+        func getAccessToken() async -> String?
+    }
+}

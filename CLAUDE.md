@@ -128,6 +128,28 @@ Detailed CLI reference, DSL syntax, and workflow examples are in `.claude/skills
 - `references/dsl-reference.md` — DSL query/mutation syntax
 - `references/workflows.md` — end-to-end usage examples
 
+## Demo App Workflow
+
+The demo/test app lives in `.temp/demo-project/` and is **generated output** of the CLI tool. **Never edit the demo app files directly.** When the demo app has bugs or missing files:
+
+1. Fix the **source of truth**: Go CLI code, templates (`*.tmpl`), scaffolding logic, or snapshot golden files
+2. Rebuild the CLI: `make build`
+3. Delete the demo app: `rm -rf .temp/demo-project/`
+4. Regenerate from scratch using the full pipeline:
+   ```bash
+   cd .temp/demo-project
+   ../../ios-app-manager init
+   ../../ios-app-manager ioc setup
+   ../../ios-app-manager relux setup
+   ../../ios-app-manager secure-store setup
+   ../../ios-app-manager token-provider setup
+   ../../ios-app-manager utilities setup
+   ../../ios-app-manager module create <Name> --type relux-feature
+   ```
+5. Verify the regenerated app is correct (build with tuist/xcodebuild if needed)
+
+The config file is saved separately at `.temp/demo-config.json` — copy it into the demo project directory before `init`.
+
 ## Dependencies
 
 Minimal: Cobra (CLI framework) + gopkg.in/yaml.v3. No other external Go deps.

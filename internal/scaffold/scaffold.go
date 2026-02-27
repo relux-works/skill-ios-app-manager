@@ -92,7 +92,7 @@ func (s *Scaffolder) Scaffold(cfg config.ProjectConfig, outputDir string, force 
 		}
 	}
 
-	written := make([]string, 0, len(filesToWrite))
+	written := make([]string, 0, len(filesToWrite)+1)
 	paths := make([]string, 0, len(filesToWrite))
 	for path := range filesToWrite {
 		paths = append(paths, path)
@@ -112,6 +112,16 @@ func (s *Scaffolder) Scaffold(cfg config.ProjectConfig, outputDir string, force 
 		}
 		written = append(written, path)
 	}
+
+	iconPath := filepath.Join(root, "Targets", appName, "Resources", "Assets.xcassets", "AppIcon.appiconset", "AppIcon.png")
+	iconData, err := generatePlaceholderIcon()
+	if err != nil {
+		return nil, err
+	}
+	if err := s.writeFile(iconPath, iconData, 0o644); err != nil {
+		return nil, fmt.Errorf("write file %q: %w", iconPath, err)
+	}
+	written = append(written, iconPath)
 
 	return written, nil
 }
@@ -151,6 +161,10 @@ func (s *Scaffolder) planFiles(cfg config.ProjectConfig, root string, appName st
 	files[filepath.Join(root, ".gitignore")] = GenerateGitignore()
 	files[filepath.Join(root, appName+".entitlements")] = GenerateEntitlements(cfg)
 	files[filepath.Join(root, "Targets", appName, "Sources", "App.swift")] = GenerateAppStub(cfg)
+
+	assetsPath := filepath.Join(root, "Targets", appName, "Resources", "Assets.xcassets")
+	files[filepath.Join(assetsPath, "Contents.json")] = assetCatalogContentsJSON()
+	files[filepath.Join(assetsPath, "AppIcon.appiconset", "Contents.json")] = appIconsetContentsJSON()
 
 	return files, nil
 }

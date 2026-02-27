@@ -1,0 +1,122 @@
+import Foundation
+import SecureStore
+import Security
+
+extension SecureStore.Module {
+    public actor Impl: SecureStoring {
+        private let serviceName: String
+
+        public init(serviceName: String = Bundle.main.bundleIdentifier ?? "com.app.securestore") {
+            self.serviceName = serviceName
+        }
+
+        // MARK: - SecureStoring
+
+        public nonisolated func save(key: String, data: Data) throws {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: serviceName,
+                kSecAttrAccount as String: key,
+            ]
+
+            let status = SecItemCopyMatching(query as CFDictionary, nil)
+
+            if status == errSecSuccess {
+                let attributes: [String: Any] = [
+                    kSecValueData as String: data,
+                ]
+                let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+                guard updateStatus == errSecSuccess else {
+                    throw SecureStore.KeychainError.unhandledError(status: updateStatus)
+                }
+            } else if status == errSecItemNotFound {
+                var newItem = query
+                newItem[kSecValueData as String] = data
+                let addStatus = SecItemAdd(newItem as CFDictionary, nil)
+                guard addStatus == errSecSuccess else {
+                    throw SecureStore.KeychainError.unhandledError(status: addStatus)
+                }
+            } else {
+                throw SecureStore.KeychainError.unhandledError(status: status)
+            }
+        }
+
+        public nonisolated func load(key: String) throws -> Data? {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: serviceName,
+                kSecAttrAccount as String: key,
+                kSecReturnData as String: true,
+                kSecMatchLimit as String: kSecMatchLimitOne,
+            ]
+
+            var result: AnyObject?
+            let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+            if status == errSecItemNotFound {
+                return nil
+            }
+
+            guard status == errSecSuccess else {
+                throw SecureStore.KeychainError.unhandledError(status: status)
+            }
+
+            return result as? Data
+        }
+
+        public nonisolated func delete(key: String) throws {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: serviceName,
+                kSecAttrAccount as String: key,
+            ]
+
+            let status = SecItemDelete(query as CFDictionary)
+            guard status == errSecSuccess || status == errSecItemNotFound else {
+                throw SecureStore.KeychainError.unhandledError(status: status)
+            }
+        }
+
+        public nonisolated func clear() throws {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: serviceName,
+            ]
+
+            let status = SecItemDelete(query as CFDictionary)
+            guard status == errSecSuccess || status == errSecItemNotFound else {
+                throw SecureStore.KeychainError.unhandledError(status: status)
+            }
+        }
+
+        public nonisolated func save<T: Codable>(key: String, value: T) throws {
+            let data = try JSONEncoder().encode(value)
+            try save(key: key, data: data)
+        }
+
+        public nonisolated func load<T: Codable>(key: String) throws -> T? {
+            guard let data = try load(key: key) else {
+                return nil
+            }
+            return try JSONDecoder().decode(T.self, from: data)
+        }
+    }
+}
+
+// MARK: - Errors
+
+extension SecureStore {
+    public enum KeychainError: Error, LocalizedError {
+        case unhandledError(status: OSStatus)
+
+        public var errorDescription: String? {
+            switch self {
+            case .unhandledError(let status):
+                if let message = SecCopyErrorMessageString(status, nil) as String? {
+                    return message
+                }
+                return "Keychain error: \(status)"
+            }
+        }
+    }
+}

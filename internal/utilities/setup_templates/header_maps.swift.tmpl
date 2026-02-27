@@ -1,0 +1,16 @@
+import Foundation
+
+enum HeaderMaps {
+    static let jsonHeaders: [String: String] = [
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    ]
+
+    static let formHeaders: [String: String] = [
+        "Content-Type": "application/x-www-form-urlencoded",
+    ]
+
+    static func authHeader(token: String) -> [String: String] {
+        ["Authorization": "Bearer \(token)"]
+    }
+}
