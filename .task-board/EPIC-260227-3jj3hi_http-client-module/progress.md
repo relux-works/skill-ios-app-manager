@@ -8,10 +8,10 @@ backlog
 2026-02-26T21:13:57Z
 
 ## Last Update
-2026-02-26T21:18:33Z
+2026-02-27T10:54:14Z
 
 ## Blocked By
-- EPIC-260226-2twvnm
+- (none)
 
 ## Blocks
 - (none)
@@ -20,7 +20,7 @@ backlog
 (empty)
 
 ## Notes
-Reference implementation in membrana is legacy — needs rethinking. Take only the best patterns (closure-based config resolution, ISP for protocols, value-type Configuration). Rethink: NSLock → actor, Keychain storage approach, class inheritance for ApiConfigurator → maybe protocol-based, overall simplification.
+Architecture update: HttpClient is now pure transport. No dependency on TokenProvider or ApiConfigurator. Feature relux-modules assemble their own API client from HttpClient + TokenProvider + ApiConfigurator, all injected via protocols. See diagrams/scaffolding-pipeline.puml for dependency graph.
 
 ## Precondition Resources
 (none)

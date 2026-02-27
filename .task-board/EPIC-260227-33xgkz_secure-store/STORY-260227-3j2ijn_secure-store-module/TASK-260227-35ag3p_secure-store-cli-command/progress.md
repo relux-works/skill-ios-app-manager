@@ -5,16 +5,16 @@ backlog
 (none)
 
 ## Created
-2026-02-26T20:49:22Z
+2026-02-27T10:37:27Z
 
 ## Last Update
-2026-02-27T10:54:04Z
+2026-02-27T10:37:36Z
 
 ## Blocked By
-- EPIC-260227-33xgkz
+- (none)
 
 ## Blocks
-- (none)
+- TASK-260227-1z4dam
 
 ## Checklist
 (empty)
