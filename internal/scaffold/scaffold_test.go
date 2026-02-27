@@ -48,6 +48,7 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		filepath.Join(outputDir, ".gitignore"),
 		filepath.Join(outputDir, cfg.AppName+".entitlements"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "App.swift"),
+		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration.swift"),
 		filepath.Join(assetsPath, "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "AppIcon.png"),
@@ -166,6 +167,11 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 	appStub := readFile(t, filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "App.swift"))
 	if !strings.Contains(appStub, `Text("Hello, World!")`) {
 		t.Fatalf("App.swift missing hello world view:\n%s", appStub)
+	}
+
+	configFile := readFile(t, filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration.swift"))
+	if !strings.Contains(configFile, "enum Configuration {}") {
+		t.Fatalf("Configuration.swift missing namespace enum:\n%s", configFile)
 	}
 }
 

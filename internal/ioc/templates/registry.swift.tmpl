@@ -80,7 +80,7 @@ extension {{ .AppTypeName }}.Registry {
     }
 }
 {{- end }}
-{{ if .Groups.Foundation }}
+
 // MARK: - Foundation Builders (scaffolding anchor: foundation-builders)
 extension {{ .AppTypeName }}.Registry {
 {{- range .Groups.Foundation }}
@@ -89,8 +89,7 @@ extension {{ .AppTypeName }}.Registry {
     }
 {{ end -}}
 }
-{{ end -}}
-{{ if .Groups.Features }}
+
 // MARK: - Feature Builders (scaffolding anchor: feature-builders)
 extension {{ .AppTypeName }}.Registry {
 {{- range .Groups.Features }}
@@ -99,8 +98,7 @@ extension {{ .AppTypeName }}.Registry {
     }
 {{ end -}}
 }
-{{ end -}}
-{{ if .Groups.Network }}
+
 // MARK: - Network Builders (scaffolding anchor: network-builders)
 extension {{ .AppTypeName }}.Registry {
 {{- range .Groups.Network }}
@@ -109,8 +107,7 @@ extension {{ .AppTypeName }}.Registry {
     }
 {{ end -}}
 }
-{{ end -}}
-{{ if .Groups.Utils }}
+
 // MARK: - Utils Builders (scaffolding anchor: utils-builders)
 extension {{ .AppTypeName }}.Registry {
 {{- range .Groups.Utils }}
@@ -119,4 +116,3 @@ extension {{ .AppTypeName }}.Registry {
     }
 {{ end -}}
 }
-{{ end -}}

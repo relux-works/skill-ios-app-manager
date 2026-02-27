@@ -161,6 +161,7 @@ func (s *Scaffolder) planFiles(cfg config.ProjectConfig, root string, appName st
 	files[filepath.Join(root, ".gitignore")] = GenerateGitignore()
 	files[filepath.Join(root, appName+".entitlements")] = GenerateEntitlements(cfg)
 	files[filepath.Join(root, "Targets", appName, "Sources", "App.swift")] = GenerateAppStub(cfg)
+	files[filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Configuration.swift")] = GenerateConfiguration()
 
 	assetsPath := filepath.Join(root, "Targets", appName, "Resources", "Assets.xcassets")
 	files[filepath.Join(assetsPath, "Contents.json")] = assetCatalogContentsJSON()

@@ -1,35 +1,23 @@
-# EPIC-260227-3jj3hi: http-client-module
+# HttpClient IoC registration
 
 ## Description
-HttpClient — base HTTP transport module. Kit type (business logic, no UI) with interface/impl split. Pure transport layer, no auth, no API config.
+HttpClient — NOT a separate module. IoC registration of swift-httpclient RpcClient type with config params from Configuration.HttpClient.
 
-Interface package (HttpClient):
-- HttpClientProtocol — base HTTP transport interface
-- Methods: request(url:method:headers:body:) -> Response, download, upload, etc.
-- No knowledge of API configuration or authentication
+What http-client setup does:
+1. Adds swift-httpclient as external dep to root Package.swift
+2. Adds .external(name: "SwiftHTTPClient") to Project.swift
+3. Adds Configuration.HttpClient extension with timeout params to Packages/Configuration/
+4. Patches Registry.swift: import SwiftHTTPClient + import Configuration, builder buildHttpClient() using Configuration.HttpClient params, registration in Foundation section
 
-Impl package (HttpClientImpl):
-- HttpClient.Impl — wraps swift-httpclient library
-- Configured with basic defaults (timeouts, retry policy, logging)
-- Registered in IoC as HttpClientProtocol
-
-Dependencies:
-- swift-httpclient (external Swift package)
-- IoC (registration)
-
-NOT included (moved to separate modules):
-- ApiConfigurator — separate foundation module for base URLs, API versioning, headers
-- TokenProvider — separate foundation module for auth tokens
-
-Feature modules (relux + backend) assemble their own API client from three foundation ingredients injected via protocols on init:
-1. HttpClientProtocol (transport, from this module)
-2. TokenProviding (auth, from TokenProvider module)
-3. ApiConfiguring (URLs/config, from ApiConfigurator module)
-
-CLI command: http-client setup — scaffolds module + IoC registration.
+Dependencies: IoC (for registration), Configuration (for params), swift-httpclient (external).
+No Packages/HttpClient/, no Module.Interface/Impl, no .module-type.
 
 ## Scope
-(define epic scope)
+http-client setup CLI command: add external dep + IoC registration in Registry
 
 ## Acceptance Criteria
-(define acceptance criteria)
+1. http-client setup adds swift-httpclient to Package.swift
+2. SwiftHTTPClient added to Project.swift dependencies
+3. Registry.swift gets HTTPClient registration in Foundation section
+4. make test green, demo app builds
+5. Idempotent (re-running is safe)
