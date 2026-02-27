@@ -9,7 +9,7 @@ extension Notes.Module {
         @MainActor
         public init() async {
             let state = Notes.Business.State()
-            let flow = Notes.Business.Flow(state: state)
+            let flow = await Notes.Business.Flow(state: state)
             self.states = [state]
             self.sagas = [flow]
         }
