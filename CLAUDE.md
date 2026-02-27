@@ -150,6 +150,29 @@ The demo/test app lives in `.temp/demo-project/` and is **generated output** of 
 
 The config file is saved separately at `.temp/demo-config.json` — copy it into the demo project directory before `init`.
 
+### After ANY scaffold/template/generator change
+
+Every time you modify templates, scaffold generators, or anything that affects generated output — **you must rebuild the demo app and verify it compiles**:
+
+```bash
+make build
+rm -rf .temp/demo-project/
+mkdir -p .temp/demo-project
+cp .temp/demo-config.json .temp/demo-project/ios-app-manager.json
+cd .temp/demo-project
+../../ios-app-manager init
+../../ios-app-manager ioc setup
+../../ios-app-manager relux setup
+../../ios-app-manager secure-store setup
+../../ios-app-manager token-provider setup
+../../ios-app-manager utilities setup
+../../ios-app-manager module create Auth --type relux-feature
+tuist install && tuist generate
+open *.xcworkspace
+```
+
+This ensures the generated Swift code actually compiles in Xcode — unit tests alone don't catch Swift syntax/type errors in templates.
+
 ## Dependencies
 
 Minimal: Cobra (CLI framework) + gopkg.in/yaml.v3. No other external Go deps.

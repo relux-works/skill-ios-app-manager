@@ -252,6 +252,26 @@ func TestRendererRenderModulesPathReadError(t *testing.T) {
 	}
 }
 
+func TestInfoPlistKey(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"group.com.example.demo", "GROUP_COM_EXAMPLE_DEMO"},
+		{"group.com.example.shared", "GROUP_COM_EXAMPLE_SHARED"},
+		{"single", "SINGLE"},
+		{"a.b.c.d", "A_B_C_D"},
+	}
+	for _, tt := range tests {
+		got := InfoPlistKey(tt.input)
+		if got != tt.want {
+			t.Fatalf("InfoPlistKey(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
 func assertRenderedFiles(t *testing.T, rendered map[string]string, want []string) {
 	t.Helper()
 

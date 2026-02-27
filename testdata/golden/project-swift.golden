@@ -3,10 +3,6 @@ import ProjectDescription
 let appName = "DemoApp"
 let bundleID = "com.example.demo"
 let developmentTeam = "ABCDE12345"
-let appGroups: [Plist.Value] = [
-    .string("group.com.example.demo"),
-]
-
 let configurations: [Configuration] = [
     .debug(name: "Debug"),
     .release(name: "Release"),
@@ -39,7 +35,7 @@ let project = Project(
                             ])
                         ])
                     ]),
-                    "ProjectAppGroups": .array(appGroups),
+                    "GROUP_COM_EXAMPLE_DEMO": .string("group.com.example.demo"),
                     "UILaunchScreen": .dictionary([:]),
                 ]
             ),

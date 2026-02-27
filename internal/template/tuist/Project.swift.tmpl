@@ -3,12 +3,6 @@ import ProjectDescription
 let appName = {{ swiftLiteral .AppName }}
 let bundleID = {{ swiftLiteral .BundleID }}
 let developmentTeam = {{ swiftLiteral .TeamID }}
-let appGroups: [Plist.Value] = [
-{{- range .AppGroups }}
-    .string({{ swiftLiteral . }}),
-{{- end }}
-]
-
 let configurations: [Configuration] = [
 {{- range .Configurations }}
     .{{ configKind . }}(name: {{ swiftLiteral . }}),
@@ -44,7 +38,9 @@ let project = Project(
                         ])
                     ]),
 {{- end }}
-                    "ProjectAppGroups": .array(appGroups),
+{{- range .AppGroups }}
+                    "{{ infoPlistKey . }}": .string({{ swiftLiteral . }}),
+{{- end }}
                     "UILaunchScreen": .dictionary([:]),
                 ]
             ),

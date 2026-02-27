@@ -162,6 +162,12 @@ func (s *Scaffolder) planFiles(cfg config.ProjectConfig, root string, appName st
 	files[filepath.Join(root, appName+".entitlements")] = GenerateEntitlements(cfg)
 	files[filepath.Join(root, "Targets", appName, "Sources", "App.swift")] = GenerateAppStub(cfg)
 	files[filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Configuration.swift")] = GenerateConfiguration()
+	files[filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Configuration+Keychain.swift")] = GenerateConfigurationKeychain(cfg)
+	files[filepath.Join(root, "Targets", appName, "Sources", "Helpers", "Bundle+InfoPlist.swift")] = GenerateInfoPlistHelper()
+
+	if len(cfg.AppGroups) > 0 {
+		files[filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Configuration+AppGroups.swift")] = GenerateConfigurationAppGroups(cfg)
+	}
 
 	assetsPath := filepath.Join(root, "Targets", appName, "Resources", "Assets.xcassets")
 	files[filepath.Join(assetsPath, "Contents.json")] = assetCatalogContentsJSON()
