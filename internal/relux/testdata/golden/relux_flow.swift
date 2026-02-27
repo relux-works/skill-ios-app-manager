@@ -3,9 +3,15 @@ import Relux
 
 extension Notes.Business {
     public actor Flow: Relux.Flow {
+        public let dispatcher: Relux.Dispatcher
         private let state: Notes.Business.State
 
-        public init(state: Notes.Business.State) {
+        public init(
+            dispatcher: Relux.Dispatcher? = .none,
+            state: Notes.Business.State
+        ) async {
+            let defaultDispatcher = await Self.defaultDispatcher
+            self.dispatcher = dispatcher ?? defaultDispatcher
             self.state = state
         }
 

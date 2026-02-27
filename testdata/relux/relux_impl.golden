@@ -9,7 +9,7 @@ extension Auth.Module {
         @MainActor
         public init() async {
             let state = Auth.Business.State()
-            let flow = Auth.Business.Flow(state: state)
+            let flow = await Auth.Business.Flow(state: state)
             self.states = [state]
             self.sagas = [flow]
         }
