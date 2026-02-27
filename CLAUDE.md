@@ -39,7 +39,7 @@ CLI (cobra commands)  →  AppManager (orchestrator)  →  Domain Managers  → 
      internal/cli/       internal/components/           internal/*/
 ```
 
-**CLI commands**: `init`, `status`, `module`, `dep`, `entitlements`, `push`, `generate`, `clean`, `query` (`q`), `mutate` (`m`), `ioc`, `relux`
+**CLI commands**: `init`, `status`, `module`, `dep`, `entitlements`, `push`, `generate`, `clean`, `query` (`q`), `mutate` (`m`), `ioc`, `relux`, `app-config`
 
 ### Key packages (`internal/`)
 
@@ -145,6 +145,7 @@ The demo/test app lives in `.temp/demo-project/` and is **generated output** of 
    ../../ios-app-manager token-provider setup
    ../../ios-app-manager utilities setup
    ../../ios-app-manager module create <Name> --type relux-feature
+   ../../ios-app-manager app-config setup
    ```
 5. Verify the regenerated app is correct (build with tuist/xcodebuild if needed)
 
@@ -167,6 +168,7 @@ cd .temp/demo-project
 ../../ios-app-manager token-provider setup
 ../../ios-app-manager utilities setup
 ../../ios-app-manager module create Auth --type relux-feature
+../../ios-app-manager app-config setup
 tuist install && tuist generate
 open *.xcworkspace
 ```

@@ -85,6 +85,7 @@ func NewRootCommandWithAppManager(appManager components.AppManager) *cobra.Comma
 		newUtilitiesCommand(opts),
 		newTokenProviderCommand(opts),
 		newHttpClientCommand(opts),
+		newAppConfigCommand(opts),
 	)
 
 	return cmd

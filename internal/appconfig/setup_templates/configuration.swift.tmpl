@@ -1,0 +1,13 @@
+extension AppConfig.Business.Env {
+    public struct Configuration: Sendable {
+        public let api: Api
+
+        public struct Api: Sendable {
+            public let baseURL: String
+            public let apiVersion: String
+
+            public var apiBaseURL: String { "https://\(baseURL)" }
+            public var versionedURL: String { "\(apiBaseURL)/api/\(apiVersion)" }
+        }
+    }
+}

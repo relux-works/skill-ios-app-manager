@@ -1,0 +1,32 @@
+extension AppConfig.Business.Env {
+    public var configuration: Configuration {
+        switch self {
+        case .prod:  return .prod
+        case .stage: return .stage
+        case .dev:   return .dev
+        }
+    }
+}
+
+extension AppConfig.Business.Env.Configuration {
+    static let prod = Self(
+        api: .init(
+            baseURL: "api.example.com",
+            apiVersion: "v1"
+        )
+    )
+
+    static let stage = Self(
+        api: .init(
+            baseURL: "stage-api.example.com",
+            apiVersion: "v1"
+        )
+    )
+
+    static let dev = Self(
+        api: .init(
+            baseURL: "dev-api.example.com",
+            apiVersion: "v1"
+        )
+    )
+}
