@@ -49,7 +49,8 @@ package "Foundation Modules" as FoundationMods {
   [SecureStore] as SecureStore <<module>> #D6EAF8
   [TokenProvider] as TokenProvider <<module>> #D6EAF8
   [ApiConfigurator] as ApiConfigurator <<module>> #D6EAF8
-  [ApiClient] as ApiClient <<module>> #D6EAF8
+  [HttpClient] as HttpClient <<module>> #D6EAF8
+  [Utilities\n(HttpClientUtils, ...)] as Utilities <<module>> #D6EAF8
 }
 
 ' ──────────────────────────────────────
@@ -84,14 +85,22 @@ TokenProvider --> SecureStore
 ' ApiConfigurator depends on ioc
 ApiConfigurator --> IoCSetup
 
-' ApiClient depends on ApiConfigurator + TokenProvider + external HTTP lib
-ApiClient --> ApiConfigurator
-ApiClient --> TokenProvider
-ApiClient --> SwiftHTTP
+' HttpClient (base) is a plain transport wrapper
+HttpClient --> SwiftHTTP
+HttpClient --> IoCSetup
 
-' Feature module depends on relux setup + ApiClient
+' Utilities (HttpClientUtils, etc.) depends on ioc only
+Utilities --> IoCSetup
+
+' Feature module (relux + backend) assembles its own API client from:
+'   HttpClient (transport) + TokenProvider (auth) + ApiConfigurator (URLs/config)
+'   + Utilities (headers, encoders/decoders)
+'   All injected via protocols on init
 FeatureModule --> ReluxSetup
-FeatureModule --> ApiClient
+FeatureModule --> HttpClient
+FeatureModule --> TokenProvider
+FeatureModule --> ApiConfigurator
+FeatureModule --> Utilities
 
 ' ──────────────────────────────────────
 '  Legend

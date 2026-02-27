@@ -1,38 +1,32 @@
 # EPIC-260227-3jj3hi: http-client-module
 
 ## Description
-Base HttpClient feature module (not relux). Shared dependency for all feature modules to provide unified HTTP configuration.
-
-Module structure (interface/impl split):
+HttpClient — base HTTP transport module. Kit type (business logic, no UI) with interface/impl split. Pure transport layer, no auth, no API config.
 
 Interface package (HttpClient):
-- HttpClient protocol — base API client interface
-- ApiConfigurator protocol — HTTP configuration
+- HttpClientProtocol — base HTTP transport interface
+- Methods: request(url:method:headers:body:) -> Response, download, upload, etc.
+- No knowledge of API configuration or authentication
 
 Impl package (HttpClientImpl):
-- HttpClient.Impl — concrete implementation, depends on ApiConfigurator and TokenProvider (both via protocols/interfaces)
-- Default ApiConfigurator implementation lives here — must be instantiated externally and injected as a shared dependency
+- HttpClient.Impl — wraps swift-httpclient library
+- Configured with basic defaults (timeouts, retry policy, logging)
+- Registered in IoC as HttpClientProtocol
 
-IoC resolution chain:
-1. ApiConfigurator resolved → shared instance configured with env/baseURL/headers
-2. TokenProvider resolved → provides access tokens (from TokenProvider epic)
-3. HttpClient resolved → HttpClient.Impl(apiConfigurator: ApiConfigurator, tokenProvider: TokenProvider)
-4. Feature modules resolved → FeatureModule.Impl(httpClient: HttpClient)
+Dependencies:
+- swift-httpclient (external Swift package)
+- IoC (registration)
 
-All dependencies through interfaces. HttpClient is injected into every feature module that needs API access.
+NOT included (moved to separate modules):
+- ApiConfigurator — separate foundation module for base URLs, API versioning, headers
+- TokenProvider — separate foundation module for auth tokens
 
-CLI command to scaffold this module + IoC registration. Depends on TokenProvider epic being done first.
+Feature modules (relux + backend) assemble their own API client from three foundation ingredients injected via protocols on init:
+1. HttpClientProtocol (transport, from this module)
+2. TokenProviding (auth, from TokenProvider module)
+3. ApiConfiguring (URLs/config, from ApiConfigurator module)
 
-Reference implementation: membrana-ios-app (/Users/alexis/src/membrana/app/)
-
-Key patterns from reference:
-- ApiConfigurator stores a CLOSURE resolveConfig: () -> Configuration.Api, not the config itself. This allows runtime env switching without rebuilding fetchers.
-- Configuration.Api is a value type with private base fields (baseUrl, apiVersion, etc.) and computed URL properties (mobileApiBackendVersionedUrl, signalsWsVersionedUrl, etc.)
-- Env is persisted in Keychain, cached in memory with NSLock
-- Manager singleton implements IAppConfigManager (full) and IApiConfigManager (subset) — registered separately in IoC for ISP
-- Fetcher gets three deps: IRpcAsyncClient (http), IAuthTokenProvider (tokens), Config (URLs via closure)
-- Each feature Fetcher.Config inherits from base ApiConfigurator and builds its own ApiEndpoints using resolveConfig() closure
-- resolver() method returns the closure itself (not the value) for passing by reference into Fetcher.Config constructors
+CLI command: http-client setup — scaffolds module + IoC registration.
 
 ## Scope
 (define epic scope)
