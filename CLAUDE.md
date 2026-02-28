@@ -146,6 +146,7 @@ The demo/test app lives in `.temp/demo-project/` and is **generated output** of 
    ../../ios-app-manager utilities setup
    ../../ios-app-manager module create <Name> --type relux-feature
    ../../ios-app-manager app-config setup
+   ../../ios-app-manager http-client setup
    ```
 5. Verify the regenerated app is correct (build with tuist/xcodebuild if needed)
 
@@ -169,11 +170,24 @@ cd .temp/demo-project
 ../../ios-app-manager utilities setup
 ../../ios-app-manager module create Auth --type relux-feature
 ../../ios-app-manager app-config setup
+../../ios-app-manager http-client setup
 tuist install && tuist generate
-open *.xcworkspace
+xcodebuild -workspace *.xcworkspace -scheme XFlow -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
 ```
 
 This ensures the generated Swift code actually compiles in Xcode — unit tests alone don't catch Swift syntax/type errors in templates.
+
+### Opening in Xcode after regeneration
+
+After `rm -rf` + regenerate, Xcode often caches stale scheme/destination data and shows only macOS or broken schemes. Fix:
+
+```bash
+killall Xcode
+rm -rf ~/Library/Developer/Xcode/DerivedData/*XFlow*
+rm -rf .temp/demo-project/XFlow.xcworkspace/xcuserdata
+rm -rf .temp/demo-project/*.xcodeproj/xcuserdata
+open .temp/demo-project/XFlow.xcworkspace
+```
 
 ## Dependencies
 

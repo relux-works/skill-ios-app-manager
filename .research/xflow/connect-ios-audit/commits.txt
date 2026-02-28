@@ -1,0 +1,102 @@
+4db7b36 Initial Commit
+30c2f02 Initial iOS app implementation
+8b70fc6 Fix: Add ngrok header only for local development
+f09f89a Redesign contact detail page and fix bugs
+a0b48e3 Add .gitignore and audio player logging
+5b6cc30 Implement audio player with local file caching and error handling
+d07129b Kingfisher with manual retry and 30s timeout
+9bec457 Implement automatic navigation to next CRM contact on app startup
+e4cbcef Add in-app video playback with caching
+9aa7644 Fix refresh button to trigger chat analysis
+5a45ce9 Add bottom padding when message input is focused
+5b07f5b Add bottom padding on message input focus and show back button on profile
+5f82632 Deletion of contexts
+8302843 Group chats
+09dbf19 Merge pull request #1 from connect-app/feature/CNTFRONT-401
+92aefd3 Загрузка чата постранично.
+83d641e Merge pull request #2 from connect-app/feature/CNTFRONT-425
+b8ff5f9 CNTFRONT-428: Lazy load attachments without URL on scroll
+71ebfef Merge pull request #3 from connect-app/feature/CNTFRONT-428
+668b5ab Add optimistic UI for message sending with inline status indicators
+fb51fe1 Add optimistic UI for comments and fix delete suggested task empty response
+15f8063 Add return to previous contact notification after auto-navigation
+6dfe4d0 Fix search results list to open from bottom and use dynamic spacing
+a7f519f Fix: show empty contact list instead of 'No CRM access' when tabs are unavailable
+e72d799 Redesign return to previous contact notification bubble
+64e1b08 Seamless contact transition with preloading after message/comment send
+85fcff0 Add contact filters and statistics for CRM list
+121898f Widget
+37dd5d3 Widget
+cd711ae Contact card stack in contact page
+638509a Merge pull request #4 from connect-app/feature/CNTFRONT-437
+db699dc Live Activity with loading/error states. Intermediate commit
+6de4d7f Live Activity: fix avatar display, UI improvements
+739866c Enable Xcode localization settings
+c91cbdd Live Activity: add custom Codable for APNs push and polling toggle
+6f8a8c2 Merge pull request #5 from connect-app/feature/CNTFRONT-430
+18677ea Add pipe-delimited CSV table parsing and display in CRM context
+5c1b433 Merge pull request #6 from connect-app/feature/CNTFRONT-442
+5088a75 Rename app from Connect to xflow (org.xflow)
+0073f86 Fix Team ID and update version to 0.1
+4ba948e Fix avatar loading in Live Activity widget and add LRU cache for 50 avatars
+81e3812 Add admin mode, fix voice recording permission handling, improve post-login navigation, bump to 0.1.2
+d3f4592 Add bulk clear chat context and evaluate global context buttons
+a3700d5 Optimize contact search with parallel requests and fix highlight bug
+d7607ac Redesign input area: remove gray bubble, add black AI text background
+b59f986 Add WhatsApp onboarding UI flow
+e242227 Merge pull request #1 from thexflow/feature/CNTFRONT-451
+1f372c8 no message
+8b3c8e4 Merge remote-tracking branch 'origin/main'
+11ec5b1 no message
+3176bc4 Update ngrok URL and skip browser warning for image loading
+2df2743 Fix voice record button: hit area, haptic feedback and response time
+a95f0a2 no message
+73fffa9 Merge pull request #2 from thexflow/feature/XFL-28-new-bots
+d800850 Telegram onboarding + universal messenger picker UI
+ec83e0f Merge pull request #3 from thexflow/feature/XFL-16
+ea4d4a4 XFL-39, XFL-40: placeholder and AI loaders for message input
+0990ec5 XFL-48
+3f9c0e9 Merge pull request #4 from thexflow/feature/XFL-48-back-button
+e5cd20b XFL-48 logout button
+258dfb5 Bump version to 0.1.6, expand country codes list, update ngrok URL
+1a82d7d XFL-48 remove ai comments
+499aabd Merge pull request #5 from thexflow/feature/XFL-48-back-button
+533886c XFL-38 Redesign profile screen with organization cards and messenger buttons
+f9ff364 Merge pull request #7 from thexflow/feature/XFL-38
+26189ed Fix AI loaders: prevent freeze, staggered timing, smoother shimmer
+7791e01 XFL-50 Check for active onboarding session before starting new flow
+fb977dd Merge pull request #8 from thexflow/feature/XFL-50
+44f2ee6 XFL-50 Add .task-board to gitignore
+e8cdc22 Add task-board.config.json to gitignore
+500300d XFL-25 Add Apple Sign-In with loading state on auth screen
+c07337a Merge pull request #15 from thexflow/feature/XFL-25
+90936d6 XFL-54 Ignore widget deep links during onboarding
+623dd42 Merge pull request #13 from thexflow/feature/XFL-54
+d2bbd0e XFL-59 Evaluation status on startup
+079be77 XFL-59 Improve evaluation status display
+47e1995 Merge pull request #16 from thexflow/feature/XFL-59
+a2d7c3e XFL-60 Handle suspended account
+3bef5d9 Merge pull request #14 from thexflow/feature/XFL-60
+9e1090d XFL-57 Add account deletion flow
+e0a5dfe XFL-57 Await push unregister before logout
+62dc80f Merge pull request #10 from thexflow/feature/XFL-57
+475bbc0 XFL-55 Remove financial network references
+0383991 XFL-55 Remove invitation-only label
+278aa2f Merge pull request #9 from thexflow/feature/XFL-55
+7d597eb XFL-58 Add legal links on login screen
+58d23d1 XFL-58 Update terms URL
+6e4877a Merge pull request #11 from thexflow/feature/XFL-58
+4971b79 XFL-56 Add login/password auth flow
+5d74a4c XFL-56 Fix password login threading
+ff2257c XFL-56 Update password login UI
+4b560da Merge pull request #12 from thexflow/feature/XFL-56
+5b68817 XFL-61 Improve Apple Sign-In client diagnostics
+3a5b4ce XFL-61 Avoid Apple Sign-In loading flicker
+34a216b XFL-61 Fix Apple Sign-In entitlement check compile
+2a8372f Merge pull request #17 from thexflow/feature/XFL-61
+b8e831d XFL-63 Remove rocket emoji from production label
+0c00fbc XFL-63 Hide environment indicators in release builds
+69e3242 Merge pull request #18 from thexflow/feature/XFL-63
+c55b47c Ignore xflow-ios shared scheme file
+1288d33 Update TelegramAuthView
+c672712 Bump build number
