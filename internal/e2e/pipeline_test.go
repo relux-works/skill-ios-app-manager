@@ -60,16 +60,16 @@ func TestPipelineInitModuleCreateAndValidation(t *testing.T) {
 	verifyReluxFeatureModule(t, projectRoot, cfg.ModulesPath)
 
 	// Set up IoC first (required for token-provider to update Registry).
-	iocOutput, err := executeRootCommand("--config", configPath, "ioc", "setup")
+	iocOutput, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes")
 	if err != nil {
 		t.Fatalf("executeRootCommand(ioc setup) error = %v", err)
 	}
-	if !strings.Contains(iocOutput, "SwiftIoC setup complete") {
+	if !strings.Contains(iocOutput, "IoC setup complete") {
 		t.Fatalf("ioc setup output = %q, want completion message", iocOutput)
 	}
 
 	// Set up TokenProvider module.
-	tpOutput, err := executeRootCommand("--config", configPath, "token-provider", "setup")
+	tpOutput, err := executeRootCommand("--config", configPath, "token-provider", "setup", "--yes")
 	if err != nil {
 		t.Fatalf("executeRootCommand(token-provider setup) error = %v", err)
 	}
@@ -79,8 +79,8 @@ func TestPipelineInitModuleCreateAndValidation(t *testing.T) {
 
 	verifyTokenProviderModule(t, projectRoot, cfg.ModulesPath)
 
-	// Set up HttpClient (direct IoC registration, not a module).
-	hcOutput, err := executeRootCommand("--config", configPath, "http-client", "setup")
+	// Set up HttpClient (IoC registration via registry).
+	hcOutput, err := executeRootCommand("--config", configPath, "http-client", "setup", "--yes")
 	if err != nil {
 		t.Fatalf("executeRootCommand(http-client setup) error = %v", err)
 	}

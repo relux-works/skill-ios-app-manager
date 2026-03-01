@@ -28,12 +28,12 @@ func TestIocSetupIntegration(t *testing.T) {
 		}
 	}
 
-	output, err := executeRootCommand("--config", configPath, "ioc", "setup")
+	output, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes")
 	if err != nil {
 		t.Fatalf("executeRootCommand(ioc setup) error = %v", err)
 	}
 
-	if !strings.Contains(output, "SwiftIoC setup complete") {
+	if !strings.Contains(output, "IoC setup complete") {
 		t.Fatalf("output = %q, want setup confirmation", output)
 	}
 
@@ -98,12 +98,12 @@ func TestIocSetupNoModules(t *testing.T) {
 
 	writeProjectScaffold(t, projectRoot, cfg)
 
-	output, err := executeRootCommand("--config", configPath, "ioc", "setup")
+	output, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes")
 	if err != nil {
 		t.Fatalf("executeRootCommand(ioc setup) error = %v", err)
 	}
 
-	if !strings.Contains(output, "SwiftIoC setup complete") {
+	if !strings.Contains(output, "IoC setup complete") {
 		t.Fatalf("output = %q, want setup confirmation", output)
 	}
 
@@ -134,10 +134,10 @@ func TestIocSetupIdempotent(t *testing.T) {
 	}
 
 	// Run setup twice.
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
 		t.Fatalf("first ioc setup error = %v", err)
 	}
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
 		t.Fatalf("second ioc setup error = %v", err)
 	}
 

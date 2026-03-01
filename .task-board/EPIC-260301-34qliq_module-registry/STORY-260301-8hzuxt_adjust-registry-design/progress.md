@@ -1,5 +1,5 @@
 ## Status
-backlog
+done
 
 ## Assigned To
 (none)
@@ -8,7 +8,7 @@ backlog
 2026-03-01T20:50:16Z
 
 ## Last Update
-2026-03-01T20:50:26Z
+2026-03-01T21:01:05Z
 
 ## Blocked By
 - STORY-260301-gejwhy
@@ -25,4 +25,4 @@ backlog
 (none)
 
 ## Outcome Resources
-(none)
+- [design](file://STORY-260301-8hzuxt/design) — Final registry design post-audit

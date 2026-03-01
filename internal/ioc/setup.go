@@ -102,7 +102,8 @@ func Setup(input SetupInput) error {
 	appTypeName := scaffold.SwiftTypeName(input.AppName)
 
 	registryPath := filepath.Join(input.ProjectRoot, "Targets", input.AppName, "Sources", "App", appTypeName+".Registry.swift")
-	if err := scaffoldRegistry(registryPath, appTypeName, modules); err != nil {
+	hasRelux := detectReluxSetup(filepath.Join(input.ProjectRoot, "Targets", input.AppName, "Sources", "App.swift"))
+	if err := scaffoldRegistryFull(registryPath, appTypeName, modules, hasRelux); err != nil {
 		return fmt.Errorf("scaffold Registry.swift: %w", err)
 	}
 
@@ -205,7 +206,16 @@ func addSwiftIoCToProjectSwift(projectSwiftPath string) error {
 }
 
 func scaffoldRegistry(registryPath, appTypeName string, modules []DiscoveredModule) error {
-	content, err := RenderRegistry(appTypeName, modules)
+	return scaffoldRegistryFull(registryPath, appTypeName, modules, false)
+}
+
+func scaffoldRegistryFull(registryPath, appTypeName string, modules []DiscoveredModule, hasRelux bool) error {
+	content, err := RenderRegistryWithData(RegistryTemplateData{
+		AppTypeName: appTypeName,
+		Imports:     BuildModuleImports(modules),
+		Modules:     modules,
+		HasRelux:    hasRelux,
+	})
 	if err != nil {
 		return err
 	}
@@ -215,6 +225,15 @@ func scaffoldRegistry(registryPath, appTypeName string, modules []DiscoveredModu
 	}
 
 	return os.WriteFile(registryPath, []byte(content), 0o644)
+}
+
+// detectReluxSetup checks App.swift for SwiftUIRelux import (set by relux setup).
+func detectReluxSetup(appSwiftPath string) bool {
+	data, err := os.ReadFile(appSwiftPath)
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(data), "import SwiftUIRelux")
 }
 
 // ScaffoldRegistryWithData writes Registry.swift using full template data.

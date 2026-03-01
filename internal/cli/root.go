@@ -3,7 +3,17 @@ package cli
 import (
 	"github.com/relux-works/ios-app-manager/internal/components"
 	"github.com/relux-works/ios-app-manager/internal/config"
+	"github.com/relux-works/ios-app-manager/internal/registry"
 	"github.com/spf13/cobra"
+
+	// Import module packages for init() registration.
+	_ "github.com/relux-works/ios-app-manager/internal/appconfig"
+	_ "github.com/relux-works/ios-app-manager/internal/httpclient"
+	_ "github.com/relux-works/ios-app-manager/internal/ioc"
+	_ "github.com/relux-works/ios-app-manager/internal/relux"
+	_ "github.com/relux-works/ios-app-manager/internal/securestore"
+	_ "github.com/relux-works/ios-app-manager/internal/tokenprovider"
+	_ "github.com/relux-works/ios-app-manager/internal/utilities"
 )
 
 const defaultVersion = "dev"
@@ -79,14 +89,12 @@ func NewRootCommandWithAppManager(appManager components.AppManager) *cobra.Comma
 		newCleanCommand(opts),
 		newQueryCommand(opts),
 		newMutationCommand(opts),
-		newIocCommand(opts),
-		newReluxCommand(opts),
-		newSecureStoreCommand(opts),
-		newUtilitiesCommand(opts),
-		newTokenProviderCommand(opts),
-		newHttpClientCommand(opts),
-		newAppConfigCommand(opts),
 	)
+
+	// Registry-driven module commands (two-phase setup).
+	for _, mod := range registry.AllSorted() {
+		cmd.AddCommand(NewSetupCommand(mod, opts))
+	}
 
 	return cmd
 }

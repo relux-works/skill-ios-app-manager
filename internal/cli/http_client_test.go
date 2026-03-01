@@ -19,11 +19,11 @@ func TestHttpClientSetupIntegration(t *testing.T) {
 	writeProjectScaffold(t, projectRoot, cfg)
 
 	// IoC setup first — creates Registry.swift with anchors.
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
 		t.Fatalf("ioc setup error = %v", err)
 	}
 
-	output, err := executeRootCommand("--config", configPath, "http-client", "setup")
+	output, err := executeRootCommand("--config", configPath, "http-client", "setup", "--yes")
 	if err != nil {
 		t.Fatalf("http-client setup error = %v", err)
 	}
@@ -88,16 +88,16 @@ func TestHttpClientSetupIdempotent(t *testing.T) {
 	writeProjectScaffold(t, projectRoot, cfg)
 
 	// IoC setup first.
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
 		t.Fatalf("ioc setup error = %v", err)
 	}
 
-	if _, err := executeRootCommand("--config", configPath, "http-client", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "http-client", "setup", "--yes"); err != nil {
 		t.Fatalf("first http-client setup error = %v", err)
 	}
 
 	// Second run should be idempotent.
-	if _, err := executeRootCommand("--config", configPath, "http-client", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "http-client", "setup", "--yes"); err != nil {
 		t.Fatalf("second http-client setup error = %v", err)
 	}
 
@@ -127,7 +127,7 @@ func TestHttpClientSetupNoConfig(t *testing.T) {
 	projectRoot := t.TempDir()
 	configPath := filepath.Join(projectRoot, config.DefaultConfigPath)
 
-	_, err := executeRootCommand("--config", configPath, "http-client", "setup")
+	_, err := executeRootCommand("--config", configPath, "http-client", "setup", "--yes")
 	if err == nil {
 		t.Fatal("expected error when config missing, got nil")
 	}
@@ -143,7 +143,7 @@ func TestHttpClientSetupWithoutIoC(t *testing.T) {
 	writeProjectScaffold(t, projectRoot, cfg)
 
 	// Don't run IoC setup — Registry.swift won't exist.
-	_, err := executeRootCommand("--config", configPath, "http-client", "setup")
+	_, err := executeRootCommand("--config", configPath, "http-client", "setup", "--yes")
 	if err == nil {
 		t.Fatal("expected error when Registry.swift missing, got nil")
 	}
@@ -159,11 +159,11 @@ func TestHttpClientSetupRegistryNetworkSection(t *testing.T) {
 	writeProjectScaffold(t, projectRoot, cfg)
 
 	// IoC setup creates Registry with empty network section.
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
 		t.Fatalf("ioc setup error = %v", err)
 	}
 
-	if _, err := executeRootCommand("--config", configPath, "http-client", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "http-client", "setup", "--yes"); err != nil {
 		t.Fatalf("http-client setup error = %v", err)
 	}
 
@@ -212,11 +212,11 @@ func TestHttpClientSetupE2EWithModules(t *testing.T) {
 		t.Fatalf("module create error = %v", err)
 	}
 
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
 		t.Fatalf("ioc setup error = %v", err)
 	}
 
-	if _, err := executeRootCommand("--config", configPath, "http-client", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "http-client", "setup", "--yes"); err != nil {
 		t.Fatalf("http-client setup error = %v", err)
 	}
 
