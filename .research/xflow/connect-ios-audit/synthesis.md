@@ -118,6 +118,43 @@ Widget and Live Activity extensions require coordinated setup that has zero CLI 
 
 **What's needed**: Part of `extension create` — auto-generate shared module with App Group constants and shared model types.
 
+#### A2/A3 Deep Dive: Extension ↔ App Data Sharing Architecture
+
+connect-ios uses **5 parallel mechanisms** to share data between main app and Live Activity extension:
+
+**1. XFlowShared Package (compile-time type sharing)**
+Lightweight Swift Package (iOS 17+, zero deps) in `/XFlowShared/`. Contains:
+- `ContactActivityAttributes` — ActivityKit attributes with immutable context + mutable `ContentState`
+- `SharedContactData` — contact info passed between layers
+- `MessageDisplay` — message bubbles for Live Activity UI
+- Custom `Codable` impl for APNs push payload format (Unix timestamp encoding)
+- Factory methods for UI states (loading, error, sending, no contact)
+
+**2. App Group UserDefaults (cross-process state flags)**
+Suite: `UserDefaults(suiteName: "group.org.xflow.app")`
+- `userId`, `currentOrganizationId` — auth context from main app
+- `cachedAvatarPath` — file path in shared container
+- `shouldLoadNextContact` — **widget → app signal** (load next contact after send)
+- `lastContactId`, `isExperimental` — feature flags
+
+**3. App Group FileManager container (binary data)**
+Main app caches avatars as 60×60 PNG files in `AvatarCache/` inside shared container. Widget reads via `FileManager.containerURL(forSecurityApplicationGroupIdentifier:)`. LRU cleanup keeps max 50 avatars. Widget must use `Data(contentsOf:) + UIImage(data:)` — `UIImage(contentsOfFile:)` doesn't work in extensions.
+
+**4. Shared Keychain (secrets)**
+Access groups: `H446YY77RR.org.xflow.app` + `H446YY77RR.org.xflow.app.liveactivity`. `SendMessageIntent.perform()` retrieves access token from Keychain via `SecItemCopyMatching()` to authorize API calls.
+
+**5. SharedCrmService (lightweight API client for extension)**
+Path: `/xflow-ios/Shared/SharedCrmService.swift`. Minimal service with 3 methods: `getNextContact`, `getContactById`, `sendMessage`. Takes credentials as parameters (stateless). Used by `SendMessageIntent`.
+
+**Key insight: widget does NOT make its own API calls.** Data arrives via `ContentState` from ActivityKit. When user sends a message, `SendMessageIntent` fires — it runs **in the main app process**, has full access to token + network, updates `Activity<>` directly. Widget re-renders from updated state.
+
+**Data flow:**
+1. Main app → `LiveActivityManager` loads contact, caches avatar, saves state to App Group UserDefaults
+2. Creates `Activity<ContactActivityAttributes>` with `ContentState` → widget appears
+3. User taps Send → `SendMessageIntent.perform()` in main app process
+4. Intent reads creds from UserDefaults + Keychain → calls `SharedCrmService` → fetches next contact → caches avatar → updates `activity.update()`
+5. Server can also push updates via APNs → iOS decodes `ContentState` via custom Codable → widget auto-updates
+
 ### MEDIUM Severity (Workaround Exists but Painful)
 
 #### A4. No Auth Provider Abstraction (Login + Logout)
