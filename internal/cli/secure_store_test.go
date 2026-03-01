@@ -19,7 +19,7 @@ func TestSecureStoreSetupIntegration(t *testing.T) {
 	// Create minimal project scaffold for config loading.
 	writeProjectScaffold(t, projectRoot, cfg)
 
-	output, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo")
+	output, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo", "--yes")
 	if err != nil {
 		t.Fatalf("executeRootCommand(secure-store setup) error = %v", err)
 	}
@@ -85,10 +85,10 @@ func TestSecureStoreSetupIdempotent(t *testing.T) {
 
 	writeProjectScaffold(t, projectRoot, cfg)
 
-	if _, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo", "--yes"); err != nil {
 		t.Fatalf("first secure-store setup error = %v", err)
 	}
-	if _, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo", "--yes"); err != nil {
 		t.Fatalf("second secure-store setup error = %v", err)
 	}
 
@@ -116,7 +116,7 @@ func TestSecureStoreSetupNoConfig(t *testing.T) {
 	// No config file exists.
 	configPath := filepath.Join(projectRoot, config.DefaultConfigPath)
 
-	_, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo")
+	_, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo", "--yes")
 	if err == nil {
 		t.Fatal("expected error when config missing, got nil")
 	}
@@ -132,7 +132,7 @@ func TestSecureStoreIoCDiscovery(t *testing.T) {
 	writeProjectScaffold(t, projectRoot, cfg)
 
 	// Create SecureStore module via secure-store setup.
-	if _, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo", "--yes"); err != nil {
 		t.Fatalf("secure-store setup error = %v", err)
 	}
 
@@ -145,12 +145,12 @@ func TestSecureStoreIoCDiscovery(t *testing.T) {
 	}
 
 	// Run IoC setup — it should discover SecureStore/SecureStoreImpl pair.
-	output, err := executeRootCommand("--config", configPath, "ioc", "setup")
+	output, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes")
 	if err != nil {
 		t.Fatalf("ioc setup error = %v", err)
 	}
 
-	if !strings.Contains(output, "SwiftIoC setup complete") {
+	if !strings.Contains(output, "IoC setup complete") {
 		t.Fatalf("output = %q, want setup confirmation", output)
 	}
 
@@ -181,7 +181,8 @@ func TestSecureStoreSetupMissingAccessGroupNoConfigGroups(t *testing.T) {
 
 	writeProjectScaffold(t, projectRoot, cfg)
 
-	_, err := executeRootCommand("--config", configPath, "secure-store", "setup")
+	// No --access-group flag; Plan() validates and returns error.
+	_, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--yes")
 	if err == nil {
 		t.Fatal("expected error when --access-group missing and no config groups, got nil")
 	}
@@ -204,7 +205,8 @@ func TestSecureStoreSetupMissingAccessGroupWithConfigGroups(t *testing.T) {
 
 	writeProjectScaffold(t, projectRoot, cfg)
 
-	_, err := executeRootCommand("--config", configPath, "secure-store", "setup")
+	// No --access-group flag; Plan() validates and returns error with available groups.
+	_, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--yes")
 	if err == nil {
 		t.Fatal("expected error when --access-group missing, got nil")
 	}
@@ -227,7 +229,7 @@ func TestSecureStoreSetupWrongAccessGroup(t *testing.T) {
 
 	writeProjectScaffold(t, projectRoot, cfg)
 
-	_, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.fake")
+	_, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.fake", "--yes")
 	if err == nil {
 		t.Fatal("expected error when --access-group not in config, got nil")
 	}

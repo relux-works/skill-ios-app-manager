@@ -18,21 +18,21 @@ func TestAppConfigSetupIntegration(t *testing.T) {
 	writeProjectScaffold(t, projectRoot, cfg)
 
 	// IoC setup first — creates Registry.swift with anchors.
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
 		t.Fatalf("ioc setup error = %v", err)
 	}
 
 	// SecureStore setup — required for AppConfig.
-	if _, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo", "--yes"); err != nil {
 		t.Fatalf("secure-store setup error = %v", err)
 	}
 
 	// Re-run IoC setup to regenerate Registry with SecureStore.
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
 		t.Fatalf("ioc setup (re-run) error = %v", err)
 	}
 
-	output, err := executeRootCommand("--config", configPath, "app-config", "setup")
+	output, err := executeRootCommand("--config", configPath, "app-config", "setup", "--yes")
 	if err != nil {
 		t.Fatalf("app-config setup error = %v", err)
 	}
@@ -100,23 +100,23 @@ func TestAppConfigSetupIdempotent(t *testing.T) {
 	writeProjectScaffold(t, projectRoot, cfg)
 
 	// Setup prerequisites.
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
 		t.Fatalf("ioc setup error = %v", err)
 	}
-	if _, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo", "--yes"); err != nil {
 		t.Fatalf("secure-store setup error = %v", err)
 	}
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
 		t.Fatalf("ioc setup (re-run) error = %v", err)
 	}
 
 	// First run.
-	if _, err := executeRootCommand("--config", configPath, "app-config", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "app-config", "setup", "--yes"); err != nil {
 		t.Fatalf("first app-config setup error = %v", err)
 	}
 
 	// Second run should be idempotent.
-	if _, err := executeRootCommand("--config", configPath, "app-config", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "app-config", "setup", "--yes"); err != nil {
 		t.Fatalf("second app-config setup error = %v", err)
 	}
 
@@ -139,7 +139,7 @@ func TestAppConfigSetupMissingIoC(t *testing.T) {
 	writeProjectScaffold(t, projectRoot, cfg)
 
 	// Don't run IoC setup — Registry.swift won't exist.
-	_, err := executeRootCommand("--config", configPath, "app-config", "setup")
+	_, err := executeRootCommand("--config", configPath, "app-config", "setup", "--yes")
 	if err == nil {
 		t.Fatal("expected error when Registry.swift missing, got nil")
 	}
@@ -159,18 +159,18 @@ func TestAppConfigSetupMissingSecureStore(t *testing.T) {
 	writeProjectScaffold(t, projectRoot, cfg)
 
 	// IoC setup creates Registry without SecureStore.
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup"); err != nil {
+	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
 		t.Fatalf("ioc setup error = %v", err)
 	}
 
 	// No secure-store setup — Registry won't have SecureStoring.
-	_, err := executeRootCommand("--config", configPath, "app-config", "setup")
+	_, err := executeRootCommand("--config", configPath, "app-config", "setup", "--yes")
 	if err == nil {
 		t.Fatal("expected error when SecureStore missing, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "secure-store setup") {
-		t.Fatalf("error = %q, want guidance about secure-store setup", err.Error())
+	if !strings.Contains(err.Error(), "SecureStore") {
+		t.Fatalf("error = %q, want missing SecureStore dependency message", err.Error())
 	}
 }
 
@@ -191,7 +191,7 @@ func TestAppConfigSetupNoConfig(t *testing.T) {
 	projectRoot := t.TempDir()
 	configPath := filepath.Join(projectRoot, config.DefaultConfigPath)
 
-	_, err := executeRootCommand("--config", configPath, "app-config", "setup")
+	_, err := executeRootCommand("--config", configPath, "app-config", "setup", "--yes")
 	if err == nil {
 		t.Fatal("expected error when config missing, got nil")
 	}
