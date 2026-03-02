@@ -46,7 +46,6 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		filepath.Join(outputDir, ".periphery.yml"),
 		filepath.Join(outputDir, ".swiftlint.yml"),
 		filepath.Join(outputDir, ".gitignore"),
-		filepath.Join(outputDir, cfg.AppName+".entitlements"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "App.swift"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration.swift"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+Keychain.swift"),
@@ -55,6 +54,11 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		filepath.Join(assetsPath, "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "AppIcon.png"),
+		filepath.Join(outputDir, "Tuist", "ProjectDescriptionHelpers", "Capability.swift"),
+		filepath.Join(outputDir, "Tuist", "ProjectDescriptionHelpers", "EntitlementsFactory.swift"),
+		filepath.Join(outputDir, "Tuist", "ProjectDescriptionHelpers", "Capability+PortalCapability.swift"),
+		filepath.Join(outputDir, "Tuist", "ProjectDescriptionHelpers", "AppleSupportedCapabilities.swift"),
+		filepath.Join(outputDir, "Tuist", "ProjectDescriptionHelpers", "AppCapabilities.swift"),
 	}
 	for _, path := range requiredFiles {
 		requireFile(t, path)
@@ -69,7 +73,8 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		cfg.ProjectVersion,
 		`Targets/` + cfg.AppName + `/Sources/**`,
 		`Targets/` + cfg.AppName + `/Resources/**`,
-		cfg.AppName + `.entitlements`,
+		"EntitlementsFactory.make(",
+		"AppCapabilities.app",
 	}
 	for _, want := range projectChecks {
 		if !strings.Contains(projectManifest, want) {
@@ -159,18 +164,6 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		}
 	}
 
-	entitlements := readFile(t, filepath.Join(outputDir, cfg.AppName+".entitlements"))
-	if !strings.Contains(entitlements, "<key>aps-environment</key>") {
-		t.Fatalf("entitlements missing aps-environment:\n%s", entitlements)
-	}
-	if len(cfg.AppGroups) > 0 && !strings.Contains(entitlements, cfg.AppGroups[0]) {
-		t.Fatalf("entitlements missing app group %q:\n%s", cfg.AppGroups[0], entitlements)
-	}
-	expectedKeychainGroup := "$(AppIdentifierPrefix)" + cfg.BundleID + ".shared"
-	if !strings.Contains(entitlements, expectedKeychainGroup) {
-		t.Fatalf("entitlements missing keychain group %q:\n%s", expectedKeychainGroup, entitlements)
-	}
-
 	keychainConfig := readFile(t, filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+Keychain.swift"))
 	keychainChecks := []string{
 		"Configuration",
@@ -219,28 +212,6 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 	configFile := readFile(t, filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration.swift"))
 	if !strings.Contains(configFile, "enum Configuration {}") {
 		t.Fatalf("Configuration.swift missing namespace enum:\n%s", configFile)
-	}
-}
-
-func TestScaffoldEntitlementsWithoutAppGroups(t *testing.T) {
-	t.Parallel()
-
-	cfg := loadConfigFixture(t, "minimal-config.json")
-	outputDir := t.TempDir()
-
-	scaffolder := New(templaterenderer.NewRenderer(templaterenderer.WithRootDir(outputDir)))
-	if _, err := scaffolder.Scaffold(cfg, outputDir, false); err != nil {
-		t.Fatalf("Scaffold() error = %v", err)
-	}
-
-	entitlementsPath := filepath.Join(outputDir, cfg.AppName+".entitlements")
-	entitlements := readFile(t, entitlementsPath)
-
-	if !strings.Contains(entitlements, "<key>aps-environment</key>") {
-		t.Fatalf("entitlements missing aps-environment:\n%s", entitlements)
-	}
-	if strings.Contains(entitlements, "com.apple.security.application-groups") {
-		t.Fatalf("entitlements should omit application groups when config has none:\n%s", entitlements)
 	}
 }
 

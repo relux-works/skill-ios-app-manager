@@ -55,6 +55,12 @@ type ExternalDep struct {
 	Package string // SPM package name for Package.swift .package(name:), empty = use Product
 }
 
+// Capability describes a Tuist capability declared by a module.
+type Capability struct {
+	Type string            // keychainSharing, appGroups, pushNotifications, etc.
+	Args map[string]string // optional params: e.g. {"group": "group.xxx"} for appGroups
+}
+
 // Module describes a foundation module that can be set up via the CLI.
 type Module struct {
 	ID           ModuleID
@@ -63,6 +69,7 @@ type Module struct {
 	Category     Category // infra, foundation, network, utils
 	Dependencies []ModuleID
 	ExternalDeps []ExternalDep
+	Capabilities []Capability
 
 	// Two-phase setup
 	Plan       func(SetupInput) (string, error) // returns plan text

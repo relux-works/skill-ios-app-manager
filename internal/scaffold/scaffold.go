@@ -3,12 +3,14 @@ package scaffold
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/relux-works/ios-app-manager/internal/config"
+	"github.com/relux-works/ios-app-manager/internal/scaffold/capability_files"
 	templaterenderer "github.com/relux-works/ios-app-manager/internal/template"
 )
 
@@ -159,7 +161,6 @@ func (s *Scaffolder) planFiles(cfg config.ProjectConfig, root string, appName st
 	files[filepath.Join(root, ".periphery.yml")] = GeneratePeripheryConfig(cfg)
 	files[filepath.Join(root, ".swiftlint.yml")] = GenerateSwiftLintConfig(cfg)
 	files[filepath.Join(root, ".gitignore")] = GenerateGitignore()
-	files[filepath.Join(root, appName+".entitlements")] = GenerateEntitlements(cfg)
 	files[filepath.Join(root, "Targets", appName, "Sources", "App.swift")] = GenerateAppStub(cfg)
 	files[filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Configuration.swift")] = GenerateConfiguration()
 	files[filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Configuration+Keychain.swift")] = GenerateConfigurationKeychain(cfg)
@@ -172,6 +173,29 @@ func (s *Scaffolder) planFiles(cfg config.ProjectConfig, root string, appName st
 	assetsPath := filepath.Join(root, "Targets", appName, "Resources", "Assets.xcassets")
 	files[filepath.Join(assetsPath, "Contents.json")] = assetCatalogContentsJSON()
 	files[filepath.Join(assetsPath, "AppIcon.appiconset", "Contents.json")] = appIconsetContentsJSON()
+
+	// Copy capability DSL files into ProjectDescriptionHelpers.
+	helpersDir := filepath.Join(root, "Tuist", "ProjectDescriptionHelpers")
+	err = fs.WalkDir(capability_files.CapabilityFiles, ".", func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".swift") {
+			return nil
+		}
+		data, readErr := capability_files.CapabilityFiles.ReadFile(path)
+		if readErr != nil {
+			return fmt.Errorf("read embedded %s: %w", path, readErr)
+		}
+		files[filepath.Join(helpersDir, path)] = string(data)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("embed capability files: %w", err)
+	}
+
+	// Generate initial AppCapabilities.swift.
+	files[filepath.Join(helpersDir, "AppCapabilities.swift")] = GenerateAppCapabilities()
 
 	return files, nil
 }

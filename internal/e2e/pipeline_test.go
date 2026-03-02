@@ -230,7 +230,6 @@ func verifyScaffoldOutput(t *testing.T, projectRoot string, cfg config.ProjectCo
 		filepath.Join(projectRoot, "Makefile"),
 		filepath.Join(projectRoot, ".gitignore"),
 		filepath.Join(projectRoot, ".swiftlint.yml"),
-		filepath.Join(projectRoot, cfg.AppName+".entitlements"),
 		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "App.swift"),
 		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration.swift"),
 		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+AppGroups.swift"),

@@ -7,22 +7,31 @@ import (
 	"testing"
 
 	"github.com/relux-works/ios-app-manager/internal/config"
-	"github.com/relux-works/ios-app-manager/internal/scaffold"
 )
 
-func TestEntitlementsCommandAddListRemoveUsingConfigDefaultPath(t *testing.T) {
+const testEntitlementsPlist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>aps-environment</key>
+	<string>development</string>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.example.demo</string>
+	</array>
+</dict>
+</plist>
+`
+
+func TestEntitlementsListUsingConfigDefaultPath(t *testing.T) {
 	t.Parallel()
 
 	cfg := testProjectConfig()
 	configPath := writeTestConfig(t, cfg)
 	entitlementsPath := filepath.Join(filepath.Dir(configPath), cfg.AppName+".entitlements")
 
-	if err := os.WriteFile(entitlementsPath, []byte(scaffold.GenerateEntitlements(cfg)), 0o644); err != nil {
+	if err := os.WriteFile(entitlementsPath, []byte(testEntitlementsPlist), 0o644); err != nil {
 		t.Fatalf("WriteFile(%q) error = %v", entitlementsPath, err)
-	}
-
-	if _, err := executeRootCommand("entitlements", "--config", configPath, "add", "healthkit"); err != nil {
-		t.Fatalf("executeRootCommand(add healthkit) error = %v", err)
 	}
 
 	listOutput, err := executeRootCommand("entitlements", "--config", configPath, "list")
@@ -31,62 +40,29 @@ func TestEntitlementsCommandAddListRemoveUsingConfigDefaultPath(t *testing.T) {
 	}
 
 	for _, expected := range []string{
-		"push (aps-environment) = development",
-		"app-groups (com.apple.security.application-groups)",
-		"healthkit (com.apple.developer.healthkit) = true",
+		"aps-environment = development",
+		"com.apple.security.application-groups",
 	} {
 		if !strings.Contains(listOutput, expected) {
 			t.Fatalf("list output missing %q:\n%s", expected, listOutput)
 		}
 	}
-
-	if _, err := executeRootCommand("entitlements", "--config", configPath, "remove", "healthkit"); err != nil {
-		t.Fatalf("executeRootCommand(remove healthkit) error = %v", err)
-	}
-
-	listOutput, err = executeRootCommand("entitlements", "--config", configPath, "list")
-	if err != nil {
-		t.Fatalf("executeRootCommand(list after remove) error = %v", err)
-	}
-	if strings.Contains(listOutput, "healthkit") {
-		t.Fatalf("list output still contains healthkit after remove:\n%s", listOutput)
-	}
 }
 
-func TestEntitlementsCommandSupportsExplicitPathFlag(t *testing.T) {
+func TestEntitlementsListSupportsExplicitPathFlag(t *testing.T) {
 	t.Parallel()
 
 	entitlementsPath := filepath.Join(t.TempDir(), "Custom.entitlements")
-	if err := os.WriteFile(entitlementsPath, []byte(scaffold.GenerateEntitlements(testProjectConfig())), 0o644); err != nil {
+	if err := os.WriteFile(entitlementsPath, []byte(testEntitlementsPlist), 0o644); err != nil {
 		t.Fatalf("WriteFile(%q) error = %v", entitlementsPath, err)
-	}
-
-	if _, err := executeRootCommand(
-		"entitlements",
-		"--path",
-		entitlementsPath,
-		"add",
-		"--value",
-		"production",
-		"push",
-	); err != nil {
-		t.Fatalf("executeRootCommand(add push --path) error = %v", err)
 	}
 
 	listOutput, err := executeRootCommand("entitlements", "--path", entitlementsPath, "list")
 	if err != nil {
 		t.Fatalf("executeRootCommand(list --path) error = %v", err)
 	}
-	if !strings.Contains(listOutput, "push (aps-environment) = production") {
-		t.Fatalf("list output missing updated push entitlement:\n%s", listOutput)
-	}
-}
-
-func TestEntitlementsCommandAddValidatesArguments(t *testing.T) {
-	t.Parallel()
-
-	if _, err := executeRootCommand("entitlements", "add"); err == nil {
-		t.Fatal("executeRootCommand(entitlements add) error = nil, want argument validation error")
+	if !strings.Contains(listOutput, "aps-environment = development") {
+		t.Fatalf("list output missing aps-environment:\n%s", listOutput)
 	}
 }
 
