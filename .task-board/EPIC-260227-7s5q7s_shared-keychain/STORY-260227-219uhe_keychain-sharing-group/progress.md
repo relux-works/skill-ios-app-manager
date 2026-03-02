@@ -1,28 +1,29 @@
-# STORY-260227-219uhe Progress
+## Status
+done
 
-## Status: done
+## Assigned To
+(none)
 
-## Changes
+## Created
 
-### 1. Scaffold entitlements (`internal/scaffold/entitlements.go`)
-- Added `keychain-access-groups` entry to `GenerateEntitlements()`
-- Format: `$(AppIdentifierPrefix)<bundleId>.shared`
-- Always included when `bundleId` is non-empty (same pattern as `aps-environment`)
-- Added `keychainAccessGroup()` helper function
 
-### 2. Configuration+Keychain.swift (`internal/scaffold/configuration_keychain.go`)
-- New `GenerateConfigurationKeychain(cfg)` function
-- Generates `Configuration+Keychain.swift` with constants:
-  - `serviceName` = `<bundleId>` (for keychain service identification)
-  - `accessGroup` = `<teamId>.<bundleId>.shared` (runtime-resolved group)
-- Generated at init time as part of scaffold
+## Last Update
+2026-03-02T10:48:00Z
 
-### 3. Scaffold integration (`internal/scaffold/scaffold.go`)
-- Added `Configuration+Keychain.swift` to `planFiles()` output
+## Blocked By
+- (none)
 
-### 4. Tests
-- `entitlements_test.go`: assertions for keychain-access-groups in plist
-- `configuration_keychain_test.go`: unit test for constants generation
-- `scaffold_test.go`: file existence + content assertions for both entitlements and config
+## Blocks
+- (none)
 
-## All tests passing
+## Checklist
+(empty)
+
+## Notes
+Already covered by secure-store setup --access-group. Generates kSecAttrAccessGroup in impl, Configuration.AppGroups in IoC registration, validates against config app_groups.
+
+## Precondition Resources
+(none)
+
+## Outcome Resources
+(none)

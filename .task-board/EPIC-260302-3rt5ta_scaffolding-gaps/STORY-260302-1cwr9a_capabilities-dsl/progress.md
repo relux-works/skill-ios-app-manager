@@ -5,16 +5,16 @@ done
 (none)
 
 ## Created
-2026-02-27T22:37:35Z
+2026-03-02T10:57:08Z
 
 ## Last Update
-2026-03-02T10:40:48Z
+2026-03-02T11:26:55Z
 
 ## Blocked By
 - (none)
 
 ## Blocks
-- (none)
+- STORY-260302-3v3bcu
 
 ## Checklist
 (empty)
@@ -22,7 +22,7 @@ done
 ## Notes
 
 ## Precondition Resources
-(none)
+- [tuist-akme-forensics](file://STORY-260302-1cwr9a/tuist-akme-forensics) — tuist-akme research and source files location
 
 ## Outcome Resources
 (none)

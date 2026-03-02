@@ -1,20 +1,23 @@
 ## Status
-done
+backlog
 
 ## Assigned To
 (none)
 
 ## Created
-2026-02-27T22:37:35Z
+2026-03-02T10:46:32Z
 
 ## Last Update
-2026-03-02T10:40:48Z
+2026-03-02T11:14:27Z
 
 ## Blocked By
-- (none)
+- STORY-260302-1cwr9a
 
 ## Blocks
-- (none)
+- STORY-260302-16q238
+- STORY-260302-1hnx69
+- STORY-260302-667ruw
+- STORY-260302-2amz0j
 
 ## Checklist
 (empty)
