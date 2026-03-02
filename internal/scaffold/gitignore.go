@@ -9,10 +9,26 @@ func GenerateGitignore() string {
 *.xcodeproj
 *.xcworkspace
 xcuserdata/
+*.xcuserstate
 DerivedData/
 build/
 
 # Tuist
 Derived/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods (if used)
+Pods/
+
+# IDE
+.idea/
+*.swp
+
+# Project tooling
+.task-board/
+task-board.config.json
 `
 }
