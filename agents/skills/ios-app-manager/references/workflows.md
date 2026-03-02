@@ -16,7 +16,9 @@ ios-app-manager token-provider setup
 ios-app-manager utilities setup
 
 # 3) Create feature modules
-ios-app-manager module create Auth --type relux-feature
+ios-app-manager module blueprint Auth > auth.blueprint.json
+# Edit auth.blueprint.json to configure data/UI layers, then:
+ios-app-manager module create --from auth.blueprint.json
 ios-app-manager module create Profile --type feature
 
 # 4) Set up components that patch Registry (must be AFTER module create)

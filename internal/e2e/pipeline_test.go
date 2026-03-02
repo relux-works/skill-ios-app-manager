@@ -48,13 +48,18 @@ func TestPipelineInitModuleCreateAndValidation(t *testing.T) {
 
 	verifyTodoListModule(t, projectRoot, cfg.ModulesPath)
 
-	// Create a relux-feature module to verify full pipeline.
-	reluxOutput, err := executeRootCommand("--config", configPath, "module", "create", "Auth", "--type", "relux-feature")
-	if err != nil {
-		t.Fatalf("executeRootCommand(module create relux-feature) error = %v", err)
+	// Create a relux-feature module via blueprint to verify full pipeline.
+	bpJSON := `{"name":"Auth","type":"relux-feature","data":{"http":true,"ws":false},"ui":{"features":["Main"],"components":null}}`
+	bpPath := filepath.Join(projectRoot, "auth.blueprint.json")
+	if err := os.WriteFile(bpPath, []byte(bpJSON), 0o644); err != nil {
+		t.Fatalf("write blueprint: %v", err)
 	}
-	if !strings.Contains(reluxOutput, `created module "Auth" of type "relux-feature"`) {
-		t.Fatalf("relux-feature module create output = %q, want create confirmation", reluxOutput)
+	reluxOutput, err := executeRootCommand("--config", configPath, "module", "create", "--from", bpPath)
+	if err != nil {
+		t.Fatalf("executeRootCommand(module create --from blueprint) error = %v", err)
+	}
+	if !strings.Contains(reluxOutput, `created module "Auth" from blueprint`) {
+		t.Fatalf("blueprint module create output = %q, want create confirmation", reluxOutput)
 	}
 
 	verifyReluxFeatureModule(t, projectRoot, cfg.ModulesPath)
@@ -127,7 +132,6 @@ func TestPipelineAllModuleTypesRegression(t *testing.T) {
 		{"Cache", "shared", true},
 		{"Theme", "ui", true},
 		{"Logger", "utility", false},
-		{"Payment", "relux-feature", true},
 	}
 
 	for _, mc := range cases {
@@ -140,9 +144,23 @@ func TestPipelineAllModuleTypesRegression(t *testing.T) {
 		}
 	}
 
+	// Create relux-feature via blueprint.
+	bpJSON := `{"name":"Payment","type":"relux-feature","data":{"http":true,"ws":false},"ui":{"features":["Main"],"components":null}}`
+	bpPath := filepath.Join(projectRoot, "payment.blueprint.json")
+	if err := os.WriteFile(bpPath, []byte(bpJSON), 0o644); err != nil {
+		t.Fatalf("write blueprint: %v", err)
+	}
+	bpOutput, bpErr := executeRootCommand("--config", configPath, "module", "create", "--from", bpPath)
+	if bpErr != nil {
+		t.Fatalf("module create Payment (blueprint) error = %v", bpErr)
+	}
+	if !strings.Contains(bpOutput, "Payment") {
+		t.Fatalf("output missing module name %q: %s", "Payment", bpOutput)
+	}
+
 	// Verify standard module types (feature, kit, shared, ui) produce 4 files each.
 	for _, mc := range cases {
-		if !mc.hasImpl || mc.moduleType == "relux-feature" {
+		if !mc.hasImpl {
 			continue
 		}
 
@@ -181,19 +199,22 @@ func TestPipelineAllModuleTypesRegression(t *testing.T) {
 		}
 	})
 
-	// Verify relux-feature module has all 8 files + swift-relux dep.
+	// Verify relux-feature module (created via blueprint) has expected files + swift-relux dep.
 	t.Run("relux-feature_files", func(t *testing.T) {
 		interfaceSrc := filepath.Join(modulesRoot, "Payment", "Sources", "Payment")
 		implSrc := filepath.Join(modulesRoot, "PaymentImpl", "Sources", "PaymentImpl")
 
+		// Module skeleton
 		requireFile(t, filepath.Join(interfaceSrc, "Payment.swift"))
 		requireFile(t, filepath.Join(interfaceSrc, "Module", "Payment.Module.swift"))
 		requireFile(t, filepath.Join(interfaceSrc, "Module", "Payment.Module+Interface.swift"))
-		requireFile(t, filepath.Join(interfaceSrc, "Business", "Payment.Business+Action.swift"))
-		requireFile(t, filepath.Join(interfaceSrc, "Business", "Payment.Business+Effect.swift"))
 		requireFile(t, filepath.Join(implSrc, "Module", "Payment.Module+Impl.swift"))
+
+		// Business layer
+		requireFile(t, filepath.Join(interfaceSrc, "Business", "Payment.Business+Action.swift"))
+		requireFile(t, filepath.Join(interfaceSrc, "Business", "Middleware", "Payment.Business+Effect.swift"))
 		requireFile(t, filepath.Join(implSrc, "Business", "Payment.Business+State.swift"))
-		requireFile(t, filepath.Join(implSrc, "Business", "Payment.Business+Flow.swift"))
+		requireFile(t, filepath.Join(implSrc, "Business", "Middleware", "Payment.Business+Flow.swift"))
 
 		manifest := readFile(t, filepath.Join(modulesRoot, "Payment", "Package.swift"))
 		if !strings.Contains(manifest, "swift-relux") {
@@ -284,17 +305,37 @@ func verifyReluxFeatureModule(t *testing.T, projectRoot string, modulesPath stri
 	interfaceSources := filepath.Join(modulesRoot, "Auth", "Sources", "Auth")
 	implSources := filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl")
 
-	// Interface package: namespace, module, interface, action, effect
+	// Interface package: namespace, module, interface
 	requireFile(t, filepath.Join(interfaceSources, "Auth.swift"))
 	requireFile(t, filepath.Join(interfaceSources, "Module", "Auth.Module.swift"))
 	requireFile(t, filepath.Join(interfaceSources, "Module", "Auth.Module+Interface.swift"))
-	requireFile(t, filepath.Join(interfaceSources, "Business", "Auth.Business+Action.swift"))
-	requireFile(t, filepath.Join(interfaceSources, "Business", "Auth.Business+Effect.swift"))
 
-	// Impl package: impl, state, flow
+	// Blueprint business layer: action, effect (in Middleware/), error, model
+	requireFile(t, filepath.Join(interfaceSources, "Business", "Auth.Business+Action.swift"))
+	requireFile(t, filepath.Join(interfaceSources, "Business", "Middleware", "Auth.Business+Effect.swift"))
+	requireFile(t, filepath.Join(interfaceSources, "Business", "Auth.Business+Error.swift"))
+	requireFile(t, filepath.Join(interfaceSources, "Business", "Models", "Auth.Business+Model+Scaffolded.swift"))
+
+	// Blueprint data layer (HTTP enabled): fetcher, fetcher config, DTO
+	requireFile(t, filepath.Join(interfaceSources, "Data", "Api", "Http", "Auth.Data+Api+Fetcher.swift"))
+	requireFile(t, filepath.Join(interfaceSources, "Data", "Api", "Http", "Auth.Data+Api+Fetcher+Config.swift"))
+	requireFile(t, filepath.Join(interfaceSources, "Data", "Api", "DTO", "Auth.Data+Api+DTO+ScaffoldedResponse.swift"))
+
+	// Impl package: impl, state, reducer, flow (in Middleware/), service (in Middleware/)
 	requireFile(t, filepath.Join(implSources, "Module", "Auth.Module+Impl.swift"))
 	requireFile(t, filepath.Join(implSources, "Business", "Auth.Business+State.swift"))
-	requireFile(t, filepath.Join(implSources, "Business", "Auth.Business+Flow.swift"))
+	requireFile(t, filepath.Join(implSources, "Business", "Auth.Business+Reducer.swift"))
+	requireFile(t, filepath.Join(implSources, "Business", "Middleware", "Auth.Business+Flow.swift"))
+	requireFile(t, filepath.Join(implSources, "Business", "Middleware", "Auth.Business+Service.swift"))
+
+	// Blueprint UI layer (features: Main)
+	requireFile(t, filepath.Join(implSources, "UI", "Auth.UI+ViewState.swift"))
+	requireFile(t, filepath.Join(implSources, "UI", "Auth.UI+Router.swift"))
+	requireFile(t, filepath.Join(ifaceUIModel(interfaceSources), "Auth.UI+Model+Page.swift"))
+	requireFile(t, filepath.Join(implSources, "UI", "Main", "Auth.UI+Main+Container.swift"))
+	requireFile(t, filepath.Join(implSources, "UI", "Main", "Auth.UI+Main+Container+LocalState.swift"))
+	requireFile(t, filepath.Join(implSources, "UI", "Main", "Page", "Auth.UI+Main+Page.swift"))
+	requireFile(t, filepath.Join(implSources, "UI", "Main", "Page", "Auth.UI+Main+Page+Props.swift"))
 
 	// Verify Package.swift files contain swift-relux dependency
 	interfaceManifest := readFile(t, filepath.Join(modulesRoot, "Auth", "Package.swift"))
@@ -317,20 +358,6 @@ func verifyReluxFeatureModule(t *testing.T, projectRoot string, modulesPath stri
 	rootManifest := readFile(t, filepath.Join(projectRoot, "Package.swift"))
 	if !strings.Contains(rootManifest, "swift-relux") {
 		t.Fatalf("root Package.swift missing swift-relux dependency:\n%s", rootManifest)
-	}
-
-	// Verify template content is correct (no template artifacts, has Relux imports)
-	actionContent := readFile(t, filepath.Join(interfaceSources, "Business", "Auth.Business+Action.swift"))
-	if !strings.Contains(actionContent, "import Relux") {
-		t.Fatalf("Auth action file missing 'import Relux':\n%s", actionContent)
-	}
-
-	stateContent := readFile(t, filepath.Join(implSources, "Business", "Auth.Business+State.swift"))
-	if !strings.Contains(stateContent, "import Relux") {
-		t.Fatalf("Auth state file missing 'import Relux':\n%s", stateContent)
-	}
-	if !strings.Contains(stateContent, "import Auth") {
-		t.Fatalf("Auth state file missing 'import Auth':\n%s", stateContent)
 	}
 }
 
@@ -513,6 +540,10 @@ func readFile(t *testing.T, path string) string {
 	}
 
 	return string(content)
+}
+
+func ifaceUIModel(ifaceSrc string) string {
+	return filepath.Join(ifaceSrc, "UI", "Model")
 }
 
 func parsePhonyTargets(t *testing.T, makefile string) []string {

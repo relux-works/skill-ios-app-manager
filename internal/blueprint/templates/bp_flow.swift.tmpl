@@ -1,0 +1,44 @@
+import {{.InterfacePackageName}}
+import Relux
+
+extension {{.ModuleName}}.Business {
+    public actor Flow: Relux.Flow {
+        private let state: {{.ModuleName}}.Business.State
+        private let service: any {{.ModuleName}}.Business.IService
+
+        public init(
+            state: {{.ModuleName}}.Business.State,
+            service: any {{.ModuleName}}.Business.IService
+        ) {
+            self.state = state
+            self.service = service
+        }
+
+        @discardableResult
+        public func apply(_ effect: any Relux.Effect) async -> Relux.ActionResult {
+            guard let effect = effect as? {{.ModuleName}}.Business.Effect else { return .success }
+            return await internalApply(effect)
+        }
+
+        private func internalApply(_ effect: {{.ModuleName}}.Business.Effect) async -> Relux.ActionResult {
+            switch effect {
+            case .scaffoldedEffect:
+                return await handleScaffoldedEffect()
+            }
+        }
+
+        private func handleScaffoldedEffect() async -> Relux.ActionResult {
+            let result = await service.scaffoldedMethod()
+            switch result {
+            case .success(let id):
+                return await actions {
+                    {{.ModuleName}}.Business.Action.scaffoldedSuccess(id: id)
+                }
+            case .failure(let error):
+                return await actions {
+                    {{.ModuleName}}.Business.Action.scaffoldedFail(error: error)
+                }
+            }
+        }
+    }
+}

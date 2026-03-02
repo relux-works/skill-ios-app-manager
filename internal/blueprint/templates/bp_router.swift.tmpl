@@ -1,0 +1,16 @@
+import {{.InterfacePackageName}}
+import SwiftUIPlus
+
+extension {{.ModuleName}}.UI {
+    public struct Router {
+        @ViewBuilder
+        public static func destination(for page: {{.ModuleName}}.UI.Model.Page) -> some View {
+            switch page {
+{{- range .Features}}
+            case .{{.NameLower}}:
+                {{$.ModuleName}}.UI.{{.Name}}.Container()
+{{- end}}
+            }
+        }
+    }
+}

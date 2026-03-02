@@ -1,0 +1,24 @@
+import Foundation
+
+extension {{.ModuleName}}.Data.Api.Http {
+    public protocol IFetcher: Actor {
+        func fetchScaffolded() async throws -> {{.ModuleName}}.Data.Api.DTO.ScaffoldedResponse
+    }
+
+    public actor Fetcher: IFetcher {
+        private let config: {{.ModuleName}}.Data.Api.Http.Config
+
+        public init(config: {{.ModuleName}}.Data.Api.Http.Config) {
+            self.config = config
+        }
+
+        public func fetchScaffolded() async throws -> {{.ModuleName}}.Data.Api.DTO.ScaffoldedResponse {
+            let url = config.scaffoldedEndpoint
+            let (data, _) = try await URLSession.shared.data(from: url)
+            return try JSONDecoder().decode(
+                {{.ModuleName}}.Data.Api.DTO.ScaffoldedResponse.self,
+                from: data
+            )
+        }
+    }
+}

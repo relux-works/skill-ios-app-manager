@@ -13,8 +13,8 @@ func TestGenerateAppCapabilities(t *testing.T) {
 	content := GenerateAppCapabilities()
 	checks := []string{
 		"import ProjectDescription",
-		"enum AppCapabilities",
-		"static let app: [Capability] = [",
+		"public enum AppCapabilities",
+		"public static let app: [Capability] = [",
 	}
 	for _, want := range checks {
 		if !strings.Contains(content, want) {

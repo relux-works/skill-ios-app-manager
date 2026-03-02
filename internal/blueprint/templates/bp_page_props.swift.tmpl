@@ -1,0 +1,12 @@
+import {{.InterfacePackageName}}
+import FoundationPlus
+
+extension {{.ModuleName}}.UI.{{.FeatureName}}.Page {
+    struct Props {
+        let scaffoldedField: MaybeData<UUID, {{.ModuleName}}.Business.Err>
+    }
+
+    struct Actions {
+        let onScaffoldedAction: () async -> Void
+    }
+}

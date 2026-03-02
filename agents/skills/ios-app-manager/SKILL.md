@@ -54,13 +54,15 @@ init → ioc setup → relux setup → secure-store setup → token-provider set
 
 ### Module management
 
-- Create module: `ios-app-manager module create <name> --type <feature|kit|shared|ui|utility|relux-feature>`
+- Create module: `ios-app-manager module create <name> --type <feature|kit|shared|ui|utility>`
+- Create relux module from blueprint: `ios-app-manager module create --from <blueprint.json>`
+- Generate blueprint template: `ios-app-manager module blueprint <Name>`
 - List modules: `ios-app-manager module list`
 - Delete module: `ios-app-manager module delete <name> [--force]`
 
 Module type guidance:
 - `feature`: UI module, interface/implementation split (no Relux business logic)
-- `relux-feature`: Feature with full Relux business logic (actions, effects, state, flow)
+- `relux-feature`: Blueprint-only. Use `module blueprint <Name>` to generate template, then `module create --from <file>.blueprint.json`
 - `kit`: Business logic library with interface/implementation split
 - `shared`: Shared state/services with interface/implementation split
 - `ui`: Pure UI components with interface/implementation split

@@ -36,11 +36,6 @@ func TestGetModuleType(t *testing.T) {
 			want:  expected[ModuleTypeUI],
 		},
 		{
-			name:  "relux-feature",
-			input: "relux-feature",
-			want:  expected[ModuleTypeReluxFeature],
-		},
-		{
 			name:  "utility",
 			input: "utility",
 			want:  expected[ModuleTypeUtility],
@@ -87,6 +82,11 @@ func TestGetModuleTypeErrors(t *testing.T) {
 			input:   "product",
 			wantErr: `unknown module type "product"`,
 		},
+		{
+			name:    "relux-feature is blueprint-only",
+			input:   "relux-feature",
+			wantErr: `unknown module type "relux-feature"`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -108,7 +108,7 @@ func TestGetModuleTypeErrors(t *testing.T) {
 func TestValidateModuleType(t *testing.T) {
 	t.Parallel()
 
-	validInputs := []string{"feature", "relux-feature", "kit", "shared", "ui", "utility"}
+	validInputs := []string{"feature", "kit", "shared", "ui", "utility"}
 	for _, input := range validInputs {
 		if err := ValidateModuleType(input); err != nil {
 			t.Fatalf("ValidateModuleType(%q) error = %v", input, err)
@@ -127,7 +127,6 @@ func TestAllModuleTypes(t *testing.T) {
 	expected := expectedDescriptors()
 	want := []ModuleTypeDescriptor{
 		expected[ModuleTypeFeature],
-		expected[ModuleTypeReluxFeature],
 		expected[ModuleTypeKit],
 		expected[ModuleTypeShared],
 		expected[ModuleTypeUI],
@@ -172,16 +171,6 @@ func TestTemplateMappingsAndCounts(t *testing.T) {
 			input:     "ui",
 			wantCount: 4,
 			wantSet:   templateSet,
-		},
-		{
-			name:      "relux-feature has 8 templates",
-			input:     "relux-feature",
-			wantCount: 8,
-			wantSet: []string{
-				"relux_namespace", "module", "relux_interface",
-				"relux_action", "relux_effect",
-				"relux_impl", "relux_state", "relux_flow",
-			},
 		},
 		{
 			name:      "utility has 0 templates",
@@ -230,11 +219,6 @@ func TestGetModuleTypeTemplateSetIsCloned(t *testing.T) {
 
 func expectedDescriptors() map[ModuleType]ModuleTypeDescriptor {
 	templateSet := []string{"namespace", "module", "interface", "impl"}
-	reluxFeatureSet := []string{
-		"relux_namespace", "module", "relux_interface",
-		"relux_action", "relux_effect",
-		"relux_impl", "relux_state", "relux_flow",
-	}
 	return map[ModuleType]ModuleTypeDescriptor{
 		ModuleTypeFeature: {
 			Type:                  ModuleTypeFeature,
@@ -243,20 +227,6 @@ func expectedDescriptors() map[ModuleType]ModuleTypeDescriptor {
 			HasUI:                 true,
 			TemplateSet:           templateSet,
 			Description:           "Full module with UI (interface + implementation split).",
-		},
-		ModuleTypeReluxFeature: {
-			Type:                  ModuleTypeReluxFeature,
-			HasInterfaceImplSplit: true,
-			HasRelux:              true,
-			HasUI:                 false,
-			TemplateSet:           reluxFeatureSet,
-			ExternalDeps: []ExternalDep{{
-				PackageName: "swift-relux",
-				ProductName: "Relux",
-				URL:         "https://github.com/relux-works/swift-relux.git",
-				Version:     `from: "9.0.1"`,
-			}},
-			Description: "Relux feature module with state management (interface + implementation split).",
 		},
 		ModuleTypeKit: {
 			Type:                  ModuleTypeKit,
