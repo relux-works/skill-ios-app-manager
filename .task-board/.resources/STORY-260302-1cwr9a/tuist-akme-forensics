@@ -1,0 +1,1 @@
+See .research/260224_tuist-akme-forensics.md for full tuist-akme analysis. Key files to port from /Users/alexis/src/relux-works/tuist-akme/TuistPlugins/ProjectInfraPlugin/ProjectDescriptionHelpers/: Capability.swift, EntitlementsFactory.swift, Capability+PortalCapability.swift. Also see .research/260224_tuist-cli-capabilities.md for Tuist CLI reference.
