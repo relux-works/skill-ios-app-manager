@@ -137,9 +137,10 @@ SecureStore.Module.register(container)
 }
 
 func TestCheckDependenciesMissing(t *testing.T) {
+	noopSetup := func(SetupInput) error { return nil }
 	Reset()
-	Register(&Module{ID: IoC, Name: "IoC", Category: Infra})
-	Register(&Module{ID: SecureStore, Name: "SecureStore", Category: Foundation})
+	Register(&Module{ID: IoC, Name: "IoC", Category: Infra, Setup: noopSetup})
+	Register(&Module{ID: SecureStore, Name: "SecureStore", Category: Foundation, Setup: noopSetup})
 	Register(&Module{ID: AppConfig, Name: "AppConfig", Category: Foundation, Dependencies: []ModuleID{IoC, SecureStore}})
 
 	// Only IoC present, SecureStore missing
@@ -182,11 +183,24 @@ func TestModuleFields(t *testing.T) {
 	setupCalled := false
 
 	m := &Module{
-		ID:          SecureStore,
-		Name:        "SecureStore",
-		Description: "Keychain wrapper with interface/impl split",
-		Category:    Foundation,
+		ID:           SecureStore,
+		Name:         "SecureStore",
+		Description:  "Keychain wrapper with interface/impl split",
+		Category:     Foundation,
 		Dependencies: []ModuleID{IoC},
+		ExternalDeps: []ExternalDep{
+			{
+				URL:     "https://github.com/example/swift-sample.git",
+				Version: "1.0.1",
+				Product: "SwiftSample",
+			},
+			{
+				URL:     "https://github.com/example/swift-package.git",
+				Version: "2.3.4",
+				Product: "SwiftPackage",
+				Package: "swift-package",
+			},
+		},
 		Plan: func(input SetupInput) (string, error) {
 			planCalled = true
 			return "will create SecureStore", nil
@@ -217,6 +231,15 @@ func TestModuleFields(t *testing.T) {
 	}
 	if got.ExtraFlags[0].ArgKey != "access-group" {
 		t.Errorf("unexpected ArgKey: %s", got.ExtraFlags[0].ArgKey)
+	}
+	if len(got.ExternalDeps) != 2 {
+		t.Fatalf("expected 2 ExternalDeps, got %d", len(got.ExternalDeps))
+	}
+	if got.ExternalDeps[0].Product != "SwiftSample" {
+		t.Errorf("unexpected ExternalDeps[0].Product: %s", got.ExternalDeps[0].Product)
+	}
+	if got.ExternalDeps[1].Package != "swift-package" {
+		t.Errorf("unexpected ExternalDeps[1].Package: %s", got.ExternalDeps[1].Package)
 	}
 
 	input := SetupInput{ProjectRoot: "/tmp", AppName: "Test"}

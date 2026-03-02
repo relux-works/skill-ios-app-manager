@@ -9,17 +9,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/relux-works/ios-app-manager/internal/deps"
 	"github.com/relux-works/ios-app-manager/internal/ioc"
 	"github.com/relux-works/ios-app-manager/internal/scaffold"
-	"github.com/relux-works/ios-app-manager/internal/tuistproj"
-)
-
-const (
-	swiftUIReluxURL     = "https://github.com/relux-works/swiftui-relux.git"
-	swiftUIReluxVersion = "from: 8.0.1"
-	swiftUIReluxPackage = "swiftui-relux"
-	swiftUIReluxProduct = "SwiftUIRelux"
 )
 
 //go:embed setup_templates/*.tmpl
@@ -50,15 +41,6 @@ func Setup(input SetupInput) error {
 	registryPath := filepath.Join(appDir, appTypeName+".Registry.swift")
 	if _, err := os.Stat(registryPath); os.IsNotExist(err) {
 		return fmt.Errorf("Registry not found at %s — run 'ioc setup' first", registryPath)
-	}
-
-	if err := addSwiftUIReluxDep(modulesRoot); err != nil {
-		return fmt.Errorf("add swiftui-relux to Package.swift: %w", err)
-	}
-
-	projectSwiftPath := filepath.Join(input.ProjectRoot, "Project.swift")
-	if err := addSwiftUIReluxToProjectSwift(projectSwiftPath); err != nil {
-		return fmt.Errorf("add SwiftUIRelux to Project.swift: %w", err)
 	}
 
 	modules, err := ioc.DiscoverModules(modulesRoot)
@@ -113,26 +95,6 @@ func validateSetupInput(input SetupInput) error {
 		return fmt.Errorf("app name is required")
 	}
 	return nil
-}
-
-func addSwiftUIReluxDep(modulesRoot string) error {
-	err := deps.AddExternalDep(swiftUIReluxURL, swiftUIReluxVersion, swiftUIReluxPackage, "", modulesRoot)
-	if err != nil && strings.Contains(err.Error(), "already contains") {
-		return nil
-	}
-	return err
-}
-
-func addSwiftUIReluxToProjectSwift(projectSwiftPath string) error {
-	err := tuistproj.ApplyManifestEditsToFile(projectSwiftPath, tuistproj.ManifestEdit{
-		Type:    tuistproj.AddDependency,
-		Name:    swiftUIReluxProduct,
-		Content: `.external(name: "SwiftUIRelux")`,
-	})
-	if err != nil && strings.Contains(err.Error(), "already contains") {
-		return nil
-	}
-	return err
 }
 
 func updateAppSwiftForRelux(appSwiftPath, appTypeName string) error {

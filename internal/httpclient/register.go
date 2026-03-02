@@ -30,6 +30,14 @@ func init() {
 		Description:  "HTTP client IoC registration with swift-httpclient",
 		Category:     registry.Network,
 		Dependencies: []registry.ModuleID{registry.IoC},
+		ExternalDeps: []registry.ExternalDep{
+			{
+				URL:     "https://github.com/relux-works/swift-httpclient.git",
+				Version: "6.0.0",
+				Product: "HttpClient",
+				Package: "HttpClient",
+			},
+		},
 
 		Plan:       Plan,
 		Setup:      SetupFromRegistry,

@@ -20,6 +20,7 @@ func TestRootHelpShowsAllSubcommands(t *testing.T) {
 		"entitlements",
 		"push",
 		"generate",
+		"diagram",
 		"clean",
 		"q",
 		"m",

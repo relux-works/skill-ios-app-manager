@@ -28,6 +28,14 @@ func init() {
 		Description:  "Relux state management infrastructure",
 		Category:     registry.Infra,
 		Dependencies: []registry.ModuleID{registry.IoC},
+		ExternalDeps: []registry.ExternalDep{
+			{
+				URL:     "https://github.com/relux-works/swiftui-relux.git",
+				Version: "8.0.1",
+				Product: "SwiftUIRelux",
+				Package: "swiftui-relux",
+			},
+		},
 
 		Plan:       Plan,
 		Setup:      SetupFromRegistry,

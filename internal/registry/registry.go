@@ -10,6 +10,7 @@ import (
 type ModuleID string
 
 const (
+	Init          ModuleID = "init"
 	IoC           ModuleID = "ioc"
 	Relux         ModuleID = "relux"
 	SecureStore   ModuleID = "secure-store"
@@ -46,6 +47,14 @@ type ExtraFlag struct {
 	ArgKey   string // maps to ExtraArgs key
 }
 
+// ExternalDep describes an external Swift package dependency.
+type ExternalDep struct {
+	URL     string // git repo URL
+	Version string // semver without "from:", e.g. "1.0.1"
+	Product string // Swift product name for Project.swift .external(name:)
+	Package string // SPM package name for Package.swift .package(name:), empty = use Product
+}
+
 // Module describes a foundation module that can be set up via the CLI.
 type Module struct {
 	ID           ModuleID
@@ -53,6 +62,7 @@ type Module struct {
 	Description  string   // one-liner: "Keychain wrapper with interface/impl split"
 	Category     Category // infra, foundation, network, utils
 	Dependencies []ModuleID
+	ExternalDeps []ExternalDep
 
 	// Two-phase setup
 	Plan       func(SetupInput) (string, error) // returns plan text
@@ -154,6 +164,11 @@ func CheckDependencies(id ModuleID, registryContent string) error {
 			missing = append(missing, string(depID))
 			continue
 		}
+		// Skip modules without Setup — they are structural deps (e.g. Init)
+		// and don't write to Registry.swift.
+		if dep.Setup == nil {
+			continue
+		}
 		if !strings.Contains(registryContent, dep.Name) {
 			missing = append(missing, dep.Name)
 		}
@@ -163,6 +178,22 @@ func CheckDependencies(id ModuleID, registryContent string) error {
 		return fmt.Errorf("missing dependencies for %s: %s — run their setup first", m.Name, strings.Join(missing, ", "))
 	}
 	return nil
+}
+
+// HasRegistryDeps returns true if the module has at least one dependency
+// that writes to Registry.swift (i.e. has a Setup function).
+func HasRegistryDeps(id ModuleID) bool {
+	m := Get(id)
+	if m == nil {
+		return false
+	}
+	for _, depID := range m.Dependencies {
+		dep := Get(depID)
+		if dep != nil && dep.Setup != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // Reset clears the global registry. For testing only.

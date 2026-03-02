@@ -48,8 +48,9 @@ func fakeModuleWithExtraFlags() *registry.Module {
 
 func fakeDepModule() *registry.Module {
 	return &registry.Module{
-		ID:   "fake-dep",
-		Name: "FakeDep",
+		ID:    "fake-dep",
+		Name:  "FakeDep",
+		Setup: func(registry.SetupInput) error { return nil },
 	}
 }
 
@@ -530,5 +531,112 @@ func TestSetupCommandPlanPassesCorrectInput(t *testing.T) {
 
 	if capturedInput.ProjectRoot == "" {
 		t.Fatal("Plan received empty ProjectRoot")
+	}
+}
+
+func TestSetupCommandAppliesExternalDepsBeforePlan(t *testing.T) {
+	t.Parallel()
+
+	mod := fakeModule()
+	mod.ExternalDeps = []registry.ExternalDep{
+		{
+			URL:     "https://github.com/relux-works/swift-ioc.git",
+			Version: "1.0.1",
+			Product: "SwiftIoC",
+		},
+		{
+			URL:     "https://github.com/relux-works/swiftui-relux.git",
+			Version: "8.0.1",
+			Product: "SwiftUIRelux",
+			Package: "swiftui-relux",
+		},
+	}
+	mod.Plan = func(input registry.SetupInput) (string, error) {
+		packageContent, err := os.ReadFile(filepath.Join(input.ProjectRoot, "Package.swift"))
+		if err != nil {
+			t.Fatalf("read Package.swift: %v", err)
+		}
+		projectContent, err := os.ReadFile(filepath.Join(input.ProjectRoot, "Project.swift"))
+		if err != nil {
+			t.Fatalf("read Project.swift: %v", err)
+		}
+
+		for _, expected := range []string{
+			`name: "SwiftIoC"`,
+			`url: "https://github.com/relux-works/swift-ioc.git"`,
+			`from: "1.0.1"`,
+			`name: "swiftui-relux"`,
+			`url: "https://github.com/relux-works/swiftui-relux.git"`,
+			`from: "8.0.1"`,
+		} {
+			if !strings.Contains(string(packageContent), expected) {
+				t.Fatalf("Package.swift missing %q:\n%s", expected, string(packageContent))
+			}
+		}
+
+		for _, expected := range []string{
+			`.external(name: "SwiftIoC")`,
+			`.external(name: "SwiftUIRelux")`,
+		} {
+			if !strings.Contains(string(projectContent), expected) {
+				t.Fatalf("Project.swift missing %q:\n%s", expected, string(projectContent))
+			}
+		}
+
+		return "plan", nil
+	}
+
+	output, err := executeSetupCommandWithProject(
+		t,
+		mod,
+		"",
+		func(projectRoot string, cfg config.ProjectConfig) {
+			writeProjectScaffold(t, projectRoot, cfg)
+		},
+		"--yes",
+	)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+
+	if !strings.Contains(output, "FakeMod setup complete") {
+		t.Fatalf("output missing completion message:\n%s", output)
+	}
+}
+
+func TestSetupCommandExternalDepsIdempotent(t *testing.T) {
+	t.Parallel()
+
+	mod := fakeModule()
+	mod.ExternalDeps = []registry.ExternalDep{
+		{
+			URL:     "https://github.com/relux-works/swift-ioc.git",
+			Version: "1.0.1",
+			Product: "SwiftIoC",
+		},
+	}
+
+	var projectRoot string
+	prepare := func(root string, cfg config.ProjectConfig) {
+		projectRoot = root
+		writeProjectScaffold(t, root, cfg)
+	}
+
+	if _, err := executeSetupCommandWithProject(t, mod, "", prepare, "--yes"); err != nil {
+		t.Fatalf("first setup error = %v", err)
+	}
+
+	opts := &RootOptions{ConfigPath: filepath.Join(projectRoot, config.DefaultConfigPath)}
+	cmd := NewSetupCommand(mod, opts)
+	root := &cobra.Command{Use: "test"}
+	root.PersistentFlags().StringVarP(&opts.ConfigPath, "config", "c", config.DefaultConfigPath, "")
+	root.AddCommand(cmd)
+	root.SetOut(&bytes.Buffer{})
+	root.SetErr(&bytes.Buffer{})
+	root.SetIn(strings.NewReader(""))
+	root.SetArgs([]string{"--config", filepath.Join(projectRoot, config.DefaultConfigPath), mod.CLIUse, "setup", "--yes"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("second setup error = %v", err)
 	}
 }

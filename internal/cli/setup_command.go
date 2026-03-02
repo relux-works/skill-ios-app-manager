@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/relux-works/ios-app-manager/internal/config"
+	"github.com/relux-works/ios-app-manager/internal/deps"
 	"github.com/relux-works/ios-app-manager/internal/registry"
+	"github.com/relux-works/ios-app-manager/internal/tuistproj"
 	"github.com/spf13/cobra"
 )
 
@@ -67,8 +69,37 @@ func NewSetupCommand(mod *registry.Module, opts *RootOptions) *cobra.Command {
 				ExtraArgs:   extraArgs,
 			}
 
+			// Apply external dependencies declared in the registry.
+			modulesRoot := normalizeCLIPath(cfg.ModulesPath)
+			if modulesRoot == "" {
+				modulesRoot = "Packages"
+			}
+			absModulesRoot := filepath.Join(projectRoot, modulesRoot)
+			projectSwiftPath := filepath.Join(projectRoot, "Project.swift")
+
+			for _, dep := range mod.ExternalDeps {
+				pkgName := dep.Package
+				if pkgName == "" {
+					pkgName = dep.Product
+				}
+				version := "from: " + dep.Version
+				err := deps.AddExternalDep(dep.URL, version, pkgName, "", absModulesRoot)
+				if err != nil && !strings.Contains(err.Error(), "already contains") {
+					return fmt.Errorf("add external dep %s: %w", dep.Product, err)
+				}
+				err = tuistproj.ApplyManifestEditsToFile(projectSwiftPath, tuistproj.ManifestEdit{
+					Type:    tuistproj.AddDependency,
+					Name:    dep.Product,
+					Content: fmt.Sprintf(`.external(name: "%s")`, dep.Product),
+				})
+				if err != nil && !strings.Contains(err.Error(), "already contains") {
+					return fmt.Errorf("add %s to Project.swift: %w", dep.Product, err)
+				}
+			}
+
 			// Verify module dependencies before creating the plan.
-			if len(mod.Dependencies) > 0 {
+			// Only check Registry.swift if there are deps that write to it (have Setup).
+			if registry.HasRegistryDeps(mod.ID) {
 				registryPath := filepath.Join(projectRoot, "Targets", appName, "Sources", "App", appName+".Registry.swift")
 				content, err := os.ReadFile(registryPath)
 				if err != nil {
