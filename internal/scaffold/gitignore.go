@@ -27,8 +27,5 @@ Pods/
 .idea/
 *.swp
 
-# Project tooling
-.task-board/
-task-board.config.json
 `
 }
