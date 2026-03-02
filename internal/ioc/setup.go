@@ -10,16 +10,11 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/relux-works/ios-app-manager/internal/deps"
 	"github.com/relux-works/ios-app-manager/internal/scaffold"
-	"github.com/relux-works/ios-app-manager/internal/tuistproj"
 )
 
 const (
-	swiftIoCURL     = "https://github.com/relux-works/swift-ioc.git"
-	swiftIoCVersion = "from: 1.0.1"
-	swiftIoCPackage = "SwiftIoC"
-	implSuffix      = "Impl"
+	implSuffix = "Impl"
 
 	// ModuleTypeFile is the marker file written in each module's interface package root.
 	ModuleTypeFile = ".module-type"
@@ -84,15 +79,6 @@ func Setup(input SetupInput) error {
 	}
 
 	modulesRoot := ResolveModulesPath(input.ProjectRoot, input.ModulesPath)
-
-	if err := addSwiftIoCToPackageSwift(modulesRoot); err != nil {
-		return fmt.Errorf("add SwiftIoC to Package.swift: %w", err)
-	}
-
-	projectSwiftPath := filepath.Join(input.ProjectRoot, "Project.swift")
-	if err := addSwiftIoCToProjectSwift(projectSwiftPath); err != nil {
-		return fmt.Errorf("add SwiftIoC to Project.swift: %w", err)
-	}
 
 	modules, err := DiscoverModules(modulesRoot)
 	if err != nil {
@@ -183,26 +169,6 @@ func ResolveModulesPath(projectRoot, modulesPath string) string {
 		return filepath.Clean(mp)
 	}
 	return filepath.Clean(filepath.Join(projectRoot, mp))
-}
-
-func addSwiftIoCToPackageSwift(modulesRoot string) error {
-	err := deps.AddExternalDep(swiftIoCURL, swiftIoCVersion, swiftIoCPackage, "", modulesRoot)
-	if err != nil && strings.Contains(err.Error(), "already contains") {
-		return nil
-	}
-	return err
-}
-
-func addSwiftIoCToProjectSwift(projectSwiftPath string) error {
-	err := tuistproj.ApplyManifestEditsToFile(projectSwiftPath, tuistproj.ManifestEdit{
-		Type:    tuistproj.AddDependency,
-		Name:    swiftIoCPackage,
-		Content: `.external(name: "SwiftIoC")`,
-	})
-	if err != nil && strings.Contains(err.Error(), "already contains") {
-		return nil
-	}
-	return err
 }
 
 func scaffoldRegistry(registryPath, appTypeName string, modules []DiscoveredModule) error {

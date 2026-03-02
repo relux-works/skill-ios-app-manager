@@ -1,0 +1,1 @@
+Added registry.ExternalDep and Module.ExternalDeps. Populated ExternalDeps in ioc relux and httpclient register files. Left securestore tokenprovider appconfig and utilities with empty nil ExternalDeps. Extended internal/registry/registry_test.go to validate ExternalDeps persistence. Verification: make test passed and make lint passed.

@@ -7,16 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/relux-works/ios-app-manager/internal/deps"
 	"github.com/relux-works/ios-app-manager/internal/scaffold"
-	"github.com/relux-works/ios-app-manager/internal/tuistproj"
 )
 
 const (
-	swiftHTTPClientURL     = "https://github.com/relux-works/swift-httpclient.git"
-	swiftHTTPClientVersion = "from: 6.0.0"
-	swiftHTTPClientPackage = "HttpClient"
-
 	registrationLine = `            ioc.register(IRpcAsyncClient.self, lifecycle: .container, resolver: Self.buildHttpClient)`
 	builderFunc      = `
     private static func buildHttpClient() -> IRpcAsyncClient {
@@ -50,30 +44,14 @@ func Setup(input SetupInput) error {
 	}
 
 	appTypeName := scaffold.SwiftTypeName(input.AppName)
-	modulesPath := strings.TrimSpace(input.ModulesPath)
-	if modulesPath == "" {
-		modulesPath = "Packages"
-	}
-	modulesRoot := filepath.Join(input.ProjectRoot, modulesPath)
 
-	// 1. Add swift-httpclient external dependency to root Package.swift.
-	if err := addSwiftHTTPClientToPackageSwift(modulesRoot); err != nil {
-		return fmt.Errorf("add swift-httpclient to Package.swift: %w", err)
-	}
-
-	// 2. Add SwiftHTTPClient to Project.swift dependencies.
-	projectSwiftPath := filepath.Join(input.ProjectRoot, "Project.swift")
-	if err := addSwiftHTTPClientToProjectSwift(projectSwiftPath); err != nil {
-		return fmt.Errorf("add SwiftHTTPClient to Project.swift: %w", err)
-	}
-
-	// 3. Create Configuration+HttpClient.swift.
+	// 1. Create Configuration+HttpClient.swift.
 	configDir := filepath.Join(input.ProjectRoot, "Targets", input.AppName, "Sources", "Configuration")
 	if err := scaffoldConfigurationExtension(configDir); err != nil {
 		return fmt.Errorf("scaffold Configuration+HttpClient: %w", err)
 	}
 
-	// 4. Patch Registry.swift with registration + builder + import.
+	// 2. Patch Registry.swift with registration + builder + import.
 	registryPath := filepath.Join(
 		input.ProjectRoot, "Targets", input.AppName, "Sources", "App",
 		appTypeName+".Registry.swift",
@@ -93,26 +71,6 @@ func validateInput(input SetupInput) error {
 		return fmt.Errorf("app name is required")
 	}
 	return nil
-}
-
-func addSwiftHTTPClientToPackageSwift(modulesRoot string) error {
-	err := deps.AddExternalDep(swiftHTTPClientURL, swiftHTTPClientVersion, swiftHTTPClientPackage, "", modulesRoot)
-	if err != nil && strings.Contains(err.Error(), "already contains") {
-		return nil
-	}
-	return err
-}
-
-func addSwiftHTTPClientToProjectSwift(projectSwiftPath string) error {
-	err := tuistproj.ApplyManifestEditsToFile(projectSwiftPath, tuistproj.ManifestEdit{
-		Type:    tuistproj.AddDependency,
-		Name:    swiftHTTPClientPackage,
-		Content: `.external(name: "HttpClient")`,
-	})
-	if err != nil && strings.Contains(err.Error(), "already contains") {
-		return nil
-	}
-	return err
 }
 
 func scaffoldConfigurationExtension(configDir string) error {

@@ -1,125 +1,69 @@
 @startuml scaffolding-pipeline
 !theme plain
 
-title Scaffolding Pipeline — Dependency Graph
-caption ios-app-manager: module & setup operation dependencies
-
-skinparam componentStyle rectangle
-skinparam defaultTextAlignment center
 skinparam linetype ortho
+skinparam componentStyle rectangle
 
-skinparam component {
-  BackgroundColor #FAFAFA
-  BorderColor #333333
-  ArrowColor #555555
+cloud "HttpClient" as ext_httpclient #E8F0FE
+cloud "SwiftIoC" as ext_swiftioc #E8F0FE
+cloud "SwiftUIRelux" as ext_swiftuirelux #E8F0FE
+
+package "Infra" {
+  component "Init" as mod_init <<module>> #FFF3CD
+  component "IoC" as mod_ioc <<module>> #FFF3CD
+  component "Relux" as mod_relux <<module>> #FFF3CD
 }
 
-skinparam package {
-  BackgroundColor #F5F5F5
-  BorderColor #999999
+package "Foundation" {
+  component "AppConfig" as mod_app_config <<module>> #D6EAF8
+  component "SecureStore" as mod_secure_store <<module>> #D6EAF8
+  component "TokenProvider" as mod_token_provider <<module>> #D6EAF8
 }
 
-' ──────────────────────────────────────
-'  External Swift Libraries
-' ──────────────────────────────────────
-cloud "External Dependencies" as ExtDeps #E8F0FE {
-  [swift-ioc] as SwiftIoC <<library>> #E8F0FE
-  [swift-relux] as SwiftRelux <<library>> #E8F0FE
-  [swiftui-relux] as SwiftUIRelux <<library>> #E8F0FE
-  [swift-httpclient] as SwiftHTTP <<library>> #E8F0FE
+package "Network" {
+  component "HttpClient" as mod_http_client <<module>> #FFE0B2
 }
 
-' ──────────────────────────────────────
-'  Root
-' ──────────────────────────────────────
-[init] as Init <<cli>> #D4EDDA
-
-' ──────────────────────────────────────
-'  Infrastructure Setup Commands
-' ──────────────────────────────────────
-package "Infrastructure Setup" as InfraSetup {
-  [ioc setup] as IoCSetup <<cli>> #FFF3CD
-  [relux setup] as ReluxSetup <<cli>> #FFF3CD
-  [app-config setup] as AppConfigSetup <<cli>> #FFF3CD
+package "Utils" {
+  component "Utilities" as mod_utilities <<module>> #E1BEE7
 }
 
-' ──────────────────────────────────────
-'  Foundation Modules
-' ──────────────────────────────────────
-package "Foundation Modules" as FoundationMods {
-  [SecureStore] as SecureStore <<module>> #D6EAF8
-  [TokenProvider] as TokenProvider <<module>> #D6EAF8
-  [AppConfig\n(Manager + ApiConfigurator)] as ApiConfigurator <<module>> #D6EAF8
-  [HttpClient] as HttpClient <<module>> #D6EAF8
-  [Utilities\n(HttpClientUtils, ...)] as Utilities <<module>> #D6EAF8
+package "Feature Layer" {
+  [Feature Module (relux + backend)] as FeatureModule #F5E6CC
 }
 
-' ──────────────────────────────────────
-'  Feature Layer
-' ──────────────────────────────────────
-package "Feature Layer" as FeatureLayer {
-  [Feature Module\n(relux + backend)] as FeatureModule <<module>> #F5E6CC
-}
+note right of FeatureModule
+  Conceptual runtime module.
+  Feature modules are not registered in module registry.
+end note
 
-' ──────────────────────────────────────
-'  Hard Dependencies (solid arrows)
-' ──────────────────────────────────────
+FeatureModule ..> mod_app_config
+FeatureModule ..> mod_secure_store
+FeatureModule ..> mod_token_provider
+FeatureModule ..> mod_http_client
+FeatureModule ..> mod_utilities
 
-' init is the root
-IoCSetup --> Init
+mod_ioc --> mod_init
+mod_relux --> mod_ioc
+mod_app_config --> mod_ioc
+mod_app_config --> mod_secure_store
+mod_http_client --> mod_ioc
 
-' ioc setup pulls in swift-ioc
-IoCSetup --> SwiftIoC
+mod_ioc --> ext_swiftioc
+mod_relux --> ext_swiftuirelux
+mod_http_client --> ext_httpclient
 
-' relux setup depends on ioc setup + external libs
-ReluxSetup --> IoCSetup
-ReluxSetup --> SwiftRelux
-ReluxSetup --> SwiftUIRelux
-
-' SecureStore depends on ioc (Keychain wrapper, registered in IoC)
-SecureStore --> IoCSetup
-
-' TokenProvider is a regular module, depends on ioc + SecureStore
-TokenProvider --> IoCSetup
-TokenProvider --> SecureStore
-
-' app-config setup depends on ioc (needs Registry) + SecureStore (Manager uses keychain)
-AppConfigSetup --> IoCSetup
-AppConfigSetup --> SecureStore
-
-' ApiConfigurator is scaffolded by app-config setup
-ApiConfigurator --> AppConfigSetup
-
-' HttpClient (base) is a plain transport wrapper
-HttpClient --> SwiftHTTP
-HttpClient --> IoCSetup
-
-' Utilities (HttpClientUtils, etc.) depends on ioc only
-Utilities --> IoCSetup
-
-' Feature module (relux + backend) assembles its own API client from:
-'   HttpClient (transport) + TokenProvider (auth) + ApiConfigurator (URLs/config)
-'   + Utilities (headers, encoders/decoders)
-'   All injected via protocols on init
-FeatureModule --> ReluxSetup
-FeatureModule --> HttpClient
-FeatureModule --> TokenProvider
-FeatureModule --> ApiConfigurator
-FeatureModule --> Utilities
-
-' ──────────────────────────────────────
-'  Legend
-' ──────────────────────────────────────
 legend right
   |= Color |= Meaning |
-  | <#D4EDDA> | Root command (init) |
-  | <#FFF3CD> | CLI setup command |
+  | <#FFF3CD> | Infra module |
   | <#D6EAF8> | Foundation module |
-  | <#F5E6CC> | Feature module |
-  | <#E8F0FE> | External Swift library |
+  | <#FFE0B2> | Network module |
+  | <#E1BEE7> | Utils module |
+  | <#F5E6CC> | Feature layer template |
+  | <#E8F0FE> | External dependency |
   --
-  Solid arrows = hard dependency
-  All arrows point toward the dependency
+  Solid arrows = registry dependency
+  Dashed arrows = conceptual feature runtime dependency
 endlegend
 
 @enduml

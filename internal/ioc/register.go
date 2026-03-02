@@ -31,7 +31,14 @@ func init() {
 		Name:         "IoC",
 		Description:  "SwiftIoC dependency injection container setup",
 		Category:     registry.Infra,
-		Dependencies: []registry.ModuleID{},
+		Dependencies: []registry.ModuleID{registry.Init},
+		ExternalDeps: []registry.ExternalDep{
+			{
+				URL:     "https://github.com/relux-works/swift-ioc.git",
+				Version: "1.0.1",
+				Product: "SwiftIoC",
+			},
+		},
 
 		Plan:       Plan,
 		Setup:      SetupFromRegistry,
