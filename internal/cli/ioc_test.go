@@ -226,6 +226,17 @@ struct DemoApp: App {
 }
 `
 	writeTestFile(t, filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "App.swift"), appSwift)
+
+	// Write AppCapabilities.swift for capability system.
+	appCaps := `import ProjectDescription
+
+enum AppCapabilities {
+    static let app: [Capability] = [
+        // capabilities are added by module setup commands
+    ]
+}
+`
+	writeTestFile(t, filepath.Join(projectRoot, "Tuist", "ProjectDescriptionHelpers", "AppCapabilities.swift"), appCaps)
 }
 
 func writeTestFile(t *testing.T, path, content string) {

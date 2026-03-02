@@ -201,6 +201,10 @@ func TestModuleFields(t *testing.T) {
 				Package: "swift-package",
 			},
 		},
+		Capabilities: []Capability{
+			{Type: "keychainSharing"},
+			{Type: "appGroups", Args: map[string]string{"group": "group.com.example.app"}},
+		},
 		Plan: func(input SetupInput) (string, error) {
 			planCalled = true
 			return "will create SecureStore", nil
@@ -240,6 +244,18 @@ func TestModuleFields(t *testing.T) {
 	}
 	if got.ExternalDeps[1].Package != "swift-package" {
 		t.Errorf("unexpected ExternalDeps[1].Package: %s", got.ExternalDeps[1].Package)
+	}
+	if len(got.Capabilities) != 2 {
+		t.Fatalf("expected 2 Capabilities, got %d", len(got.Capabilities))
+	}
+	if got.Capabilities[0].Type != "keychainSharing" {
+		t.Errorf("unexpected Capabilities[0].Type: %s", got.Capabilities[0].Type)
+	}
+	if got.Capabilities[1].Type != "appGroups" {
+		t.Errorf("unexpected Capabilities[1].Type: %s", got.Capabilities[1].Type)
+	}
+	if got.Capabilities[1].Args["group"] != "group.com.example.app" {
+		t.Errorf("unexpected Capabilities[1].Args[group]: %s", got.Capabilities[1].Args["group"])
 	}
 
 	input := SetupInput{ProjectRoot: "/tmp", AppName: "Test"}

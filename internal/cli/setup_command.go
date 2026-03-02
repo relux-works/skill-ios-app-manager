@@ -10,6 +10,7 @@ import (
 	"github.com/relux-works/ios-app-manager/internal/config"
 	"github.com/relux-works/ios-app-manager/internal/deps"
 	"github.com/relux-works/ios-app-manager/internal/registry"
+	"github.com/relux-works/ios-app-manager/internal/scaffold"
 	"github.com/relux-works/ios-app-manager/internal/tuistproj"
 	"github.com/spf13/cobra"
 )
@@ -94,6 +95,13 @@ func NewSetupCommand(mod *registry.Module, opts *RootOptions) *cobra.Command {
 				})
 				if err != nil && !strings.Contains(err.Error(), "already contains") {
 					return fmt.Errorf("add %s to Project.swift: %w", dep.Product, err)
+				}
+			}
+
+			// Apply capabilities declared in the registry.
+			for _, cap := range mod.Capabilities {
+				if err := scaffold.AddToAppCapabilities(projectRoot, cap.Type, cap.Args); err != nil {
+					return fmt.Errorf("add capability %s: %w", cap.Type, err)
 				}
 			}
 

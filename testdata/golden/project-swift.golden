@@ -41,7 +41,7 @@ let project = Project(
             ),
             sources: ["Targets/DemoApp/Sources/**"],
             resources: ["Targets/DemoApp/Resources/**"],
-            entitlements: .file(path: "DemoApp.entitlements"),
+            entitlements: EntitlementsFactory.make(hostBundleId: bundleID, destinations: .iOS, capabilities: AppCapabilities.app),
             dependencies: [
                 .package(product: "Auth"),
                 .package(product: "CoreKit"),

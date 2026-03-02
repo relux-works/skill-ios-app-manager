@@ -20,7 +20,7 @@ func newEntitlementsCommand(opts *RootOptions) *cobra.Command {
 	var entitlementsPath string
 	cmd := &cobra.Command{
 		Use:   "entitlements",
-		Short: "Manage app entitlements",
+		Short: "List entitlements from plist file",
 		RunE:  runNotImplemented,
 	}
 
@@ -37,57 +37,6 @@ func newEntitlementsCommand(opts *RootOptions) *cobra.Command {
 		"",
 		"Path to entitlements plist file",
 	)
-
-	var addValue string
-	addCommand := &cobra.Command{
-		Use:   "add <key>",
-		Short: "Add entitlement",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 1 {
-				return fmt.Errorf("entitlements add expects exactly one key argument")
-			}
-
-			resolvedPath, err := resolveEntitlementsPath(entitlementsPath, configPath, opts)
-			if err != nil {
-				return fmt.Errorf("resolve entitlements path: %w", err)
-			}
-
-			if err := entitlements.Add(resolvedPath, args[0], addValue); err != nil {
-				return fmt.Errorf("add entitlement: %w", err)
-			}
-
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "updated %q in %s\n", args[0], resolvedPath)
-			return err
-		},
-	}
-	addCommand.PersistentFlags().StringVar(
-		&addValue,
-		"value",
-		"",
-		"Entitlement value (comma-separated for arrays)",
-	)
-
-	removeCommand := &cobra.Command{
-		Use:   "remove <key>",
-		Short: "Remove entitlement",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 1 {
-				return fmt.Errorf("entitlements remove expects exactly one key argument")
-			}
-
-			resolvedPath, err := resolveEntitlementsPath(entitlementsPath, configPath, opts)
-			if err != nil {
-				return fmt.Errorf("resolve entitlements path: %w", err)
-			}
-
-			if err := entitlements.Remove(resolvedPath, args[0]); err != nil {
-				return fmt.Errorf("remove entitlement: %w", err)
-			}
-
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "removed %q from %s\n", args[0], resolvedPath)
-			return err
-		},
-	}
 
 	listCommand := &cobra.Command{
 		Use:   "list",
@@ -113,15 +62,10 @@ func newEntitlementsCommand(opts *RootOptions) *cobra.Command {
 			}
 
 			for _, entry := range entries {
-				label := entry.Key
-				if entry.Alias != "" {
-					label = fmt.Sprintf("%s (%s)", entry.Alias, entry.Key)
-				}
-
 				if _, err := fmt.Fprintf(
 					cmd.OutOrStdout(),
 					"%s = %s\n",
-					label,
+					entry.Key,
 					formatEntitlementValue(entry.Value),
 				); err != nil {
 					return err
@@ -132,7 +76,7 @@ func newEntitlementsCommand(opts *RootOptions) *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(addCommand, removeCommand, listCommand)
+	cmd.AddCommand(listCommand)
 
 	return cmd
 }

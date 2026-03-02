@@ -33,7 +33,6 @@ func TestInitCommandCreatesScaffoldFromConfig(t *testing.T) {
 		filepath.Join(outputDir, ".periphery.yml"),
 		filepath.Join(outputDir, ".swiftlint.yml"),
 		filepath.Join(outputDir, ".gitignore"),
-		filepath.Join(outputDir, "DemoApp.entitlements"),
 	}
 	for _, path := range requiredPaths {
 		if _, err := os.Stat(path); err != nil {
@@ -48,7 +47,8 @@ func TestInitCommandCreatesScaffoldFromConfig(t *testing.T) {
 		"ABCDE12345",
 		`Targets/DemoApp/Sources/**`,
 		`Targets/DemoApp/Resources/**`,
-		`DemoApp.entitlements`,
+		"EntitlementsFactory.make(",
+		"AppCapabilities.app",
 	}
 	for _, want := range projectChecks {
 		if !strings.Contains(projectManifest, want) {

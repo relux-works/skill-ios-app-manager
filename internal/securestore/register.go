@@ -48,6 +48,9 @@ func init() {
 		ExtraFlags: []registry.ExtraFlag{
 			{Name: "access-group", Usage: "app group for shared keychain access", Required: false, ArgKey: "access-group"},
 		},
+		Capabilities: []registry.Capability{
+			{Type: "keychainSharing"},
+		},
 	})
 }
 
