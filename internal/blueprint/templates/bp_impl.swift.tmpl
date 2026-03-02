@@ -1,0 +1,25 @@
+import {{.InterfacePackageName}}
+import Relux
+
+extension {{.ModuleName}}.Module {
+    public struct Impl: {{.ModuleName}}.Module.Interface {
+        public let states: [any Relux.AnyState]
+        public let sagas: [any Relux.Saga]
+
+        @MainActor
+        public init() async {
+            let state = {{.ModuleName}}.Business.State()
+{{- if .HasHTTP}}
+            let config = {{.ModuleName}}.Data.Api.Http.Config()
+            let fetcher = {{.ModuleName}}.Data.Api.Http.Fetcher(config: config)
+            let service = {{.ModuleName}}.Business.Service(fetcher: fetcher)
+            let flow = {{.ModuleName}}.Business.Flow(state: state, service: service)
+{{- else}}
+            let service = {{.ModuleName}}.Business.Service()
+            let flow = {{.ModuleName}}.Business.Flow(state: state, service: service)
+{{- end}}
+            self.states = [state]
+            self.sagas = [flow]
+        }
+    }
+}

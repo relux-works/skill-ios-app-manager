@@ -50,7 +50,7 @@ CLI (cobra commands)  →  AppManager (orchestrator)  →  Domain Managers  → 
 | `config` | `ProjectConfig` schema, JSON loading, validation. Default config: `ios-app-manager.json` |
 | `tuistproj` | Tuist manifest generation & editing (Project.swift, Package.swift) |
 | `relux` | Relux state management scaffolding (actions, effects, state, flow) |
-| `modules` | Module creation by type (feature, kit, shared, ui, utility, relux-feature) |
+| `modules` | Module creation by type (feature, kit, shared, ui, utility) |
 | `scaffold` | Full project scaffolding from config → template rendering → file writes |
 | `template` | Tuist manifest templates (embedded via `embed.FS`) |
 | `dsl` | Custom query/mutation DSL parser and executor (**operations are stubs**) |
@@ -78,11 +78,11 @@ When creating modules (`module create <name> --type <type>`):
 - **shared**: Shared state/services, interface/impl split
 - **ui**: Pure UI components, interface/impl split
 - **utility**: Single-package utility (no interface/impl split)
-- **relux-feature**: Feature with full Relux business logic: actions, effects, state, flow. Auto-adds `swift-relux` dependency.
+- **relux-feature** (blueprint-only): Created via `module create --from <blueprint.json>`. Full Relux feature with rich scaffolding: Business/, Data/, UI/ layers.
 
 ### Generated file layout
 
-Modules generate Swift files into `Module/` and `Business/` subdirectories:
+Modules generate Swift files into `Module/` subdirectories:
 
 ```
 Packages/<Name>/Sources/<Name>/
@@ -95,16 +95,37 @@ Packages/<Name>Impl/Sources/<Name>Impl/
         <Name>.Module+Impl.swift              ← implementation
 ```
 
-For `relux-feature` type, additional `Business/` subdirectory:
+For `relux-feature` type (created via blueprint), the structure is richer:
 ```
 Packages/<Name>/Sources/<Name>/
     Business/
         <Name>.Business+Action.swift          ← actions
-        <Name>.Business+Effect.swift          ← effects
+        <Name>.Business+Error.swift           ← domain errors
+        Middleware/
+            <Name>.Business+Effect.swift      ← effects
+        Models/
+            <Name>.Business+Model+*.swift     ← business models
+    Data/Api/
+        Http/
+            <Name>.Data+Api+Fetcher.swift     ← HTTP fetcher
+        DTO/
+            <Name>.Data+Api+DTO+*.swift       ← data transfer objects
+    UI/Model/
+        <Name>.UI+Model+Page.swift            ← page enum
 Packages/<Name>Impl/Sources/<Name>Impl/
     Business/
         <Name>.Business+State.swift           ← state
-        <Name>.Business+Flow.swift            ← flow (reducer)
+        <Name>.Business+Reducer.swift         ← reducer
+        Middleware/
+            <Name>.Business+Flow.swift        ← flow (saga)
+            <Name>.Business+Service.swift     ← service layer
+    UI/
+        <Name>.UI+ViewState.swift             ← view state mapping
+        <Name>.UI+Router.swift                ← routing
+        <Feature>/
+            <Name>.UI+<Feature>+Container.swift
+            Page/
+                <Name>.UI+<Feature>+Page.swift
 ```
 
 ### Dependency injection
@@ -144,7 +165,9 @@ The demo/test app lives in `.temp/demo-project/` and is **generated output** of 
    ../../ios-app-manager secure-store setup --access-group group.org.xflow.app
    ../../ios-app-manager token-provider setup
    ../../ios-app-manager utilities setup
-   ../../ios-app-manager module create <Name> --type relux-feature
+   ../../ios-app-manager foundation-plus setup
+   ../../ios-app-manager swiftui-plus setup
+   ../../ios-app-manager module create --from <name>.blueprint.json
    ../../ios-app-manager app-config setup
    ../../ios-app-manager http-client setup
    ```
@@ -168,7 +191,9 @@ cd .temp/demo-project
 ../../ios-app-manager secure-store setup --access-group group.org.xflow.app
 ../../ios-app-manager token-provider setup
 ../../ios-app-manager utilities setup
-../../ios-app-manager module create Auth --type relux-feature
+../../ios-app-manager foundation-plus setup
+../../ios-app-manager swiftui-plus setup
+../../ios-app-manager module create --from auth.blueprint.json
 ../../ios-app-manager app-config setup
 ../../ios-app-manager http-client setup
 tuist install && tuist generate
@@ -196,4 +221,4 @@ Minimal: Cobra (CLI framework) + gopkg.in/yaml.v3. No other external Go deps.
 The CLI manages these **Swift** packages in generated projects:
 - **SwiftIoC** (from: 1.0.1) — dependency injection, added by `ioc setup`
 - **swiftui-relux** (from: 8.0.1) — SwiftUI Relux bindings, added by `relux setup`
-- **swift-relux** (from: 9.0.1) — core Relux framework, added automatically when creating `relux-feature` modules
+- **swift-relux** (from: 9.0.1) — core Relux framework, added automatically when creating modules from blueprints

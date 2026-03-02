@@ -1,0 +1,9 @@
+public enum MaybeData<Success: Sendable, Failure: Sendable & Error>: Sendable {
+    case initial
+    case loading
+    case success(Success)
+    case failure(Failure)
+}
+
+extension MaybeData: Equatable where Success: Equatable, Failure: Equatable {}
+extension MaybeData: Hashable where Success: Hashable, Failure: Hashable {}

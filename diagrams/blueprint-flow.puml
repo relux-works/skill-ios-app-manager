@@ -1,0 +1,61 @@
+@startuml blueprint-flow
+!theme plain
+
+skinparam componentStyle rectangle
+skinparam defaultTextAlignment center
+
+title Blueprint Module Generation Flow
+
+rectangle "**Blueprint JSON**\n(auth.blueprint.json)" as bp #E8F0FE {
+  card "name: Auth" as bp_name
+  card "data.http: true" as bp_http
+  card "ui.features: [Login, Register]" as bp_features
+  card "ui.components: [PasswordField]" as bp_comps
+}
+
+rectangle "**CLI**" as cli #FFF3CD {
+  component "module create\n--from auth.blueprint.json" as cmd
+}
+
+rectangle "**Generator Pipeline**" as pipeline #F5E6CC {
+  component "schema.Parse()\n+ Validate()" as parse
+  component "BuildVars()" as vars
+  component "TemplateEngine\n(embed.FS)" as engine
+}
+
+rectangle "**Always Generated** (12 files)" as always #D6EAF8 {
+  card "Namespace + Module + Interface + Impl" as skel
+  card "Action + Effect + Error" as biz_iface
+  card "State + Reducer + Saga + Service" as biz_impl
+  card "Business Model" as biz_model
+}
+
+rectangle "**Conditional: HTTP** (3 files)" as http #FFE0B2 {
+  card "Fetcher + Config + DTO" as http_files
+}
+
+rectangle "**Conditional: UI** (N files)" as ui #E1BEE7 {
+  card "ViewState + Router + PageEnum" as ui_once
+  card "per feature:\nContainer + Page + Props" as ui_feat
+  card "per component:\nComponent View" as ui_comp
+}
+
+rectangle "**Output: Packages/**" as out #C8E6C9 {
+  card "Auth/ (interface)" as pkg_iface
+  card "AuthImpl/ (impl)" as pkg_impl
+}
+
+bp --> cmd
+cmd --> parse
+parse --> vars
+vars --> engine
+
+engine --> always
+engine --> http : "if data.http"
+engine --> ui : "if ui.features"
+
+always --> out
+http --> out
+ui --> out
+
+@enduml

@@ -1,0 +1,7 @@
+extension {{.ModuleName}}.UI.Model {
+    public enum Page: Hashable, Sendable {
+{{- range .Features}}
+        case {{.NameLower}}
+{{- end}}
+    }
+}

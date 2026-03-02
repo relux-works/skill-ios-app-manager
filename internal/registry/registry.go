@@ -17,8 +17,10 @@ const (
 	TokenProvider ModuleID = "token-provider"
 	HttpClient    ModuleID = "http-client"
 	AppConfig     ModuleID = "app-config"
-	Utilities     ModuleID = "utilities"
-	DefaultsStore ModuleID = "defaults-store"
+	Utilities      ModuleID = "utilities"
+	FoundationPlus ModuleID = "foundation-plus"
+	SwiftUIPlus    ModuleID = "swiftui-plus"
+	DefaultsStore  ModuleID = "defaults-store"
 )
 
 // Category groups modules for Registry.swift section placement.

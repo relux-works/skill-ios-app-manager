@@ -1,0 +1,82 @@
+import {{.InterfacePackageName}}
+import FoundationPlus
+import SwiftUIPlus
+
+extension {{.ModuleName}}.UI.{{.FeatureName}} {
+    struct Page: View {
+        let props: Props
+        let actions: Actions
+
+        var body: some View {
+            content
+        }
+    }
+}
+
+// page content
+private extension {{.ModuleName}}.UI.{{.FeatureName}}.Page {
+    @ViewBuilder
+    var content: some View {
+        VStack(spacing: 16) {
+            switch props.scaffoldedField {
+            case .initial:
+                initialState
+            case .loading:
+                loadingState
+            case .success(let id):
+                successState(id)
+            case .failure(let error):
+                failureState(error)
+            }
+        }
+        .padding()
+    }
+}
+
+// states
+private extension {{.ModuleName}}.UI.{{.FeatureName}}.Page {
+    var initialState: some View {
+        VStack(spacing: 12) {
+            description(msg: "Tap to load", fgColor: .secondary)
+            scaffoldedButton
+        }
+    }
+
+    var loadingState: some View {
+        ProgressView()
+    }
+
+    func successState(_ id: UUID) -> some View {
+        VStack(spacing: 12) {
+            description(msg: "Loaded: \(id.uuidString)", fgColor: .primary)
+            scaffoldedButton
+        }
+    }
+
+    func failureState(_ error: {{.ModuleName}}.Business.Err) -> some View {
+        VStack(spacing: 12) {
+            description(msg: "Error: \(error)", fgColor: .red)
+            scaffoldedButton
+        }
+    }
+}
+
+// components
+private extension {{.ModuleName}}.UI.{{.FeatureName}}.Page {
+    var scaffoldedButton: some View {
+        AsyncButton("Fetch", action: onFetchBtnTap)
+            .buttonStyle(.bordered)
+    }
+
+    func description(msg: String, fgColor: Color) -> some View {
+        Text(msg)
+            .foregroundColor(fgColor)
+    }
+}
+
+// reactions
+private extension {{.ModuleName}}.UI.{{.FeatureName}}.Page {
+    func onFetchBtnTap() async {
+        await actions.onScaffoldedAction()
+    }
+}

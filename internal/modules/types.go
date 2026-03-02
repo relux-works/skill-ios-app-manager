@@ -12,7 +12,8 @@ const (
 	ModuleTypeShared ModuleType = "shared"
 	// ModuleTypeUI is a SwiftUI-only module with interface/impl split.
 	ModuleTypeUI ModuleType = "ui"
-	// ModuleTypeReluxFeature is a Relux feature module with state management (interface + implementation split).
+	// ModuleTypeReluxFeature is a Relux feature module with state management.
+	// Blueprint-only: must be created via `module create --from <blueprint.json>`.
 	ModuleTypeReluxFeature ModuleType = "relux-feature"
 	// ModuleTypeUtility is a single-package utility module without Relux or split.
 	ModuleTypeUtility ModuleType = "utility"

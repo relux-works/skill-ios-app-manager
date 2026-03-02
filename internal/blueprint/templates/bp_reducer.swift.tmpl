@@ -1,0 +1,14 @@
+import {{.InterfacePackageName}}
+import FoundationPlus
+import Relux
+
+extension {{.ModuleName}}.Business.State {
+    func internalReduce(with action: {{.ModuleName}}.Business.Action) {
+        switch action {
+        case .scaffoldedSuccess(let id):
+            scaffoldedField = .success(id)
+        case .scaffoldedFail(let error):
+            scaffoldedField = .failure(error)
+        }
+    }
+}

@@ -1,0 +1,11 @@
+import {{.InterfacePackageName}}
+import Observation
+
+extension {{.ModuleName}}.UI.{{.FeatureName}}.Container {
+    @Observable
+    final class LocalState {
+        var isPresented: Bool = false
+
+        init() {}
+    }
+}

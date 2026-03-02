@@ -1,4 +1,5 @@
 import ProjectDescription
+import ProjectDescriptionHelpers
 
 let appName = "DemoApp"
 let bundleID = "com.example.demo"

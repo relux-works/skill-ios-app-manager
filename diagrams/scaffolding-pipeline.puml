@@ -26,6 +26,8 @@ package "Network" {
 
 package "Utils" {
   component "Utilities" as mod_utilities <<module>> #E1BEE7
+  component "FoundationPlus" as mod_foundation_plus <<module>> #E1BEE7
+  component "SwiftUIPlus" as mod_swiftui_plus <<module>> #E1BEE7
 }
 
 package "Feature Layer" {
@@ -42,6 +44,8 @@ FeatureModule ..> mod_secure_store
 FeatureModule ..> mod_token_provider
 FeatureModule ..> mod_http_client
 FeatureModule ..> mod_utilities
+FeatureModule ..> mod_foundation_plus
+FeatureModule ..> mod_swiftui_plus
 
 mod_ioc --> mod_init
 mod_relux --> mod_ioc

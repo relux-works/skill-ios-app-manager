@@ -8,10 +8,12 @@ import (
 
 	// Import module packages for init() registration.
 	_ "github.com/relux-works/ios-app-manager/internal/appconfig"
+	_ "github.com/relux-works/ios-app-manager/internal/foundationplus"
 	_ "github.com/relux-works/ios-app-manager/internal/httpclient"
 	_ "github.com/relux-works/ios-app-manager/internal/ioc"
 	_ "github.com/relux-works/ios-app-manager/internal/relux"
 	_ "github.com/relux-works/ios-app-manager/internal/securestore"
+	_ "github.com/relux-works/ios-app-manager/internal/swiftuiplus"
 	_ "github.com/relux-works/ios-app-manager/internal/tokenprovider"
 	_ "github.com/relux-works/ios-app-manager/internal/utilities"
 )

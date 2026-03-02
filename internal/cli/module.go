@@ -11,7 +11,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/relux-works/ios-app-manager/internal/blueprint"
 	"github.com/relux-works/ios-app-manager/internal/config"
+	"github.com/relux-works/ios-app-manager/internal/components"
 	"github.com/relux-works/ios-app-manager/internal/ioc"
 	"github.com/relux-works/ios-app-manager/internal/modules"
 	"github.com/relux-works/ios-app-manager/internal/relux"
@@ -42,13 +44,31 @@ func newModuleCommand(opts *RootOptions) *cobra.Command {
 	)
 
 	var moduleType string
+	var blueprintPath string
 	createCommand := &cobra.Command{
 		Use:   "create <name>",
 		Short: "Create a module",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			selectedConfigPath := resolveSelectedConfigPath(configPath, opts)
+
+			// Blueprint path: bypass normal create flow.
+			if strings.TrimSpace(blueprintPath) != "" {
+				return createModuleFromBlueprint(cmd, blueprintPath, selectedConfigPath)
+			}
+
 			moduleName, moduleKind, selectedConfigPath, err := parseCreateModuleInput(args, moduleType, configPath)
 			if err != nil {
 				return err
+			}
+
+			if moduleKind == string(modules.ModuleTypeReluxFeature) {
+				return fmt.Errorf(
+					"relux-feature modules are created from blueprints only\n\n" +
+						"Generate a blueprint template:\n" +
+						"  ios-app-manager module blueprint <Name>\n\n" +
+						"Then create the module:\n" +
+						"  ios-app-manager module create --from <name>.blueprint.json",
+				)
 			}
 
 			moduleName, err = modules.ValidateModuleName(moduleName)
@@ -105,7 +125,13 @@ func newModuleCommand(opts *RootOptions) *cobra.Command {
 		&moduleType,
 		"type",
 		"",
-		"Module type: feature|relux-feature|kit|shared|ui|utility",
+		"Module type: feature|kit|shared|ui|utility",
+	)
+	createCommand.PersistentFlags().StringVar(
+		&blueprintPath,
+		"from",
+		"",
+		"Path to blueprint JSON config (bypasses --type and <name>)",
 	)
 
 	var forceDelete bool
@@ -180,13 +206,172 @@ func newModuleCommand(opts *RootOptions) *cobra.Command {
 		"Delete module without confirmation prompt",
 	)
 
+	blueprintCommand := &cobra.Command{
+		Use:   "blueprint <name>",
+		Short: "Generate a blueprint JSON config template",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := strings.TrimSpace(args[0])
+			if _, err := modules.ValidateModuleName(name); err != nil {
+				return err
+			}
+
+			bp := blueprint.DefaultBlueprint(name)
+			data, err := bp.ToJSON()
+			if err != nil {
+				return fmt.Errorf("marshal blueprint: %w", err)
+			}
+
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), string(data))
+			return err
+		},
+	}
+
 	cmd.AddCommand(
 		createCommand,
 		listCommand,
 		deleteCommand,
+		blueprintCommand,
 	)
 
 	return cmd
+}
+
+func createModuleFromBlueprint(cmd *cobra.Command, bpPath string, configPath string) error {
+	bp, err := blueprint.ParseFile(bpPath)
+	if err != nil {
+		return err
+	}
+	if err := bp.Validate(); err != nil {
+		return err
+	}
+
+	cfg, err := config.LoadConfig(configPath)
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+
+	normalizedModulesPath := normalizeCLIPath(cfg.ModulesPath)
+	projectRoot := filepath.Dir(configPath)
+	modulesRoot := resolveModulesRoot(projectRoot, normalizedModulesPath)
+
+	tuistManager := tuistproj.NewTuistProjectManager(
+		tuistproj.WithRootDir(projectRoot),
+		tuistproj.WithModulesDir(normalizedModulesPath),
+	)
+
+	// Phase 1: Tuist structure (creates Package.swift, Sources/, Tests/, manifest refs).
+	extDeps := blueprintExternalDeps(bp)
+	if err := tuistManager.CreateModule(context.Background(), components.ModuleOpts{
+		Name:         bp.Name,
+		Type:         "relux-feature",
+		ExternalDeps: extDeps,
+	}); err != nil {
+		return fmt.Errorf("create module in tuist project: %w", err)
+	}
+
+	// Phase 1.5: Add internal deps (FoundationPlus, SwiftUIPlus) to module Package.swift files.
+	internalDeps := blueprintInternalDeps(bp)
+	if err := addInternalDepsToPackageSwift(modulesRoot, bp.Name, internalDeps); err != nil {
+		return fmt.Errorf("add internal deps: %w", err)
+	}
+
+	// Phase 2: Blueprint templates (replaces relux.InitModule with rich scaffolding).
+	gen := blueprint.NewGenerator(modulesRoot)
+	written, err := gen.Generate(bp)
+	if err != nil {
+		return fmt.Errorf("generate blueprint templates: %w", err)
+	}
+
+	// Phase 3: IoC update.
+	if err := regenerateRegistryIfExists(projectRoot, cfg.AppName, modulesRoot); err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(
+		cmd.OutOrStdout(),
+		"created module %q from blueprint (%d files)\n",
+		bp.Name,
+		len(written),
+	)
+	return err
+}
+
+func blueprintExternalDeps(bp *blueprint.Blueprint) []components.ExternalDep {
+	// relux-feature always needs swift-relux
+	deps := []components.ExternalDep{
+		{
+			PackageName: "swift-relux",
+			ProductName: "Relux",
+			URL:         "https://github.com/relux-works/swift-relux.git",
+			Version:     `from: "9.0.1"`,
+		},
+	}
+	return deps
+}
+
+type internalDep struct {
+	name    string   // package name, e.g. "FoundationPlus"
+	targets []string // "iface", "impl", or both
+}
+
+func blueprintInternalDeps(bp *blueprint.Blueprint) []internalDep {
+	deps := []internalDep{
+		{name: "FoundationPlus", targets: []string{"impl"}},
+	}
+	if bp.HasFeatures() || bp.HasComponents() {
+		targets := []string{"impl"}
+		if bp.HasComponents() {
+			targets = []string{"iface", "impl"}
+		}
+		deps = append(deps, internalDep{name: "SwiftUIPlus", targets: targets})
+	}
+	return deps
+}
+
+func addInternalDepsToPackageSwift(modulesRoot, moduleName string, deps []internalDep) error {
+	for _, dep := range deps {
+		for _, target := range dep.targets {
+			var pkgDir string
+			if target == "iface" {
+				pkgDir = filepath.Join(modulesRoot, moduleName)
+			} else {
+				pkgDir = filepath.Join(modulesRoot, moduleName+"Impl")
+			}
+			pkgFile := filepath.Join(pkgDir, "Package.swift")
+			data, err := os.ReadFile(pkgFile)
+			if err != nil {
+				return fmt.Errorf("read %s: %w", pkgFile, err)
+			}
+			content := string(data)
+
+			// Add .package(path:) to dependencies array
+			depLine := fmt.Sprintf("        .package(path: \"../%s\"),\n", dep.name)
+			marker := "    ],\n    targets:"
+			if !strings.Contains(content, fmt.Sprintf("../%s", dep.name)) {
+				content = strings.Replace(content, marker, depLine+marker, 1)
+			}
+
+			// Add .product(name:) to target dependencies array
+			prodLine := fmt.Sprintf("                .product(name: \"%s\", package: \"%s\"),\n", dep.name, dep.name)
+			targetMarker := fmt.Sprintf("            ]\n        ),\n    ]\n")
+			if !strings.Contains(content, fmt.Sprintf("name: \"%s\", package: \"%s\"", dep.name, dep.name)) {
+				// Find the target deps closing and insert before it
+				targetDepsEnd := fmt.Sprintf(".product(name: \"%s\", package: \"swift-relux\"),\n", "Relux")
+				if strings.Contains(content, targetDepsEnd) {
+					content = strings.Replace(content, targetDepsEnd, targetDepsEnd+prodLine, 1)
+				} else {
+					// Fallback: insert before target array close
+					_ = targetMarker // unused in this branch
+				}
+			}
+
+			if err := os.WriteFile(pkgFile, []byte(content), 0o644); err != nil {
+				return fmt.Errorf("write %s: %w", pkgFile, err)
+			}
+		}
+	}
+	return nil
 }
 
 func parseCreateModuleInput(

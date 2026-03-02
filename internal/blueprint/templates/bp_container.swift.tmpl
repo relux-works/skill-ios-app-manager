@@ -1,0 +1,53 @@
+import {{.InterfacePackageName}}
+import Relux
+import SwiftUIPlus
+
+extension {{.ModuleName}}.UI.{{.FeatureName}} {
+    struct Container: View {
+        @Environment({{.ModuleName}}.Business.State.self) private var state
+
+        var body: some View {
+{{- if .IsEntryPoint}}
+            NavigationStack {
+                content
+                    .navigationDestination(for: {{.ModuleName}}.UI.Model.Page.self) { page in
+                        {{.ModuleName}}.UI.Router.destination(for: page)
+                    }
+            }
+{{- else}}
+            content
+{{- end}}
+        }
+    }
+}
+
+extension {{.ModuleName}}.UI.{{.FeatureName}}.Container {
+    private var content: some View {
+        {{.ModuleName}}.UI.{{.FeatureName}}.Page(
+            props: buildProps(),
+            actions: buildActions()
+        )
+    }
+}
+
+// map state to props
+extension {{.ModuleName}}.UI.{{.FeatureName}}.Container {
+    private func buildProps() -> {{.ModuleName}}.UI.{{.FeatureName}}.Page.Props {
+        .init(
+            scaffoldedField: state.scaffoldedField
+        )
+    }
+}
+
+// map effects to actions
+extension {{.ModuleName}}.UI.{{.FeatureName}}.Container {
+    private func buildActions() -> {{.ModuleName}}.UI.{{.FeatureName}}.Page.Actions {
+        .init(
+            onScaffoldedAction: {
+                await actions {
+                    {{.ModuleName}}.Business.Effect.scaffoldedEffect
+                }
+            }
+        )
+    }
+}

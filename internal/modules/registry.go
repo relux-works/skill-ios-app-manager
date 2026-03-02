@@ -7,7 +7,6 @@ import (
 
 var moduleTypeOrder = []ModuleType{
 	ModuleTypeFeature,
-	ModuleTypeReluxFeature,
 	ModuleTypeKit,
 	ModuleTypeShared,
 	ModuleTypeUI,
@@ -15,19 +14,6 @@ var moduleTypeOrder = []ModuleType{
 }
 
 var moduleTemplateSet = []string{"namespace", "module", "interface", "impl"}
-
-var reluxFeatureTemplateSet = []string{
-	"relux_namespace", "module", "relux_interface",
-	"relux_action", "relux_effect",
-	"relux_impl", "relux_state", "relux_flow",
-}
-
-var swiftReluxDep = ExternalDep{
-	PackageName: "swift-relux",
-	ProductName: "Relux",
-	URL:         "https://github.com/relux-works/swift-relux.git",
-	Version:     `from: "9.0.1"`,
-}
 
 var moduleTypeRegistry = map[ModuleType]ModuleTypeDescriptor{
 	ModuleTypeFeature: {
@@ -61,15 +47,6 @@ var moduleTypeRegistry = map[ModuleType]ModuleTypeDescriptor{
 		HasUI:                 true,
 		TemplateSet:           moduleTemplateSet,
 		Description:           "SwiftUI component module (interface + implementation split).",
-	},
-	ModuleTypeReluxFeature: {
-		Type:                  ModuleTypeReluxFeature,
-		HasInterfaceImplSplit: true,
-		HasRelux:              true,
-		HasUI:                 false,
-		TemplateSet:           reluxFeatureTemplateSet,
-		ExternalDeps:          []ExternalDep{swiftReluxDep},
-		Description:           "Relux feature module with state management (interface + implementation split).",
 	},
 	ModuleTypeUtility: {
 		Type:                  ModuleTypeUtility,
