@@ -34,7 +34,7 @@ extension {{.ModuleName}}.Data.Api.Http {
                 guard let data = response.data else {
                     throw {{.ModuleName}}.Business.Err.networkError("Empty response")
                 }
-                return try JSONDecoder().decode(
+                return try JSONDecoder.base.decode(
                     {{.ModuleName}}.Data.Api.DTO.ScaffoldedResponse.self,
                     from: data
                 )
