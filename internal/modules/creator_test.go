@@ -30,10 +30,10 @@ func TestCreatorCreateFeatureModule(t *testing.T) {
 	requireDir(t, filepath.Join(root, "Packages", "Auth"))
 	requireDir(t, filepath.Join(root, "Packages", "AuthImpl"))
 
-	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Auth.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Module", "Auth.Module.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth", "Module", "Auth.Module+Interface.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "AuthImpl", "Sources", "AuthImpl", "Module", "Auth.Module+Impl.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Auth.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Module", "Auth.Module.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Auth", "Sources", "Module", "Auth.Module+Interface.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "AuthImpl", "Sources", "Module", "Auth.Module+Impl.swift"))
 }
 
 func TestCreatorCreateUtilityModule(t *testing.T) {
@@ -52,8 +52,8 @@ func TestCreatorCreateUtilityModule(t *testing.T) {
 	requireDir(t, filepath.Join(root, "Packages", "Logger"))
 	requireNotExists(t, filepath.Join(root, "Packages", "LoggerImpl"))
 
-	requireNotExists(t, filepath.Join(root, "Packages", "Logger", "Sources", "Logger", "Logger.swift"))
-	requireNotExists(t, filepath.Join(root, "Packages", "Logger", "Sources", "Logger", "Logger.Module+Impl.swift"))
+	requireNotExists(t, filepath.Join(root, "Packages", "Logger", "Sources", "Logger.swift"))
+	requireNotExists(t, filepath.Join(root, "Packages", "Logger", "Sources", "Logger.Module+Impl.swift"))
 }
 
 func TestCreatorCreateKitModule(t *testing.T) {
@@ -72,10 +72,10 @@ func TestCreatorCreateKitModule(t *testing.T) {
 	requireDir(t, filepath.Join(root, "Packages", "Networking"))
 	requireDir(t, filepath.Join(root, "Packages", "NetworkingImpl"))
 
-	requireFile(t, filepath.Join(root, "Packages", "Networking", "Sources", "Networking", "Networking.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "Networking", "Sources", "Networking", "Module", "Networking.Module.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "Networking", "Sources", "Networking", "Module", "Networking.Module+Interface.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "NetworkingImpl", "Sources", "NetworkingImpl", "Module", "Networking.Module+Impl.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Networking", "Sources", "Networking.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Networking", "Sources", "Module", "Networking.Module.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Networking", "Sources", "Module", "Networking.Module+Interface.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "NetworkingImpl", "Sources", "Module", "Networking.Module+Impl.swift"))
 
 	// Kit modules should not have swift-relux dependency
 	interfaceManifest := readFileString(t, filepath.Join(root, "Packages", "Networking", "Package.swift"))
@@ -100,10 +100,10 @@ func TestCreatorCreateSharedModule(t *testing.T) {
 	requireDir(t, filepath.Join(root, "Packages", "Storage"))
 	requireDir(t, filepath.Join(root, "Packages", "StorageImpl"))
 
-	requireFile(t, filepath.Join(root, "Packages", "Storage", "Sources", "Storage", "Storage.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "Storage", "Sources", "Storage", "Module", "Storage.Module.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "Storage", "Sources", "Storage", "Module", "Storage.Module+Interface.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "StorageImpl", "Sources", "StorageImpl", "Module", "Storage.Module+Impl.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Storage", "Sources", "Storage.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Storage", "Sources", "Module", "Storage.Module.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "Storage", "Sources", "Module", "Storage.Module+Interface.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "StorageImpl", "Sources", "Module", "Storage.Module+Impl.swift"))
 }
 
 func TestCreatorCreateUIModule(t *testing.T) {
@@ -122,10 +122,10 @@ func TestCreatorCreateUIModule(t *testing.T) {
 	requireDir(t, filepath.Join(root, "Packages", "DesignSystem"))
 	requireDir(t, filepath.Join(root, "Packages", "DesignSystemImpl"))
 
-	requireFile(t, filepath.Join(root, "Packages", "DesignSystem", "Sources", "DesignSystem", "DesignSystem.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "DesignSystem", "Sources", "DesignSystem", "Module", "DesignSystem.Module.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "DesignSystem", "Sources", "DesignSystem", "Module", "DesignSystem.Module+Interface.swift"))
-	requireFile(t, filepath.Join(root, "Packages", "DesignSystemImpl", "Sources", "DesignSystemImpl", "Module", "DesignSystem.Module+Impl.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "DesignSystem", "Sources", "DesignSystem.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "DesignSystem", "Sources", "Module", "DesignSystem.Module.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "DesignSystem", "Sources", "Module", "DesignSystem.Module+Interface.swift"))
+	requireFile(t, filepath.Join(root, "Packages", "DesignSystemImpl", "Sources", "Module", "DesignSystem.Module+Impl.swift"))
 }
 
 func TestCreatorCreateDetectsConflicts(t *testing.T) {

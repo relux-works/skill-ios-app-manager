@@ -60,8 +60,8 @@ func (g *Generator) buildTargets(bp *Blueprint, vars TemplateVars) []renderTarge
 	n := bp.Name
 	ifacePkg := filepath.Join(g.modulesRoot, n)
 	implPkg := filepath.Join(g.modulesRoot, n+"Impl")
-	ifaceSrc := filepath.Join(ifacePkg, "Sources", n)
-	implSrc := filepath.Join(implPkg, "Sources", n+"Impl")
+	ifaceSrc := filepath.Join(ifacePkg, "Sources")
+	implSrc := filepath.Join(implPkg, "Sources")
 
 	var targets []renderTarget
 

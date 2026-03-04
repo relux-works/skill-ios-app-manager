@@ -20,7 +20,8 @@ let package = Package(
             dependencies: [
                 .product(name: "CoreKit", package: "CoreKit"),
                 .product(name: "Analytics", package: "Analytics"),
-            ]
+            ],
+            path: "Sources"
         ),
     ]
 )

@@ -110,13 +110,13 @@ func TestTuistProjectManagerCreateModuleProductScaffoldsTwoPackages(t *testing.T
 	interfaceRoot := filepath.Join(root, "Packages", "Auth")
 	requireDir(t, interfaceRoot)
 	requireFile(t, filepath.Join(interfaceRoot, "Package.swift"))
-	requireDir(t, filepath.Join(interfaceRoot, "Sources", "Auth"))
+	requireDir(t, filepath.Join(interfaceRoot, "Sources"))
 	requireDir(t, filepath.Join(interfaceRoot, "Tests", "AuthTests"))
 
 	implRoot := filepath.Join(root, "Packages", "AuthImpl")
 	requireDir(t, implRoot)
 	requireFile(t, filepath.Join(implRoot, "Package.swift"))
-	requireDir(t, filepath.Join(implRoot, "Sources", "AuthImpl"))
+	requireDir(t, filepath.Join(implRoot, "Sources"))
 	requireDir(t, filepath.Join(implRoot, "Tests", "AuthImplTests"))
 
 	interfaceManifest, err := ReadManifestFile(filepath.Join(interfaceRoot, "Package.swift"))
@@ -236,7 +236,7 @@ func TestTuistProjectManagerCreateModuleUtilityScaffoldsSinglePackage(t *testing
 	utilityRoot := filepath.Join(root, "Packages", "CoreKit")
 	requireDir(t, utilityRoot)
 	requireFile(t, filepath.Join(utilityRoot, "Package.swift"))
-	requireDir(t, filepath.Join(utilityRoot, "Sources", "CoreKit"))
+	requireDir(t, filepath.Join(utilityRoot, "Sources"))
 	requireDir(t, filepath.Join(utilityRoot, "Tests", "CoreKitTests"))
 
 	requireNotExists(t, filepath.Join(root, "Packages", "CoreKitImpl"))

@@ -28,7 +28,8 @@ let package = Package(
 {{- range .ExternalProducts }}
                 .product(name: "{{ .ProductName }}", package: "{{ .PackageName }}"),
 {{- end }}
-            ]
+            ],
+            path: "Sources"
         ),
     ]
 )

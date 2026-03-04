@@ -29,7 +29,7 @@ func TestSecureStoreSetupIntegration(t *testing.T) {
 	}
 
 	// Verify interface package files.
-	interfaceDir := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore")
+	interfaceDir := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources")
 
 	namespacePath := filepath.Join(interfaceDir, "SecureStore.swift")
 	requireFileExists(t, namespacePath)
@@ -58,7 +58,7 @@ func TestSecureStoreSetupIntegration(t *testing.T) {
 	}
 
 	// Verify impl package files.
-	implPath := filepath.Join(projectRoot, "Packages", "SecureStoreImpl", "Sources", "SecureStoreImpl", "Module", "SecureStore.Module+Impl.swift")
+	implPath := filepath.Join(projectRoot, "Packages", "SecureStoreImpl", "Sources", "Module", "SecureStore.Module+Impl.swift")
 	requireFileExists(t, implPath)
 	implContent := readTestFile(t, implPath)
 	for _, expected := range []string{
@@ -93,7 +93,7 @@ func TestSecureStoreSetupIdempotent(t *testing.T) {
 	}
 
 	// Files should still exist after second run.
-	namespacePath := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore", "SecureStore.swift")
+	namespacePath := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore.swift")
 	requireFileExists(t, namespacePath)
 }
 

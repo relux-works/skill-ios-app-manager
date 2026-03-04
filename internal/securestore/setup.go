@@ -91,13 +91,13 @@ func Setup(input SetupInput) error {
 	}
 
 	// 3. Scaffold interface Swift files.
-	interfaceSourcesDir := filepath.Join(interfacePkgDir, "Sources", moduleName)
+	interfaceSourcesDir := filepath.Join(interfacePkgDir, "Sources")
 	if err := scaffoldFiles(interfaceSourcesDir, interfaceFiles); err != nil {
 		return fmt.Errorf("scaffold SecureStore interface: %w", err)
 	}
 
 	// 4. Scaffold impl Swift files.
-	implSourcesDir := filepath.Join(implPkgDir, "Sources", implPackageName)
+	implSourcesDir := filepath.Join(implPkgDir, "Sources")
 	if err := scaffoldFiles(implSourcesDir, implFiles); err != nil {
 		return fmt.Errorf("scaffold SecureStoreImpl: %w", err)
 	}

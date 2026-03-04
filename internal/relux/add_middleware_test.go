@@ -30,7 +30,7 @@ func TestAddMiddlewareCommandRunGeneratesNamedMiddleware(t *testing.T) {
 		t.Fatalf("Run() error = %v", err)
 	}
 
-	expectedPath := filepath.Join(modulePath+"Impl", "Sources", "NotesImpl", "analytics_middleware.swift")
+	expectedPath := filepath.Join(modulePath+"Impl", "Sources", "analytics_middleware.swift")
 	if generatedPath != expectedPath {
 		t.Fatalf("Run() path = %q, want %q", generatedPath, expectedPath)
 	}

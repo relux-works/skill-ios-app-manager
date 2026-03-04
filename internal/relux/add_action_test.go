@@ -29,8 +29,8 @@ func TestAddActionCommandRunUpdatesActionsAndReducer(t *testing.T) {
 		t.Fatalf("Run() updated %d files, want 2", len(updatedPaths))
 	}
 
-	actionsPath := filepath.Join(modulePath+"Impl", "Sources", "NotesImpl", "actions.swift")
-	reducerPath := filepath.Join(modulePath+"Impl", "Sources", "NotesImpl", "reducer.swift")
+	actionsPath := filepath.Join(modulePath+"Impl", "Sources", "actions.swift")
+	reducerPath := filepath.Join(modulePath+"Impl", "Sources", "reducer.swift")
 
 	actionsContent := readFileStringForTest(t, actionsPath)
 	if !strings.Contains(actionsContent, "case didSelect(id: UUID, source: String)") {
@@ -79,7 +79,7 @@ func scaffoldLegacyReluxModuleForTest(t *testing.T, moduleName string) string {
 	root := t.TempDir()
 	modulePath := filepath.Join(root, moduleName)
 	implPath := filepath.Join(root, moduleName+"Impl")
-	implSourcesDir := filepath.Join(implPath, "Sources", moduleName+"Impl")
+	implSourcesDir := filepath.Join(implPath, "Sources")
 
 	if err := os.MkdirAll(implSourcesDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll(%q) error = %v", implSourcesDir, err)

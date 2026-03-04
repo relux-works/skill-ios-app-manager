@@ -67,7 +67,7 @@ func Setup(input SetupInput) error {
 	}
 
 	// 2. Scaffold Swift source files.
-	sourcesDir := filepath.Join(pkgDir, "Sources", moduleName)
+	sourcesDir := filepath.Join(pkgDir, "Sources")
 	if err := os.MkdirAll(sourcesDir, 0o755); err != nil {
 		return fmt.Errorf("create sources directory: %w", err)
 	}

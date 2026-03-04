@@ -21,8 +21,8 @@ func TestReluxManagerInitAndAddAction(t *testing.T) {
 	}
 
 	// Verify new-style module files were created.
-	interfaceDir := filepath.Join(root, moduleName, "Sources", moduleName)
-	implDir := filepath.Join(root, moduleName+"Impl", "Sources", moduleName+"Impl")
+	interfaceDir := filepath.Join(root, moduleName, "Sources")
+	implDir := filepath.Join(root, moduleName+"Impl", "Sources")
 
 	for _, expected := range []string{
 		filepath.Join(interfaceDir, moduleName+".swift"),

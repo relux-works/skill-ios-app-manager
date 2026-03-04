@@ -35,15 +35,15 @@ func TestGenerateMinimal(t *testing.T) {
 	}
 
 	// Verify key files exist and contain module name
-	assertFileContains(t, filepath.Join(modulesRoot, "Settings", "Sources", "Settings", "Settings.swift"), "public enum Settings")
-	assertFileContains(t, filepath.Join(modulesRoot, "Settings", "Sources", "Settings", "Business", "Settings.Business+Action.swift"), "scaffoldedSuccess")
-	assertFileContains(t, filepath.Join(modulesRoot, "SettingsImpl", "Sources", "SettingsImpl", "Business", "Settings.Business+State.swift"), "MaybeData")
-	assertFileContains(t, filepath.Join(modulesRoot, "Settings", "Sources", "Settings", "Business", "Middleware", "Settings.Business+IService.swift"), "IService")
-	assertFileContains(t, filepath.Join(modulesRoot, "SettingsImpl", "Sources", "SettingsImpl", "Business", "Middleware", "Settings.Business+Flow.swift"), "IService")
+	assertFileContains(t, filepath.Join(modulesRoot, "Settings", "Sources", "Settings.swift"), "public enum Settings")
+	assertFileContains(t, filepath.Join(modulesRoot, "Settings", "Sources", "Business", "Settings.Business+Action.swift"), "scaffoldedSuccess")
+	assertFileContains(t, filepath.Join(modulesRoot, "SettingsImpl", "Sources", "Business", "Settings.Business+State.swift"), "MaybeData")
+	assertFileContains(t, filepath.Join(modulesRoot, "Settings", "Sources", "Business", "Middleware", "Settings.Business+IService.swift"), "IService")
+	assertFileContains(t, filepath.Join(modulesRoot, "SettingsImpl", "Sources", "Business", "Middleware", "Settings.Business+Flow.swift"), "IService")
 
 	// Should NOT have HTTP or UI files
-	assertNoFile(t, filepath.Join(modulesRoot, "Settings", "Sources", "Settings", "Data", "Api", "Http"))
-	assertNoFile(t, filepath.Join(modulesRoot, "Settings", "Sources", "Settings", "UI"))
+	assertNoFile(t, filepath.Join(modulesRoot, "Settings", "Sources", "Data", "Api", "Http"))
+	assertNoFile(t, filepath.Join(modulesRoot, "Settings", "Sources", "UI"))
 }
 
 func TestGenerateWithHTTP(t *testing.T) {
@@ -75,22 +75,22 @@ func TestGenerateWithHTTP(t *testing.T) {
 	}
 
 	// HTTP-specific files (interface)
-	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth", "Data", "Api", "Http", "Auth.Data+Api+IFetcher.swift"), "IFetcher")
+	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Data", "Api", "Http", "Auth.Data+Api+IFetcher.swift"), "IFetcher")
 	// HTTP-specific files (impl)
-	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl", "Data", "Api", "Http", "Auth.Data+Api+Fetcher.swift"), "actor Fetcher")
-	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth", "Data", "Api", "Http", "Auth.Data+Api+Fetcher+Config.swift"), "scaffoldedEndpoint")
-	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth", "Data", "Api", "DTO", "Auth.Data+Api+DTO+ScaffoldedResponse.swift"), "ScaffoldedResponse")
+	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "Data", "Api", "Http", "Auth.Data+Api+Fetcher.swift"), "actor Fetcher")
+	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Data", "Api", "Http", "Auth.Data+Api+Fetcher+Config.swift"), "scaffoldedEndpoint")
+	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Data", "Api", "DTO", "Auth.Data+Api+DTO+ScaffoldedResponse.swift"), "ScaffoldedResponse")
 
 	// Namespace should include Http sub-namespace
-	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth", "Auth.swift"), "public enum Http {}")
+	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth.swift"), "public enum Http {}")
 
 	// Impl should wire up fetcher via IRpcAsyncClient
-	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl", "Module", "Auth.Module+Impl.swift"), "import HttpClient")
-	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl", "Module", "Auth.Module+Impl.swift"), "client: any IRpcAsyncClient")
+	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "Module", "Auth.Module+Impl.swift"), "import HttpClient")
+	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "Module", "Auth.Module+Impl.swift"), "client: any IRpcAsyncClient")
 
 	// Service interface in iface, impl in impl
-	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth", "Business", "Middleware", "Auth.Business+IService.swift"), "IService")
-	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl", "Business", "Middleware", "Auth.Business+Service.swift"), "fetcher.fetchScaffolded")
+	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Business", "Middleware", "Auth.Business+IService.swift"), "IService")
+	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "Business", "Middleware", "Auth.Business+Service.swift"), "fetcher.fetchScaffolded")
 }
 
 func TestGenerateWithUI(t *testing.T) {
@@ -124,8 +124,8 @@ func TestGenerateWithUI(t *testing.T) {
 		}
 	}
 
-	implSrc := filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl")
-	ifaceSrc := filepath.Join(modulesRoot, "Auth", "Sources", "Auth")
+	implSrc := filepath.Join(modulesRoot, "AuthImpl", "Sources")
+	ifaceSrc := filepath.Join(modulesRoot, "Auth", "Sources")
 
 	// Once-per-module UI files (ViewState and Router are in impl because they access State)
 	assertFileContains(t, filepath.Join(implSrc, "UI", "Auth.UI+ViewState.swift"), "ViewState")
@@ -166,7 +166,7 @@ func TestGenerateEntryPointContainer(t *testing.T) {
 		t.Fatalf("Generate: %v", err)
 	}
 
-	implSrc := filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl")
+	implSrc := filepath.Join(modulesRoot, "AuthImpl", "Sources")
 
 	// Entry point container (Login) should have NavigationStack + navigationDestination
 	loginContainer := readTestFile(t, filepath.Join(implSrc, "UI", "Login", "Auth.UI+Login+Container.swift"))

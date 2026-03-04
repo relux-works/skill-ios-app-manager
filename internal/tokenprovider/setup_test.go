@@ -62,15 +62,15 @@ func TestSetupCreatesModulePackages(t *testing.T) {
 	// Verify interface package.
 	requireDir(t, filepath.Join(modulesRoot, "TokenProvider"))
 	requireFile(t, filepath.Join(modulesRoot, "TokenProvider", "Package.swift"))
-	requireFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "TokenProvider", "TokenProvider.swift"))
-	requireFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "TokenProvider", "TokenProvider.AuthData.swift"))
-	requireFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "TokenProvider", "Module", "TokenProvider.Module.swift"))
-	requireFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "TokenProvider", "Module", "TokenProvider.Module+Interface.swift"))
+	requireFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "TokenProvider.swift"))
+	requireFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "TokenProvider.AuthData.swift"))
+	requireFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "Module", "TokenProvider.Module.swift"))
+	requireFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "Module", "TokenProvider.Module+Interface.swift"))
 
 	// Verify impl package.
 	requireDir(t, filepath.Join(modulesRoot, "TokenProviderImpl"))
 	requireFile(t, filepath.Join(modulesRoot, "TokenProviderImpl", "Package.swift"))
-	requireFile(t, filepath.Join(modulesRoot, "TokenProviderImpl", "Sources", "TokenProviderImpl", "Module", "TokenProvider.Module+Impl.swift"))
+	requireFile(t, filepath.Join(modulesRoot, "TokenProviderImpl", "Sources", "Module", "TokenProvider.Module+Impl.swift"))
 }
 
 func TestSetupSwiftFileContents(t *testing.T) {
@@ -92,13 +92,13 @@ func TestSetupSwiftFileContents(t *testing.T) {
 	}
 
 	// Check namespace.
-	ns := readFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "TokenProvider", "TokenProvider.swift"))
+	ns := readFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "TokenProvider.swift"))
 	if !strings.Contains(ns, "public enum TokenProvider {}") {
 		t.Fatalf("namespace missing enum declaration:\n%s", ns)
 	}
 
 	// Check protocol.
-	proto := readFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "TokenProvider", "Module", "TokenProvider.Module+Interface.swift"))
+	proto := readFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "Module", "TokenProvider.Module+Interface.swift"))
 	for _, want := range []string{
 		"public protocol Interface: Sendable",
 		"func setAuthData",
@@ -110,7 +110,7 @@ func TestSetupSwiftFileContents(t *testing.T) {
 	}
 
 	// Check AuthData.
-	authData := readFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "TokenProvider", "TokenProvider.AuthData.swift"))
+	authData := readFile(t, filepath.Join(modulesRoot, "TokenProvider", "Sources", "TokenProvider.AuthData.swift"))
 	for _, want := range []string{
 		"public struct AuthData: Sendable",
 		"accessToken: String",
@@ -124,7 +124,7 @@ func TestSetupSwiftFileContents(t *testing.T) {
 	}
 
 	// Check impl.
-	impl := readFile(t, filepath.Join(modulesRoot, "TokenProviderImpl", "Sources", "TokenProviderImpl", "Module", "TokenProvider.Module+Impl.swift"))
+	impl := readFile(t, filepath.Join(modulesRoot, "TokenProviderImpl", "Sources", "Module", "TokenProvider.Module+Impl.swift"))
 	for _, want := range []string{
 		"import TokenProvider",
 		"public actor Impl",
