@@ -84,8 +84,9 @@ func TestGenerateWithHTTP(t *testing.T) {
 	// Namespace should include Http sub-namespace
 	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth", "Auth.swift"), "public enum Http {}")
 
-	// Impl should wire up fetcher
-	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl", "Module", "Auth.Module+Impl.swift"), "Fetcher")
+	// Impl should wire up fetcher via IRpcAsyncClient
+	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl", "Module", "Auth.Module+Impl.swift"), "import HttpClient")
+	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl", "Module", "Auth.Module+Impl.swift"), "client: any IRpcAsyncClient")
 
 	// Service interface in iface, impl in impl
 	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth", "Business", "Middleware", "Auth.Business+IService.swift"), "IService")

@@ -1,21 +1,46 @@
 import {{.InterfacePackageName}}
-import Foundation
+import HttpClient
+import FoundationPlus
 
 extension {{.ModuleName}}.Data.Api.Http {
     public actor Fetcher: IFetcher {
+        private let client: any IRpcAsyncClient
         private let config: {{.ModuleName}}.Data.Api.Http.Config
 
-        public init(config: {{.ModuleName}}.Data.Api.Http.Config) {
+        public init(
+            client: any IRpcAsyncClient,
+            config: {{.ModuleName}}.Data.Api.Http.Config
+        ) {
+            self.client = client
             self.config = config
         }
 
         public func fetchScaffolded() async throws -> {{.ModuleName}}.Data.Api.DTO.ScaffoldedResponse {
-            let url = config.scaffoldedEndpoint
-            let (data, _) = try await URLSession.shared.data(from: url)
-            return try JSONDecoder().decode(
-                {{.ModuleName}}.Data.Api.DTO.ScaffoldedResponse.self,
-                from: data
+            let endpoint = ApiEndpoint(
+                path: config.scaffoldedEndpoint,
+                type: .get
             )
+            let result = await client.performAsync(
+                endpoint: endpoint,
+                headers: [:],
+                queryParams: [:],
+                bodyData: nil,
+                fileID: #fileID,
+                functionName: #function,
+                lineNumber: #line
+            )
+            switch result {
+            case .success(let response):
+                guard let data = response.data else {
+                    throw {{.ModuleName}}.Business.Err.networkError("Empty response")
+                }
+                return try JSONDecoder().decode(
+                    {{.ModuleName}}.Data.Api.DTO.ScaffoldedResponse.self,
+                    from: data
+                )
+            case .failure(let error):
+                throw {{.ModuleName}}.Business.Err.networkError(error.message)
+            }
         }
     }
 }
