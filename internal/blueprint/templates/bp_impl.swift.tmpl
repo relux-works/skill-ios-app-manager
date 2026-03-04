@@ -13,10 +13,10 @@ extension {{.ModuleName}}.Module {
             let config = {{.ModuleName}}.Data.Api.Http.Config()
             let fetcher = {{.ModuleName}}.Data.Api.Http.Fetcher(config: config)
             let service = {{.ModuleName}}.Business.Service(fetcher: fetcher)
-            let flow = {{.ModuleName}}.Business.Flow(state: state, service: service)
+            let flow = await {{.ModuleName}}.Business.Flow(state: state, service: service)
 {{- else}}
             let service = {{.ModuleName}}.Business.Service()
-            let flow = {{.ModuleName}}.Business.Flow(state: state, service: service)
+            let flow = await {{.ModuleName}}.Business.Flow(state: state, service: service)
 {{- end}}
             self.states = [state]
             self.sagas = [flow]
