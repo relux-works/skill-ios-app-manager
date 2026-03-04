@@ -128,6 +128,11 @@ func (g *Generator) buildTargets(bp *Blueprint, vars TemplateVars) []renderTarge
 		},
 		renderTarget{
 			templateName: "bp_service.swift.tmpl",
+			outputPath:   filepath.Join(ifaceSrc, "Business", "Middleware", n+".Business+IService.swift"),
+			vars:         vars,
+		},
+		renderTarget{
+			templateName: "bp_service_impl.swift.tmpl",
 			outputPath:   filepath.Join(implSrc, "Business", "Middleware", n+".Business+Service.swift"),
 			vars:         vars,
 		},
@@ -138,7 +143,12 @@ func (g *Generator) buildTargets(bp *Blueprint, vars TemplateVars) []renderTarge
 		targets = append(targets,
 			renderTarget{
 				templateName: "bp_fetcher.swift.tmpl",
-				outputPath:   filepath.Join(ifaceSrc, "Data", "Api", "Http", n+".Data+Api+Fetcher.swift"),
+				outputPath:   filepath.Join(ifaceSrc, "Data", "Api", "Http", n+".Data+Api+IFetcher.swift"),
+				vars:         vars,
+			},
+			renderTarget{
+				templateName: "bp_fetcher_impl.swift.tmpl",
+				outputPath:   filepath.Join(implSrc, "Data", "Api", "Http", n+".Data+Api+Fetcher.swift"),
 				vars:         vars,
 			},
 			renderTarget{

@@ -25,8 +25,8 @@ func TestGenerateMinimal(t *testing.T) {
 		t.Fatalf("Generate: %v", err)
 	}
 
-	// Should have exactly the always-generated files (12 total)
-	expectedCount := 12
+	// Should have exactly the always-generated files (13 total)
+	expectedCount := 13
 	if len(written) != expectedCount {
 		t.Errorf("written files count = %d, want %d", len(written), expectedCount)
 		for _, f := range written {
@@ -38,6 +38,7 @@ func TestGenerateMinimal(t *testing.T) {
 	assertFileContains(t, filepath.Join(modulesRoot, "Settings", "Sources", "Settings", "Settings.swift"), "public enum Settings")
 	assertFileContains(t, filepath.Join(modulesRoot, "Settings", "Sources", "Settings", "Business", "Settings.Business+Action.swift"), "scaffoldedSuccess")
 	assertFileContains(t, filepath.Join(modulesRoot, "SettingsImpl", "Sources", "SettingsImpl", "Business", "Settings.Business+State.swift"), "MaybeData")
+	assertFileContains(t, filepath.Join(modulesRoot, "Settings", "Sources", "Settings", "Business", "Middleware", "Settings.Business+IService.swift"), "IService")
 	assertFileContains(t, filepath.Join(modulesRoot, "SettingsImpl", "Sources", "SettingsImpl", "Business", "Middleware", "Settings.Business+Flow.swift"), "IService")
 
 	// Should NOT have HTTP or UI files
@@ -64,8 +65,8 @@ func TestGenerateWithHTTP(t *testing.T) {
 		t.Fatalf("Generate: %v", err)
 	}
 
-	// 12 base + 3 HTTP = 15
-	expectedCount := 15
+	// 13 base + 4 HTTP = 17
+	expectedCount := 17
 	if len(written) != expectedCount {
 		t.Errorf("written files count = %d, want %d", len(written), expectedCount)
 		for _, f := range written {
@@ -73,8 +74,10 @@ func TestGenerateWithHTTP(t *testing.T) {
 		}
 	}
 
-	// HTTP-specific files
-	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth", "Data", "Api", "Http", "Auth.Data+Api+Fetcher.swift"), "IFetcher")
+	// HTTP-specific files (interface)
+	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth", "Data", "Api", "Http", "Auth.Data+Api+IFetcher.swift"), "IFetcher")
+	// HTTP-specific files (impl)
+	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl", "Data", "Api", "Http", "Auth.Data+Api+Fetcher.swift"), "actor Fetcher")
 	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth", "Data", "Api", "Http", "Auth.Data+Api+Fetcher+Config.swift"), "scaffoldedEndpoint")
 	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth", "Data", "Api", "DTO", "Auth.Data+Api+DTO+ScaffoldedResponse.swift"), "ScaffoldedResponse")
 
@@ -84,7 +87,8 @@ func TestGenerateWithHTTP(t *testing.T) {
 	// Impl should wire up fetcher
 	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl", "Module", "Auth.Module+Impl.swift"), "Fetcher")
 
-	// Service should call fetcher (in Middleware subfolder)
+	// Service interface in iface, impl in impl
+	assertFileContains(t, filepath.Join(modulesRoot, "Auth", "Sources", "Auth", "Business", "Middleware", "Auth.Business+IService.swift"), "IService")
 	assertFileContains(t, filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl", "Business", "Middleware", "Auth.Business+Service.swift"), "fetcher.fetchScaffolded")
 }
 
@@ -110,8 +114,8 @@ func TestGenerateWithUI(t *testing.T) {
 		t.Fatalf("Generate: %v", err)
 	}
 
-	// 12 base + 3 once-per-module UI + 2*4 per-feature + 1 component = 24
-	expectedCount := 24
+	// 13 base + 3 once-per-module UI + 2*4 per-feature + 1 component = 25
+	expectedCount := 25
 	if len(written) != expectedCount {
 		t.Errorf("written files count = %d, want %d", len(written), expectedCount)
 		for _, f := range written {
@@ -227,8 +231,8 @@ func TestGenerateFullBlueprint(t *testing.T) {
 		t.Fatalf("Generate: %v", err)
 	}
 
-	// 12 base + 3 HTTP + 3 once-per-module UI + 2*4 per-feature + 1 component = 27
-	expectedCount := 27
+	// 13 base + 4 HTTP + 3 once-per-module UI + 2*4 per-feature + 1 component = 29
+	expectedCount := 29
 	if len(written) != expectedCount {
 		t.Errorf("written files count = %d, want %d", len(written), expectedCount)
 		for _, f := range written {
