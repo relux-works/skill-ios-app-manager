@@ -1,27 +1,21 @@
-# STORY-260302-1hnx69: widget-scaffold
+# widget-base
 
 ## Description
-Scaffold WidgetKit widgets as a pluggable extension type.
+Base widget extension scaffold — the foundation target that all widget types plug into.
 
-Design: base widget scaffold + sub-types as registry plugins (same pattern as modules). Each widget type registers itself with metadata, templates, dependencies.
+What it creates:
+1. Widget extension target (via extension-base makeAppExtensionProject)
+2. Empty WidgetBundle (@main entry point)
+3. App Groups capability for shared data between app and extension
+4. Shared types module stub (for ActivityAttributes and other cross-process types)
+5. Extension Info.plist with NSExtensionPointIdentifier = com.apple.widgetkit-extension
 
-Widget types to support:
-1. Static widget — StaticConfiguration + TimelineProvider + Entry + View
-2. Configurable widget — AppIntentConfiguration + AppIntentTimelineProvider (depends on app-intents)
-3. Future: additional widget types plug in via same registry
+This is JUST the base container. Individual widget types (static, configurable, live-activity) are separate plugins that register into this WidgetBundle.
 
-What to scaffold per widget:
-- Widget struct (@main or WidgetBundle entry)
-- TimelineProvider (placeholder/snapshot/timeline)
-- TimelineEntry model
-- Widget View stub
-- WidgetBundle if multiple widgets
-- Resources/ for widget assets
-- Extension Project.swift (via extension-base makeAppExtensionProject)
+Depends on: extension-base (app-extensions), app-groups (init/secure-store)
+Blocks: all widget type plugins
 
-Capabilities needed: appGroups (for shared data)
-Depends on: extension-base, app-intents-scaffold
-Source: tuist-akme AcmeWidget.swift, .research/260224_live-activities-widgets.md section 2
+Source: .research/260224_live-activities-widgets.md section 2.1
 
 ## Scope
 (define story scope)

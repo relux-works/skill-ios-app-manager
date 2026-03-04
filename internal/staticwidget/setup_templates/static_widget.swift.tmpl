@@ -1,0 +1,14 @@
+import WidgetKit
+import SwiftUI
+
+struct {{.AppTypeName}}Widget: Widget {
+    let kind: String = "{{.AppTypeName}}Widget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: {{.AppTypeName}}TimelineProvider()) { entry in
+            {{.AppTypeName}}WidgetView(entry: entry)
+        }
+        .configurationDisplayName("{{.AppName}}")
+        .description("{{.AppName}} widget")
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}

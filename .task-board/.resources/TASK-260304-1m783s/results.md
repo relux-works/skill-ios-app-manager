@@ -1,0 +1,3 @@
+# Static Widget Implementation
+
+Implemented new module internal/staticwidget with register.go + setup.go + setup_templates for 4 Swift files. Added registry.ModuleID StaticWidget, wired blank import in cmd/ios-app-manager/main.go, and added internal/cli/root.go import for CLI package init. Setup now renders <AppName>Widget.swift, <AppName>TimelineProvider.swift, <AppName>TimelineEntry.swift, <AppName>WidgetView.swift and patches <AppName>WidgetBundle.swift with <AppName>Widget() idempotently. Added unit tests and 4 golden template tests under internal/staticwidget/setup_test.go and testdata/staticwidget/*.golden. Validation: make test, make lint, make build all passed.

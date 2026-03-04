@@ -32,7 +32,7 @@ func capabilitySwiftLine(capType string, args map[string]string) string {
 		if group == "" {
 			return ""
 		}
-		return fmt.Sprintf(`        .appGroups(group: .custom(id: Value("%s"))),`, group)
+		return fmt.Sprintf(`        .appGroups(group: .custom(id: "%s")),`, group)
 	case "pushNotifications":
 		return "        .pushNotifications(environment: .production),"
 	default:

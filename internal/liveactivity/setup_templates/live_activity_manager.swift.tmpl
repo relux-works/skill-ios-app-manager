@@ -1,0 +1,83 @@
+@preconcurrency import ActivityKit
+import Foundation
+import SharedKit
+
+@MainActor
+public final class LiveActivityManager {
+    public static let shared = LiveActivityManager()
+
+    private var activities: [String: Activity<{{.AppTypeName}}ActivityAttributes>] = [:]
+
+    private init() {}
+
+    @discardableResult
+    public func start(
+        id: String,
+        title: String,
+        subtitle: String,
+        progress: Double,
+        pushType: PushType? = .token
+    ) async throws -> Activity<{{.AppTypeName}}ActivityAttributes>? {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            return nil
+        }
+
+        let attributes = {{.AppTypeName}}ActivityAttributes(id: id)
+        let state = {{.AppTypeName}}ActivityAttributes.ContentState(
+            title: title,
+            subtitle: subtitle,
+            progress: progress
+        )
+        let content = ActivityContent(state: state, staleDate: nil)
+        let activity = try Activity.request(
+            attributes: attributes,
+            content: content,
+            pushType: pushType
+        )
+
+        activities[id] = activity
+        observePushTokenUpdates(for: activity)
+
+        return activity
+    }
+
+    public func update(
+        id: String,
+        title: String,
+        subtitle: String,
+        progress: Double
+    ) async {
+        guard let activity = activities[id] else {
+            return
+        }
+
+        let state = {{.AppTypeName}}ActivityAttributes.ContentState(
+            title: title,
+            subtitle: subtitle,
+            progress: progress
+        )
+        let content = ActivityContent(state: state, staleDate: nil)
+        await activity.update(content)
+    }
+
+    public func end(id: String, immediate: Bool = false) async {
+        guard let activity = activities[id] else {
+            return
+        }
+
+        let dismissalPolicy: ActivityUIDismissalPolicy = immediate ? .immediate : .default
+        await activity.end(nil, dismissalPolicy: dismissalPolicy)
+        activities.removeValue(forKey: id)
+    }
+
+    private func observePushTokenUpdates(for activity: Activity<{{.AppTypeName}}ActivityAttributes>) {
+        Task {
+            for await tokenData in activity.pushTokenUpdates {
+                let token = tokenData.map { String(format: "%02x", $0) }.joined()
+                // TODO: send token to backend with activity identifier.
+                print("Live Activity push token for \(activity.id): \(token)")
+            }
+        }
+    }
+}
+

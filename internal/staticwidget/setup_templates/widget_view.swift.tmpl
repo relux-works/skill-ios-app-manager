@@ -1,0 +1,18 @@
+import SwiftUI
+import WidgetKit
+
+struct {{.AppTypeName}}WidgetView: View {
+    let entry: {{.AppTypeName}}TimelineEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(entry.title)
+                .font(.headline)
+            Text(entry.date, style: .time)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding()
+    }
+}

@@ -1,0 +1,23 @@
+import ProjectDescription
+
+let hostBundleId = "{{ .HostBundleID }}"
+
+let project = Project(
+    name: "{{ .ProjectName }}",
+    targets: [
+        .target(
+            name: "{{ .TargetName }}",
+            destinations: .iOS,
+            product: .appExtension,
+            bundleId: "\(hostBundleId).{{ .BundleIDSuffix }}",
+            infoPlist: .extendingDefault(with: [
+                "NSExtension": .dictionary([
+                    "NSExtensionPointIdentifier": .string("{{ .ExtensionPointIdentifier }}"),
+                ]),
+            ]),
+            sources: ["Sources/**"],
+            dependencies: [
+            ]
+        )
+    ]
+)

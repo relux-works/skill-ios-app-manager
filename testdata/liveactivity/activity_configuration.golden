@@ -1,0 +1,48 @@
+import ActivityKit
+import SharedKit
+import SwiftUI
+import WidgetKit
+
+struct DemoAppLiveActivityWidget: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: DemoAppActivityAttributes.self) { context in
+            VStack(alignment: .leading, spacing: 8) {
+                Text(context.state.title)
+                    .font(.headline)
+                Text(context.state.subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                ProgressView(value: context.state.progress, total: 1.0)
+            }
+            .padding()
+            .activityBackgroundTint(Color(.systemBackground))
+            .activitySystemActionForegroundColor(.accentColor)
+        } dynamicIsland: { context in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    Text(context.state.title)
+                        .font(.caption)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    Text(progressText(context.state.progress))
+                        .font(.caption)
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    ProgressView(value: context.state.progress, total: 1.0)
+                }
+            } compactLeading: {
+                Text(String(context.state.title.prefix(1)))
+            } compactTrailing: {
+                Text(progressText(context.state.progress))
+            } minimal: {
+                Text(progressText(context.state.progress))
+            }
+            .keylineTint(.accentColor)
+        }
+    }
+
+    private func progressText(_ progress: Double) -> String {
+        "\(Int((progress * 100).rounded()))%"
+    }
+}
+
