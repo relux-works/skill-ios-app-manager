@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -11,6 +12,17 @@ struct {{.AppTypeName}}WidgetView: View {
             Text(entry.date, style: .time)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Button(intent: {{.AppTypeName}}WidgetToggleIntent()) {
+                Label(
+                    entry.isToggled ? "On" : "Off",
+                    systemImage: entry.isToggled ? "checkmark.circle.fill" : "circle"
+                )
+                .font(.caption)
+            }
+            .tint(entry.isToggled ? .green : .secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding()

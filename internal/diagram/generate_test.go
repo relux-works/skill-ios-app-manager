@@ -8,6 +8,7 @@ import (
 	"github.com/relux-works/ios-app-manager/internal/registry"
 
 	_ "github.com/relux-works/ios-app-manager/internal/appconfig"
+	_ "github.com/relux-works/ios-app-manager/internal/appintents"
 	_ "github.com/relux-works/ios-app-manager/internal/extensions"
 	_ "github.com/relux-works/ios-app-manager/internal/foundationplus"
 	_ "github.com/relux-works/ios-app-manager/internal/httpclient"

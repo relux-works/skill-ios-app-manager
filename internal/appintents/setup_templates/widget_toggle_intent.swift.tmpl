@@ -1,0 +1,17 @@
+import AppIntents
+import WidgetKit
+
+struct {{.AppTypeName}}WidgetToggleIntent: AppIntent {
+    static var title: LocalizedStringResource = "Toggle Widget"
+    static var description: IntentDescription = "Toggles shared widget state"
+
+    func perform() async throws -> some IntentResult {
+        let defaults = UserDefaults(suiteName: "{{.AppGroupID}}")
+        let current = defaults?.bool(forKey: "widgetToggle") ?? false
+        defaults?.set(!current, forKey: "widgetToggle")
+
+        WidgetCenter.shared.reloadAllTimelines()
+
+        return .result()
+    }
+}

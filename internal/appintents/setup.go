@@ -1,4 +1,4 @@
-package staticwidget
+package appintents
 
 import (
 	"embed"
@@ -10,17 +10,19 @@ import (
 
 	"github.com/relux-works/ios-app-manager/internal/config"
 	"github.com/relux-works/ios-app-manager/internal/scaffold"
+	"github.com/relux-works/ios-app-manager/internal/tuistproj"
 )
 
 const (
-	extensionsDirectoryName = "Extensions"
-	widgetExtensionSuffix   = "Widget"
+	extensionsDirectoryName  = "Extensions"
+	widgetExtensionSuffix    = "Widget"
+	appIntentsDependencyName = "AppIntents"
 )
 
 //go:embed setup_templates/*.tmpl
 var setupTemplatesFS embed.FS
 
-// SetupInput holds parameters for static-widget setup command.
+// SetupInput holds parameters for app-intents setup command.
 type SetupInput struct {
 	ProjectRoot string
 	AppName     string
@@ -28,24 +30,11 @@ type SetupInput struct {
 }
 
 type templateData struct {
-	AppName     string
 	AppTypeName string
 	AppGroupID  string
 }
 
-type widgetTemplateFile struct {
-	templateName string
-	fileSuffix   string
-}
-
-var widgetTemplateFiles = []widgetTemplateFile{
-	{templateName: "static_widget.swift.tmpl", fileSuffix: "Widget.swift"},
-	{templateName: "timeline_provider.swift.tmpl", fileSuffix: "TimelineProvider.swift"},
-	{templateName: "timeline_entry.swift.tmpl", fileSuffix: "TimelineEntry.swift"},
-	{templateName: "widget_view.swift.tmpl", fileSuffix: "WidgetView.swift"},
-}
-
-// Setup creates static WidgetKit files in the widget extension target and registers it in WidgetBundle.
+// Setup scaffolds App Intents files in the widget extension.
 func Setup(input SetupInput) error {
 	if err := validateInput(input); err != nil {
 		return err
@@ -71,21 +60,18 @@ func Setup(input SetupInput) error {
 	}
 
 	data := templateData{
-		AppName:     appName,
 		AppTypeName: appTypeName,
 		AppGroupID:  appGroupID,
 	}
 
-	for _, tf := range widgetTemplateFiles {
-		outputPath := filepath.Join(widgetSourcesDir, appTypeName+tf.fileSuffix)
-		if err := renderTemplate(tf.templateName, outputPath, data); err != nil {
-			return fmt.Errorf("render %s: %w", outputPath, err)
-		}
+	intentPath := filepath.Join(widgetSourcesDir, appTypeName+"WidgetToggleIntent.swift")
+	if err := renderTemplate("widget_toggle_intent.swift.tmpl", intentPath, data); err != nil {
+		return fmt.Errorf("render widget toggle intent: %w", err)
 	}
 
-	widgetBundlePath := filepath.Join(widgetSourcesDir, widgetTargetName+"Bundle.swift")
-	if err := appendWidgetBundleEntry(widgetBundlePath, appTypeName+"Widget"); err != nil {
-		return fmt.Errorf("register static widget in WidgetBundle: %w", err)
+	widgetProjectPath := filepath.Join(input.ProjectRoot, extensionsDirectoryName, widgetTargetName, "Project.swift")
+	if err := addAppIntentsDependency(widgetProjectPath); err != nil {
+		return fmt.Errorf("add AppIntents dependency: %w", err)
 	}
 
 	return nil
@@ -129,6 +115,18 @@ func resolveAppGroupID(cfg config.ProjectConfig) (string, error) {
 	return "group." + bundleID, nil
 }
 
+func addAppIntentsDependency(projectSwiftPath string) error {
+	err := tuistproj.ApplyManifestEditsToFile(projectSwiftPath, tuistproj.ManifestEdit{
+		Type:    tuistproj.AddDependency,
+		Name:    appIntentsDependencyName,
+		Content: `.sdk(name: "AppIntents", type: .framework)`,
+	})
+	if err != nil && strings.Contains(err.Error(), "already contains") {
+		return nil
+	}
+	return err
+}
+
 func renderTemplate(templateName, outputPath string, data any) error {
 	tmplPath := "setup_templates/" + templateName
 	content, err := setupTemplatesFS.ReadFile(tmplPath)
@@ -152,48 +150,6 @@ func renderTemplate(templateName, outputPath string, data any) error {
 
 	if err := os.WriteFile(outputPath, []byte(rendered.String()), 0o644); err != nil {
 		return fmt.Errorf("write rendered template: %w", err)
-	}
-
-	return nil
-}
-
-func appendWidgetBundleEntry(widgetBundlePath, widgetTypeName string) error {
-	payload, err := os.ReadFile(widgetBundlePath)
-	if err != nil {
-		return fmt.Errorf("read WidgetBundle file: %w", err)
-	}
-	content := string(payload)
-
-	registrationLine := fmt.Sprintf("%s()", widgetTypeName)
-	if strings.Contains(content, registrationLine) {
-		return nil
-	}
-
-	anchor := "// Widget plugins register here"
-	if strings.Contains(content, anchor) {
-		replacement := fmt.Sprintf("        %s\n        %s", registrationLine, anchor)
-		updated := strings.Replace(content, anchor, replacement, 1)
-		if err := os.WriteFile(widgetBundlePath, []byte(updated), 0o644); err != nil {
-			return fmt.Errorf("write WidgetBundle file: %w", err)
-		}
-		return nil
-	}
-
-	bodyMarker := "var body: some Widget {"
-	bodyIdx := strings.Index(content, bodyMarker)
-	if bodyIdx < 0 {
-		return fmt.Errorf("WidgetBundle missing %q marker", bodyMarker)
-	}
-
-	lineEnd := strings.Index(content[bodyIdx:], "\n")
-	if lineEnd < 0 {
-		return fmt.Errorf("WidgetBundle body marker line has no newline")
-	}
-
-	insertPos := bodyIdx + lineEnd + 1
-	updated := content[:insertPos] + fmt.Sprintf("        %s\n", registrationLine) + content[insertPos:]
-	if err := os.WriteFile(widgetBundlePath, []byte(updated), 0o644); err != nil {
-		return fmt.Errorf("write WidgetBundle file: %w", err)
 	}
 
 	return nil

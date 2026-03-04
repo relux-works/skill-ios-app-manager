@@ -1,11 +1,13 @@
 package staticwidget
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/relux-works/ios-app-manager/internal/config"
 	"github.com/relux-works/ios-app-manager/internal/testutil"
 )
 
@@ -49,7 +51,7 @@ func TestSetupCreatesStaticWidgetFilesAndRegistersWidget(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := t.TempDir()
-	setupProjectFiles(t, projectRoot)
+	setupProjectFiles(t, projectRoot, "DemoApp", "com.demo.app", []string{"group.com.demo.shared"})
 
 	if err := Setup(SetupInput{
 		ProjectRoot: projectRoot,
@@ -86,6 +88,7 @@ func TestSetupCreatesStaticWidgetFilesAndRegistersWidget(t *testing.T) {
 	provider := readFile(t, providerPath)
 	for _, want := range []string{
 		"struct DemoAppTimelineProvider: TimelineProvider",
+		`UserDefaults(suiteName: "group.com.demo.shared")`,
 		"func placeholder(in context: Context) -> DemoAppTimelineEntry",
 		"func getSnapshot(in context: Context, completion: @escaping (DemoAppTimelineEntry) -> Void)",
 		"func getTimeline(in context: Context, completion: @escaping (Timeline<DemoAppTimelineEntry>) -> Void)",
@@ -100,6 +103,7 @@ func TestSetupCreatesStaticWidgetFilesAndRegistersWidget(t *testing.T) {
 		"struct DemoAppTimelineEntry: TimelineEntry",
 		"let date: Date",
 		"let title: String",
+		"let isToggled: Bool",
 	} {
 		if !strings.Contains(entry, want) {
 			t.Fatalf("DemoAppTimelineEntry.swift missing %q:\n%s", want, entry)
@@ -108,10 +112,13 @@ func TestSetupCreatesStaticWidgetFilesAndRegistersWidget(t *testing.T) {
 
 	view := readFile(t, viewPath)
 	for _, want := range []string{
+		"import AppIntents",
 		"struct DemoAppWidgetView: View",
 		"let entry: DemoAppTimelineEntry",
 		"Text(entry.title)",
 		"Text(entry.date, style: .time)",
+		"Button(intent: DemoAppWidgetToggleIntent())",
+		"entry.isToggled",
 	} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("DemoAppWidgetView.swift missing %q:\n%s", want, view)
@@ -128,7 +135,7 @@ func TestSetupIsIdempotent(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := t.TempDir()
-	setupProjectFiles(t, projectRoot)
+	setupProjectFiles(t, projectRoot, "DemoApp", "com.demo.app", []string{"group.com.demo.shared"})
 
 	input := SetupInput{
 		ProjectRoot: projectRoot,
@@ -155,7 +162,7 @@ func TestGoldenStaticWidgetTemplate(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := t.TempDir()
-	setupProjectFiles(t, projectRoot)
+	setupProjectFiles(t, projectRoot, "DemoApp", "com.demo.app", []string{"group.com.demo.shared"})
 
 	if err := Setup(SetupInput{
 		ProjectRoot: projectRoot,
@@ -172,7 +179,7 @@ func TestGoldenTimelineProviderTemplate(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := t.TempDir()
-	setupProjectFiles(t, projectRoot)
+	setupProjectFiles(t, projectRoot, "DemoApp", "com.demo.app", []string{"group.com.demo.shared"})
 
 	if err := Setup(SetupInput{
 		ProjectRoot: projectRoot,
@@ -189,7 +196,7 @@ func TestGoldenTimelineEntryTemplate(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := t.TempDir()
-	setupProjectFiles(t, projectRoot)
+	setupProjectFiles(t, projectRoot, "DemoApp", "com.demo.app", []string{"group.com.demo.shared"})
 
 	if err := Setup(SetupInput{
 		ProjectRoot: projectRoot,
@@ -206,7 +213,7 @@ func TestGoldenWidgetViewTemplate(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := t.TempDir()
-	setupProjectFiles(t, projectRoot)
+	setupProjectFiles(t, projectRoot, "DemoApp", "com.demo.app", []string{"group.com.demo.shared"})
 
 	if err := Setup(SetupInput{
 		ProjectRoot: projectRoot,
@@ -219,10 +226,10 @@ func TestGoldenWidgetViewTemplate(t *testing.T) {
 	testutil.AssertGoldenFile(t, "staticwidget/widget_view", view)
 }
 
-func setupProjectFiles(t *testing.T, projectRoot string) {
+func setupProjectFiles(t *testing.T, projectRoot, appName, bundleID string, appGroups []string) {
 	t.Helper()
 
-	widgetSourcesDir := filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources")
+	widgetSourcesDir := filepath.Join(projectRoot, "Extensions", appName+"Widget", "Sources")
 	if err := os.MkdirAll(widgetSourcesDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll(%q) error = %v", widgetSourcesDir, err)
 	}
@@ -231,13 +238,29 @@ func setupProjectFiles(t *testing.T, projectRoot string) {
 import SwiftUI
 
 @main
-struct DemoAppWidgetBundle: WidgetBundle {
+struct ` + appName + `WidgetBundle: WidgetBundle {
     var body: some Widget {
         // Widget plugins register here
     }
 }
 `
-	writeTestFile(t, filepath.Join(widgetSourcesDir, "DemoAppWidgetBundle.swift"), widgetBundle)
+	writeTestFile(t, filepath.Join(widgetSourcesDir, appName+"WidgetBundle.swift"), widgetBundle)
+
+	cfg := config.ProjectConfig{
+		AppName:          appName,
+		BundleID:         bundleID,
+		TeamID:           "TEAM123456",
+		SwiftVersion:     "6.0",
+		MinTarget:        "17.0",
+		MarketingVersion: "1.0.0",
+		AppGroups:        appGroups,
+	}
+
+	raw, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatalf("json.Marshal(config) error = %v", err)
+	}
+	writeTestFile(t, filepath.Join(projectRoot, config.DefaultConfigPath), string(raw))
 }
 
 func writeTestFile(t *testing.T, path, content string) {
