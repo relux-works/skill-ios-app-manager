@@ -167,6 +167,11 @@ The demo/test app lives in `.temp/demo-project/` and is **generated output** of 
    ../../ios-app-manager utilities setup
    ../../ios-app-manager foundation-plus setup
    ../../ios-app-manager swiftui-plus setup
+   ../../ios-app-manager app-extensions setup
+   ../../ios-app-manager widget-base setup
+   ../../ios-app-manager app-intents setup
+   ../../ios-app-manager static-widget setup
+   ../../ios-app-manager live-activity setup
    ../../ios-app-manager module create --from <name>.blueprint.json
    ../../ios-app-manager app-config setup
    ../../ios-app-manager http-client setup
@@ -193,6 +198,11 @@ cd .temp/demo-project
 ../../ios-app-manager utilities setup
 ../../ios-app-manager foundation-plus setup
 ../../ios-app-manager swiftui-plus setup
+../../ios-app-manager app-extensions setup
+../../ios-app-manager widget-base setup
+../../ios-app-manager app-intents setup
+../../ios-app-manager static-widget setup
+../../ios-app-manager live-activity setup
 ../../ios-app-manager module create --from auth.blueprint.json
 ../../ios-app-manager app-config setup
 ../../ios-app-manager http-client setup

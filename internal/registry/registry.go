@@ -21,6 +21,7 @@ const (
 	WidgetBase     ModuleID = "widget-base"
 	StaticWidget   ModuleID = "static-widget"
 	LiveActivity   ModuleID = "live-activity"
+	AppIntents     ModuleID = "app-intents"
 	Utilities      ModuleID = "utilities"
 	FoundationPlus ModuleID = "foundation-plus"
 	SwiftUIPlus    ModuleID = "swiftui-plus"

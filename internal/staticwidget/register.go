@@ -29,6 +29,7 @@ func init() {
 		Description: "Static WidgetKit widget with timeline provider",
 		Dependencies: []registry.ModuleID{
 			registry.WidgetBase,
+			registry.AppIntents,
 		},
 
 		Plan:       planSetup,
