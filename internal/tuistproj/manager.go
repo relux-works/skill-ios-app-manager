@@ -405,7 +405,7 @@ func (m *TuistProjectManager) createModulePackage(spec modulePackageSpec) (strin
 		return "", fmt.Errorf("write package manifest %q: %w", manifestPath, err)
 	}
 
-	sourceDir := filepath.Join(packagePath, swiftSourceDirectoryName, spec.TargetName)
+	sourceDir := filepath.Join(packagePath, swiftSourceDirectoryName)
 	if err := m.mkdirAll(sourceDir, 0o755); err != nil {
 		return "", fmt.Errorf("create sources directory %q: %w", sourceDir, err)
 	}

@@ -67,7 +67,7 @@ func Setup(input SetupInput) error {
 	}
 
 	// 2. Scaffold HttpClientUtils Swift files.
-	sourcesDir := filepath.Join(pkgDir, "Sources", moduleName, "HttpClientUtils")
+	sourcesDir := filepath.Join(pkgDir, "Sources", "HttpClientUtils")
 	if err := os.MkdirAll(sourcesDir, 0o755); err != nil {
 		return fmt.Errorf("create HttpClientUtils directory: %w", err)
 	}

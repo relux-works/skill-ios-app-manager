@@ -21,7 +21,7 @@ func TestSetupCreatesAllFiles(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	httpUtilsDir := filepath.Join(projectRoot, "Packages", "Utilities", "Sources", "Utilities", "HttpClientUtils")
+	httpUtilsDir := filepath.Join(projectRoot, "Packages", "Utilities", "Sources", "HttpClientUtils")
 
 	expectedFiles := []string{
 		"HeaderMaps.swift",
@@ -100,7 +100,7 @@ func TestSetupWithCustomModulesPath(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	httpUtilsDir := filepath.Join(projectRoot, "Modules", "Utilities", "Sources", "Utilities", "HttpClientUtils")
+	httpUtilsDir := filepath.Join(projectRoot, "Modules", "Utilities", "Sources", "HttpClientUtils")
 
 	path := filepath.Join(httpUtilsDir, "HeaderMaps.swift")
 	if _, err := os.Stat(path); err != nil {
@@ -162,7 +162,7 @@ func TestSetupIdempotent(t *testing.T) {
 		t.Fatalf("second Setup() error = %v", err)
 	}
 
-	httpUtilsDir := filepath.Join(projectRoot, "Packages", "Utilities", "Sources", "Utilities", "HttpClientUtils")
+	httpUtilsDir := filepath.Join(projectRoot, "Packages", "Utilities", "Sources", "HttpClientUtils")
 	path := filepath.Join(httpUtilsDir, "HeaderMaps.swift")
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("file missing after idempotent run: %v", err)
@@ -186,7 +186,7 @@ func TestHeaderMapsContent(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Packages", "Utilities", "Sources", "Utilities", "HttpClientUtils", "HeaderMaps.swift")
+	path := filepath.Join(projectRoot, "Packages", "Utilities", "Sources", "HttpClientUtils", "HeaderMaps.swift")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
@@ -218,7 +218,7 @@ func TestBaseEncoderContent(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Packages", "Utilities", "Sources", "Utilities", "HttpClientUtils", "BaseEncoder.swift")
+	path := filepath.Join(projectRoot, "Packages", "Utilities", "Sources", "HttpClientUtils", "BaseEncoder.swift")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
@@ -247,7 +247,7 @@ func TestBaseDecoderContent(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Packages", "Utilities", "Sources", "Utilities", "HttpClientUtils", "BaseDecoder.swift")
+	path := filepath.Join(projectRoot, "Packages", "Utilities", "Sources", "HttpClientUtils", "BaseDecoder.swift")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)

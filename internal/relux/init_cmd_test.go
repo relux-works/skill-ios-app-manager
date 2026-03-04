@@ -31,10 +31,10 @@ func TestInitCommandRunCreatesAllFiles(t *testing.T) {
 
 	implPath := modulePath + "Impl"
 	want := []string{
-		filepath.Join(modulePath, "Sources", "Notes", "Notes.swift"),
-		filepath.Join(modulePath, "Sources", "Notes", "Module", "Notes.Module.swift"),
-		filepath.Join(modulePath, "Sources", "Notes", "Module", "Notes.Module+Interface.swift"),
-		filepath.Join(implPath, "Sources", "NotesImpl", "Module", "Notes.Module+Impl.swift"),
+		filepath.Join(modulePath, "Sources", "Notes.swift"),
+		filepath.Join(modulePath, "Sources", "Module", "Notes.Module.swift"),
+		filepath.Join(modulePath, "Sources", "Module", "Notes.Module+Interface.swift"),
+		filepath.Join(implPath, "Sources", "Module", "Notes.Module+Impl.swift"),
 	}
 	sort.Strings(want)
 
@@ -133,14 +133,14 @@ func TestInitCommandRunReluxFeatureTemplateSet(t *testing.T) {
 
 	implPath := modulePath + "Impl"
 	want := []string{
-		filepath.Join(modulePath, "Sources", "Auth", "Auth.swift"),
-		filepath.Join(modulePath, "Sources", "Auth", "Module", "Auth.Module.swift"),
-		filepath.Join(modulePath, "Sources", "Auth", "Module", "Auth.Module+Interface.swift"),
-		filepath.Join(modulePath, "Sources", "Auth", "Business", "Auth.Business+Action.swift"),
-		filepath.Join(modulePath, "Sources", "Auth", "Business", "Auth.Business+Effect.swift"),
-		filepath.Join(implPath, "Sources", "AuthImpl", "Module", "Auth.Module+Impl.swift"),
-		filepath.Join(implPath, "Sources", "AuthImpl", "Business", "Auth.Business+State.swift"),
-		filepath.Join(implPath, "Sources", "AuthImpl", "Business", "Auth.Business+Flow.swift"),
+		filepath.Join(modulePath, "Sources", "Auth.swift"),
+		filepath.Join(modulePath, "Sources", "Module", "Auth.Module.swift"),
+		filepath.Join(modulePath, "Sources", "Module", "Auth.Module+Interface.swift"),
+		filepath.Join(modulePath, "Sources", "Business", "Auth.Business+Action.swift"),
+		filepath.Join(modulePath, "Sources", "Business", "Auth.Business+Effect.swift"),
+		filepath.Join(implPath, "Sources", "Module", "Auth.Module+Impl.swift"),
+		filepath.Join(implPath, "Sources", "Business", "Auth.Business+State.swift"),
+		filepath.Join(implPath, "Sources", "Business", "Auth.Business+Flow.swift"),
 	}
 	sort.Strings(want)
 
@@ -187,8 +187,8 @@ func TestInitCommandRunTemplateSet(t *testing.T) {
 
 	implPath := modulePath + "Impl"
 	want := []string{
-		filepath.Join(modulePath, "Sources", "Notes", "Notes.swift"),
-		filepath.Join(implPath, "Sources", "NotesImpl", "Module", "Notes.Module+Impl.swift"),
+		filepath.Join(modulePath, "Sources", "Notes.swift"),
+		filepath.Join(implPath, "Sources", "Module", "Notes.Module+Impl.swift"),
 	}
 	sort.Strings(want)
 

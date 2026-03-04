@@ -62,7 +62,7 @@ func Setup(input SetupInput) error {
 	}
 
 	// 3. Render TokenProvider Swift files into interface package.
-	interfaceSrcDir := filepath.Join(interfacePkgDir, "Sources", moduleName)
+	interfaceSrcDir := filepath.Join(interfacePkgDir, "Sources")
 
 	protocolPath := filepath.Join(interfaceSrcDir, "Module", moduleName+".Module+Interface.swift")
 	if err := renderTemplate("setup_templates/token_provider_protocol.swift.tmpl", protocolPath); err != nil {
@@ -85,7 +85,7 @@ func Setup(input SetupInput) error {
 	}
 
 	// 4. Render TokenProviderImpl Swift file into impl package.
-	implSrcDir := filepath.Join(implPkgDir, "Sources", implPackageName)
+	implSrcDir := filepath.Join(implPkgDir, "Sources")
 
 	implPath := filepath.Join(implSrcDir, "Module", moduleName+".Module+Impl.swift")
 	if err := renderTemplate("setup_templates/token_provider_impl.swift.tmpl", implPath); err != nil {

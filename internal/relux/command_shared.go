@@ -41,28 +41,32 @@ func resolveModuleLayout(moduleName string, modulePath string) (moduleLayout, er
 		ModulePath: trimmedPath,
 	}
 
-	// SPM standard: Sources/{ModuleName}/ inside the package
-	// Legacy: {ModuleName}Interface/Sources/ inside the interface package
+	// Flat layout: Sources/ directly inside the package (new default)
+	// Legacy SPM: Sources/{ModuleName}/ inside the package
+	// Legacy split: {ModuleName}Interface/Sources/ inside the interface package
 	layout.InterfaceSourcesDir = pickExistingDirOrDefault(
 		trimmedPath,
 		[]string{
+			"Sources",
 			filepath.Join("Sources", normalizedModuleName),
 			filepath.Join(normalizedModuleName+"Interface", "Sources"),
 			filepath.Join("Interface", "Sources"),
 		},
-		filepath.Join("Sources", normalizedModuleName),
+		"Sources",
 	)
 
-	// SPM standard: impl is a separate package at .../Packages/ModuleNameImpl/Sources/ModuleNameImpl/
-	// Legacy: {ModuleName}Impl/Sources/ inside the interface package
+	// Flat layout: Sources/ directly inside the impl package (new default)
+	// Legacy SPM: Sources/{ModuleNameImpl}/ inside the impl package
+	// Legacy split: {ModuleName}Impl/Sources/ inside the interface package
 	layout.ImplSourcesDir = pickExistingDirOrDefault(
 		"",
 		[]string{
+			filepath.Join(implPackagePath, "Sources"),
 			filepath.Join(implPackagePath, "Sources", normalizedModuleName+"Impl"),
 			filepath.Join(trimmedPath, normalizedModuleName+"Impl", "Sources"),
 			filepath.Join(trimmedPath, "Impl", "Sources"),
 		},
-		filepath.Join(implPackagePath, "Sources", normalizedModuleName+"Impl"),
+		filepath.Join(implPackagePath, "Sources"),
 	)
 
 	// IoC files go into the impl sources dir (no separate IoC directory)

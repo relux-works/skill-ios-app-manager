@@ -165,8 +165,8 @@ func TestPipelineAllModuleTypesRegression(t *testing.T) {
 		}
 
 		t.Run(mc.moduleType+"_files", func(t *testing.T) {
-			interfaceSrc := filepath.Join(modulesRoot, mc.name, "Sources", mc.name)
-			implSrc := filepath.Join(modulesRoot, mc.name+"Impl", "Sources", mc.name+"Impl")
+			interfaceSrc := filepath.Join(modulesRoot, mc.name, "Sources")
+			implSrc := filepath.Join(modulesRoot, mc.name+"Impl", "Sources")
 
 			requireDir(t, filepath.Join(modulesRoot, mc.name))
 			requireDir(t, filepath.Join(modulesRoot, mc.name+"Impl"))
@@ -201,8 +201,8 @@ func TestPipelineAllModuleTypesRegression(t *testing.T) {
 
 	// Verify relux-feature module (created via blueprint) has expected files + swift-relux dep.
 	t.Run("relux-feature_files", func(t *testing.T) {
-		interfaceSrc := filepath.Join(modulesRoot, "Payment", "Sources", "Payment")
-		implSrc := filepath.Join(modulesRoot, "PaymentImpl", "Sources", "PaymentImpl")
+		interfaceSrc := filepath.Join(modulesRoot, "Payment", "Sources")
+		implSrc := filepath.Join(modulesRoot, "PaymentImpl", "Sources")
 
 		// Module skeleton
 		requireFile(t, filepath.Join(interfaceSrc, "Payment.swift"))
@@ -282,8 +282,8 @@ func verifyTodoListModule(t *testing.T, projectRoot string, modulesPath string) 
 	requireFile(t, filepath.Join(modulesRoot, "TodoList", "Package.swift"))
 	requireFile(t, filepath.Join(modulesRoot, "TodoListImpl", "Package.swift"))
 
-	interfaceSources := filepath.Join(modulesRoot, "TodoList", "Sources", "TodoList")
-	implSources := filepath.Join(modulesRoot, "TodoListImpl", "Sources", "TodoListImpl")
+	interfaceSources := filepath.Join(modulesRoot, "TodoList", "Sources")
+	implSources := filepath.Join(modulesRoot, "TodoListImpl", "Sources")
 
 	requireFile(t, filepath.Join(interfaceSources, "TodoList.swift"))
 	requireFile(t, filepath.Join(interfaceSources, "Module", "TodoList.Module.swift"))
@@ -302,8 +302,8 @@ func verifyReluxFeatureModule(t *testing.T, projectRoot string, modulesPath stri
 	requireFile(t, filepath.Join(modulesRoot, "Auth", "Package.swift"))
 	requireFile(t, filepath.Join(modulesRoot, "AuthImpl", "Package.swift"))
 
-	interfaceSources := filepath.Join(modulesRoot, "Auth", "Sources", "Auth")
-	implSources := filepath.Join(modulesRoot, "AuthImpl", "Sources", "AuthImpl")
+	interfaceSources := filepath.Join(modulesRoot, "Auth", "Sources")
+	implSources := filepath.Join(modulesRoot, "AuthImpl", "Sources")
 
 	// Interface package: namespace, module, interface
 	requireFile(t, filepath.Join(interfaceSources, "Auth.swift"))
@@ -375,8 +375,8 @@ func verifyTokenProviderModule(t *testing.T, projectRoot string, modulesPath str
 	requireFile(t, filepath.Join(modulesRoot, "TokenProvider", "Package.swift"))
 	requireFile(t, filepath.Join(modulesRoot, "TokenProviderImpl", "Package.swift"))
 
-	interfaceSources := filepath.Join(modulesRoot, "TokenProvider", "Sources", "TokenProvider")
-	implSources := filepath.Join(modulesRoot, "TokenProviderImpl", "Sources", "TokenProviderImpl")
+	interfaceSources := filepath.Join(modulesRoot, "TokenProvider", "Sources")
+	implSources := filepath.Join(modulesRoot, "TokenProviderImpl", "Sources")
 
 	requireFile(t, filepath.Join(interfaceSources, "TokenProvider.swift"))
 	requireFile(t, filepath.Join(interfaceSources, "TokenProvider.AuthData.swift"))

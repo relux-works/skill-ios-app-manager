@@ -27,7 +27,7 @@ func TestSetupCreatesAllFiles(t *testing.T) {
 	}
 
 	// Interface package files.
-	interfaceDir := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore")
+	interfaceDir := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources")
 	for _, rel := range []string{
 		"SecureStore.swift",
 		filepath.Join("Module", "SecureStore.Module.swift"),
@@ -44,7 +44,7 @@ func TestSetupCreatesAllFiles(t *testing.T) {
 	}
 
 	// Impl package files.
-	implDir := filepath.Join(projectRoot, "Packages", "SecureStoreImpl", "Sources", "SecureStoreImpl")
+	implDir := filepath.Join(projectRoot, "Packages", "SecureStoreImpl", "Sources")
 	for _, rel := range []string{
 		filepath.Join("Module", "SecureStore.Module+Impl.swift"),
 	} {
@@ -132,7 +132,7 @@ func TestSetupWithCustomModulesPath(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Modules", "SecureStore", "Sources", "SecureStore", "SecureStore.swift")
+	path := filepath.Join(projectRoot, "Modules", "SecureStore", "Sources", "SecureStore.swift")
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("expected file not found at custom modules path: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestSetupIdempotent(t *testing.T) {
 		t.Fatalf("second Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore", "SecureStore.swift")
+	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore.swift")
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("file missing after idempotent run: %v", err)
 	}
@@ -220,7 +220,7 @@ func TestNamespaceContent(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore", "SecureStore.swift")
+	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore.swift")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
@@ -242,7 +242,7 @@ func TestInterfaceContent(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore", "Module", "SecureStore.Module+Interface.swift")
+	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "Module", "SecureStore.Module+Interface.swift")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
@@ -276,7 +276,7 @@ func TestImplContent(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Packages", "SecureStoreImpl", "Sources", "SecureStoreImpl", "Module", "SecureStore.Module+Impl.swift")
+	path := filepath.Join(projectRoot, "Packages", "SecureStoreImpl", "Sources", "Module", "SecureStore.Module+Impl.swift")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
@@ -317,7 +317,7 @@ func TestModuleContent(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore", "Module", "SecureStore.Module.swift")
+	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "Module", "SecureStore.Module.swift")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
@@ -346,10 +346,10 @@ func TestDirectoryStructure(t *testing.T) {
 	}
 
 	expectedDirs := []string{
-		filepath.Join("Packages", "SecureStore", "Sources", "SecureStore"),
-		filepath.Join("Packages", "SecureStore", "Sources", "SecureStore", "Module"),
-		filepath.Join("Packages", "SecureStoreImpl", "Sources", "SecureStoreImpl"),
-		filepath.Join("Packages", "SecureStoreImpl", "Sources", "SecureStoreImpl", "Module"),
+		filepath.Join("Packages", "SecureStore", "Sources"),
+		filepath.Join("Packages", "SecureStore", "Sources", "Module"),
+		filepath.Join("Packages", "SecureStoreImpl", "Sources"),
+		filepath.Join("Packages", "SecureStoreImpl", "Sources", "Module"),
 	}
 
 	for _, rel := range expectedDirs {
@@ -374,7 +374,7 @@ func TestGoldenNamespace(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore", "SecureStore.swift")
+	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore.swift")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
@@ -393,7 +393,7 @@ func TestGoldenModule(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore", "Module", "SecureStore.Module.swift")
+	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "Module", "SecureStore.Module.swift")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
@@ -412,7 +412,7 @@ func TestGoldenInterface(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore", "Module", "SecureStore.Module+Interface.swift")
+	path := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "Module", "SecureStore.Module+Interface.swift")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
@@ -431,7 +431,7 @@ func TestGoldenImpl(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	path := filepath.Join(projectRoot, "Packages", "SecureStoreImpl", "Sources", "SecureStoreImpl", "Module", "SecureStore.Module+Impl.swift")
+	path := filepath.Join(projectRoot, "Packages", "SecureStoreImpl", "Sources", "Module", "SecureStore.Module+Impl.swift")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
@@ -451,7 +451,7 @@ func TestSetupIdempotentContentUnchanged(t *testing.T) {
 		t.Fatalf("first Setup() error = %v", err)
 	}
 
-	interfacePath := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "SecureStore", "Module", "SecureStore.Module+Interface.swift")
+	interfacePath := filepath.Join(projectRoot, "Packages", "SecureStore", "Sources", "Module", "SecureStore.Module+Interface.swift")
 	firstContent, err := os.ReadFile(interfacePath)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
