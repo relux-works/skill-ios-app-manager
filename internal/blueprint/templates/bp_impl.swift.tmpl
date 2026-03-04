@@ -1,5 +1,8 @@
 import {{.InterfacePackageName}}
 import Relux
+{{- if .HasHTTP}}
+import HttpClient
+{{- end}}
 
 extension {{.ModuleName}}.Module {
     public struct Impl: {{.ModuleName}}.Module.Interface {
@@ -7,16 +10,29 @@ extension {{.ModuleName}}.Module {
         public let sagas: [any Relux.Saga]
 
         @MainActor
+{{- if .HasHTTP}}
+        public init(
+            client: any IRpcAsyncClient
+        ) async {
+            let state = {{.ModuleName}}.Business.State()
+            let config = {{.ModuleName}}.Data.Api.Http.Config()
+            let fetcher = {{.ModuleName}}.Data.Api.Http.Fetcher(
+                client: client,
+                config: config
+            )
+            let service = {{.ModuleName}}.Business.Service(fetcher: fetcher)
+            let flow = await {{.ModuleName}}.Business.Flow(
+                state: state,
+                service: service
+            )
+{{- else}}
         public init() async {
             let state = {{.ModuleName}}.Business.State()
-{{- if .HasHTTP}}
-            let config = {{.ModuleName}}.Data.Api.Http.Config()
-            let fetcher = {{.ModuleName}}.Data.Api.Http.Fetcher(config: config)
-            let service = {{.ModuleName}}.Business.Service(fetcher: fetcher)
-            let flow = await {{.ModuleName}}.Business.Flow(state: state, service: service)
-{{- else}}
             let service = {{.ModuleName}}.Business.Service()
-            let flow = await {{.ModuleName}}.Business.Flow(state: state, service: service)
+            let flow = await {{.ModuleName}}.Business.Flow(
+                state: state,
+                service: service
+            )
 {{- end}}
             self.states = [state]
             self.sagas = [flow]

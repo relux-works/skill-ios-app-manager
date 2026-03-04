@@ -270,17 +270,24 @@ func createModuleFromBlueprint(cmd *cobra.Command, bpPath string, configPath str
 		return fmt.Errorf("create module in tuist project: %w", err)
 	}
 
-	// Phase 1.5: Add internal deps (FoundationPlus, SwiftUIPlus) to module Package.swift files.
+	// Phase 1.5: Add deps to module Package.swift files.
 	internalDeps := blueprintInternalDeps(bp)
 	if err := addInternalDepsToPackageSwift(modulesRoot, bp.Name, internalDeps); err != nil {
 		return fmt.Errorf("add internal deps: %w", err)
 	}
-
 	// Phase 2: Blueprint templates (replaces relux.InitModule with rich scaffolding).
 	gen := blueprint.NewGenerator(modulesRoot)
 	written, err := gen.Generate(bp)
 	if err != nil {
 		return fmt.Errorf("generate blueprint templates: %w", err)
+	}
+
+	// Phase 2.5: Write .builder-config for IoC registry when module needs constructor args.
+	if bp.HasHTTP() {
+		interfacePkgDir := filepath.Join(modulesRoot, bp.Name)
+		if err := ioc.WriteBuilderConfig(interfacePkgDir, "client: resolve(IRpcAsyncClient.self)"); err != nil {
+			return fmt.Errorf("write %s: %w", ioc.BuilderConfigFile, err)
+		}
 	}
 
 	// Phase 3: IoC update.
@@ -307,6 +314,14 @@ func blueprintExternalDeps(bp *blueprint.Blueprint) []components.ExternalDep {
 			Version:     `from: "9.0.1"`,
 		},
 	}
+	if bp.HasHTTP() {
+		deps = append(deps, components.ExternalDep{
+			PackageName: "swift-httpclient",
+			ProductName: "HttpClient",
+			URL:         "https://github.com/relux-works/swift-httpclient.git",
+			Version:     `from: "6.0.0"`,
+		})
+	}
 	return deps
 }
 
@@ -328,6 +343,7 @@ func blueprintInternalDeps(bp *blueprint.Blueprint) []internalDep {
 	}
 	return deps
 }
+
 
 func addInternalDepsToPackageSwift(modulesRoot, moduleName string, deps []internalDep) error {
 	for _, dep := range deps {

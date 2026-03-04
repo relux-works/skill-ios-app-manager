@@ -102,7 +102,7 @@ func patchRegistry(registryPath string) error {
 	content := string(data)
 
 	// Idempotent: skip if already patched.
-	if strings.Contains(content, "IRpcAsyncClient.self") {
+	if strings.Contains(content, "buildHttpClient") {
 		return nil
 	}
 
