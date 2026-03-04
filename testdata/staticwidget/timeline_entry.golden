@@ -1,0 +1,7 @@
+import WidgetKit
+import Foundation
+
+struct DemoAppTimelineEntry: TimelineEntry {
+    let date: Date
+    let title: String
+}

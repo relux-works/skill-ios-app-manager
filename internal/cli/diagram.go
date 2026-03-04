@@ -14,6 +14,7 @@ import (
 
 	// Import module packages for init() registration.
 	_ "github.com/relux-works/ios-app-manager/internal/appconfig"
+	_ "github.com/relux-works/ios-app-manager/internal/extensions"
 	_ "github.com/relux-works/ios-app-manager/internal/foundationplus"
 	_ "github.com/relux-works/ios-app-manager/internal/httpclient"
 	_ "github.com/relux-works/ios-app-manager/internal/ioc"

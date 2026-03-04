@@ -1,0 +1,23 @@
+import WidgetKit
+import Foundation
+
+struct DemoAppTimelineProvider: TimelineProvider {
+    func placeholder(in context: Context) -> DemoAppTimelineEntry {
+        DemoAppTimelineEntry(date: Date(), title: "DemoApp")
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (DemoAppTimelineEntry) -> Void) {
+        completion(DemoAppTimelineEntry(date: Date(), title: "DemoApp"))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<DemoAppTimelineEntry>) -> Void) {
+        let now = Date()
+        let entries = (0..<5).map { hourOffset in
+            DemoAppTimelineEntry(
+                date: Calendar.current.date(byAdding: .hour, value: hourOffset, to: now) ?? now,
+                title: "DemoApp"
+            )
+        }
+        completion(Timeline(entries: entries, policy: .atEnd))
+    }
+}

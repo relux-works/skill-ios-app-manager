@@ -1,0 +1,1 @@
+Implemented internal/liveactivity setup (shared ActivityAttributes, widget ActivityConfiguration/DynamicIsland, LiveActivityManager, Info.plist + WidgetBundle patching), wired LiveActivity registry/CLI imports, added unit+golden tests (testdata/liveactivity), and verified with make test + make lint + make build.

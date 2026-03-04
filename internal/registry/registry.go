@@ -10,13 +10,17 @@ import (
 type ModuleID string
 
 const (
-	Init          ModuleID = "init"
-	IoC           ModuleID = "ioc"
-	Relux         ModuleID = "relux"
-	SecureStore   ModuleID = "secure-store"
-	TokenProvider ModuleID = "token-provider"
-	HttpClient    ModuleID = "http-client"
-	AppConfig     ModuleID = "app-config"
+	Init           ModuleID = "init"
+	IoC            ModuleID = "ioc"
+	Relux          ModuleID = "relux"
+	SecureStore    ModuleID = "secure-store"
+	TokenProvider  ModuleID = "token-provider"
+	HttpClient     ModuleID = "http-client"
+	AppConfig      ModuleID = "app-config"
+	AppExtensions  ModuleID = "app-extensions"
+	WidgetBase     ModuleID = "widget-base"
+	StaticWidget   ModuleID = "static-widget"
+	LiveActivity   ModuleID = "live-activity"
 	Utilities      ModuleID = "utilities"
 	FoundationPlus ModuleID = "foundation-plus"
 	SwiftUIPlus    ModuleID = "swiftui-plus"
@@ -178,6 +182,11 @@ func CheckDependencies(id ModuleID, registryContent string) error {
 		if dep.Setup == nil {
 			continue
 		}
+		// Skip infra/utils modules — they scaffold files but don't register
+		// themselves in Registry.swift (no IoC registration).
+		if dep.Category == Infra || dep.Category == Utils {
+			continue
+		}
 		if !strings.Contains(registryContent, dep.Name) {
 			missing = append(missing, dep.Name)
 		}
@@ -198,7 +207,7 @@ func HasRegistryDeps(id ModuleID) bool {
 	}
 	for _, depID := range m.Dependencies {
 		dep := Get(depID)
-		if dep != nil && dep.Setup != nil {
+		if dep != nil && dep.Setup != nil && dep.Category != Infra && dep.Category != Utils {
 			return true
 		}
 	}

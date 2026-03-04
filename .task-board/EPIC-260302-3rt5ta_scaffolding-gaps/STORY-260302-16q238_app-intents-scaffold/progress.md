@@ -8,13 +8,13 @@ backlog
 2026-03-02T11:14:18Z
 
 ## Last Update
-2026-03-02T11:14:27Z
+2026-03-04T15:53:15Z
 
 ## Blocked By
-- STORY-260302-3v3bcu
+- STORY-260302-1hnx69
 
 ## Blocks
-- STORY-260302-1hnx69
+- STORY-260304-12mkl3
 
 ## Checklist
 (empty)

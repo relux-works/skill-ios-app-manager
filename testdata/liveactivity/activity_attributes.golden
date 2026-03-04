@@ -1,0 +1,25 @@
+import ActivityKit
+import Foundation
+
+public struct DemoAppActivityAttributes: ActivityAttributes {
+    public struct ContentState: Codable, Hashable {
+        public var title: String
+        public var subtitle: String
+        public var progress: Double
+
+        public init(title: String, subtitle: String, progress: Double) {
+            self.title = title
+            self.subtitle = subtitle
+            self.progress = progress
+        }
+    }
+
+    public var id: String
+    public var startedAt: Date
+
+    public init(id: String, startedAt: Date = Date()) {
+        self.id = id
+        self.startedAt = startedAt
+    }
+}
+
