@@ -159,7 +159,7 @@ func createPackageDir(pkgDir, modName, platform string) error {
 		return fmt.Errorf("write Package.swift: %w", err)
 	}
 
-	srcDir := filepath.Join(pkgDir, "Sources", modName)
+	srcDir := filepath.Join(pkgDir, "Sources")
 	if err := os.MkdirAll(srcDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir Sources: %w", err)
 	}

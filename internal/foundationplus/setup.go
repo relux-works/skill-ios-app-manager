@@ -39,6 +39,8 @@ var sourceFiles = []templateFile{
 	{templateName: "foundation_plus.swift.tmpl", outputFile: "FoundationPlus.swift"},
 	{templateName: "maybe_data.swift.tmpl", outputFile: "MaybeData.swift"},
 	{templateName: "completion_status.swift.tmpl", outputFile: "CompletionStatus.swift"},
+	{templateName: "base_encoder.swift.tmpl", outputFile: "BaseEncoder.swift"},
+	{templateName: "base_decoder.swift.tmpl", outputFile: "BaseDecoder.swift"},
 }
 
 // Setup creates the FoundationPlus module with utility types.
@@ -158,7 +160,7 @@ func createPackageDir(pkgDir, modName, platform string) error {
 		return fmt.Errorf("write Package.swift: %w", err)
 	}
 
-	srcDir := filepath.Join(pkgDir, "Sources", modName)
+	srcDir := filepath.Join(pkgDir, "Sources")
 	if err := os.MkdirAll(srcDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir Sources: %w", err)
 	}
