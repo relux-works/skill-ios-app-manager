@@ -316,10 +316,14 @@ func verifyReluxFeatureModule(t *testing.T, projectRoot string, modulesPath stri
 	requireFile(t, filepath.Join(interfaceSources, "Business", "Auth.Business+Error.swift"))
 	requireFile(t, filepath.Join(interfaceSources, "Business", "Models", "Auth.Business+Model+Scaffolded.swift"))
 
-	// Blueprint data layer (HTTP enabled): fetcher, fetcher config, DTO
-	requireFile(t, filepath.Join(interfaceSources, "Data", "Api", "Http", "Auth.Data+Api+Fetcher.swift"))
+	// Blueprint data layer (HTTP enabled): IFetcher interface, fetcher config, DTO in iface; Fetcher impl in impl
+	requireFile(t, filepath.Join(interfaceSources, "Data", "Api", "Http", "Auth.Data+Api+IFetcher.swift"))
 	requireFile(t, filepath.Join(interfaceSources, "Data", "Api", "Http", "Auth.Data+Api+Fetcher+Config.swift"))
 	requireFile(t, filepath.Join(interfaceSources, "Data", "Api", "DTO", "Auth.Data+Api+DTO+ScaffoldedResponse.swift"))
+	requireFile(t, filepath.Join(implSources, "Data", "Api", "Http", "Auth.Data+Api+Fetcher.swift"))
+
+	// IService interface in iface package
+	requireFile(t, filepath.Join(interfaceSources, "Business", "Middleware", "Auth.Business+IService.swift"))
 
 	// Impl package: impl, state, reducer, flow (in Middleware/), service (in Middleware/)
 	requireFile(t, filepath.Join(implSources, "Module", "Auth.Module+Impl.swift"))

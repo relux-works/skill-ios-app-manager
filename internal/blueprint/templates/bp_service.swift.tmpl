@@ -1,37 +1,7 @@
-import {{.InterfacePackageName}}
 import Foundation
 
 extension {{.ModuleName}}.Business {
     public protocol IService: Actor {
         func scaffoldedMethod() async -> Result<UUID, {{.ModuleName}}.Business.Err>
-    }
-
-    public actor Service: IService {
-{{- if .HasHTTP}}
-        private let fetcher: any {{.ModuleName}}.Data.Api.Http.IFetcher
-{{- end}}
-
-{{- if .HasHTTP}}
-        public init(fetcher: any {{.ModuleName}}.Data.Api.Http.IFetcher) {
-            self.fetcher = fetcher
-        }
-{{- else}}
-        public init() {}
-{{- end}}
-
-        public func scaffoldedMethod() async -> Result<UUID, {{.ModuleName}}.Business.Err> {
-{{- if .HasHTTP}}
-            do {
-                let response = try await fetcher.fetchScaffolded()
-                // Map DTO → domain model
-                return .success(response.id)
-            } catch {
-                return .failure(.networkError(error.localizedDescription))
-            }
-{{- else}}
-            // Scaffolded example without HTTP — replace with real logic
-            return .success(UUID())
-{{- end}}
-        }
     }
 }
