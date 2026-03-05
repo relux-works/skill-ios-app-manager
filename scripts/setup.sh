@@ -59,6 +59,7 @@ check_tuist() {
 build_cli() {
   green "Building $BINARY_NAME..."
   cd "$GO_DIR"
+  rm -f "$BINARY_NAME"
   make build
   green "Built: $GO_DIR/$BINARY_NAME"
 }
