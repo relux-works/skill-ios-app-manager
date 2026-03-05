@@ -1,10 +1,25 @@
-# ios-app-manager
+# skill-ios-app-manager
 
-Go CLI tool that scaffolds and manages Tuist-based iOS projects with Relux state management architecture.
+Skill + Go CLI tool that scaffolds and manages Tuist-based iOS projects with Relux state management architecture.
+
+## Structure
+
+```
+skill-ios-app-manager/
+├── SKILL.md              # Skill definition
+├── references/           # CLI, DSL, workflow docs
+├── diagrams/             # Architecture diagrams
+├── tuist-starter/        # Go CLI tool source
+│   ├── cmd/, internal/, pkg/
+│   ├── go.mod, Makefile
+│   └── testdata/
+└── .temp/                # Generated demo projects (gitignored)
+```
 
 ## Build & Run
 
 ```bash
+cd tuist-starter
 make setup    # create local Go cache dirs
 make build    # build binary -> ./ios-app-manager
 make test     # run all tests
@@ -26,22 +41,23 @@ Generates a complete iOS project structure from a JSON config file:
 ## Pipeline
 
 ```bash
-ios-app-manager init
-ios-app-manager ioc setup
-ios-app-manager relux setup
-ios-app-manager secure-store setup --access-group <group>
-ios-app-manager token-provider setup
-ios-app-manager utilities setup
-ios-app-manager foundation-plus setup
-ios-app-manager swiftui-plus setup
-ios-app-manager app-extensions setup
-ios-app-manager widget-base setup
-ios-app-manager app-intents setup
-ios-app-manager static-widget setup
-ios-app-manager live-activity setup
-ios-app-manager module create --from <name>.blueprint.json
-ios-app-manager app-config setup
-ios-app-manager http-client setup
+cd tuist-starter
+./ios-app-manager init
+./ios-app-manager ioc setup
+./ios-app-manager relux setup
+./ios-app-manager secure-store setup --access-group <group>
+./ios-app-manager token-provider setup
+./ios-app-manager utilities setup
+./ios-app-manager foundation-plus setup
+./ios-app-manager swiftui-plus setup
+./ios-app-manager app-extensions setup
+./ios-app-manager widget-base setup
+./ios-app-manager app-intents setup
+./ios-app-manager static-widget setup
+./ios-app-manager live-activity setup
+./ios-app-manager module create --from <name>.blueprint.json
+./ios-app-manager app-config setup
+./ios-app-manager http-client setup
 ```
 
 Order matters -- each command depends on prerequisites from earlier steps.
@@ -61,11 +77,25 @@ Order matters -- each command depends on prerequisites from earlier steps.
 
 | Tool | Purpose | Command |
 |------|---------|---------|
-| `make build` | Build CLI binary | `go build -o ios-app-manager ./cmd/ios-app-manager` |
-| `make test` | Run all Go tests | `go test ./...` |
-| `make test-update` | Rebuild golden files + run tests | `go test ./internal/testutil -update && go test ./...` |
-| `make lint` | Lint Go code | `go vet ./...` |
+| `make build` | Build CLI binary | `cd tuist-starter && go build -o ios-app-manager ./cmd/ios-app-manager` |
+| `make test` | Run all Go tests | `cd tuist-starter && go test ./...` |
+| `make test-update` | Rebuild golden files + run tests | `cd tuist-starter && go test ./internal/testutil -update && go test ./...` |
+| `make lint` | Lint Go code | `cd tuist-starter && go vet ./...` |
 | `plantuml` | Render dependency diagrams | `plantuml -tpng diagrams/*.puml -o diagrams/` |
+
+## CI/CD (STUB)
+
+CI entry points live in `.github/workflows/`. Currently stubs, not wired to a real project.
+
+| Workflow | What it runs |
+|----------|-------------|
+| `build.yml` | `make setup` + `make build` |
+| `test.yml` | `make setup` + `make test` |
+| `lint.yml` | `make lint` |
+
+Adding new CI steps:
+- All workflows run on `macos-latest`
+- Signing requires `TEAM_ID`, `PROVISIONING_PROFILE_SPECIFIER`, and `PROVISIONING_PROFILE_BASE64` secrets (not yet configured)
 
 ## Dependencies
 

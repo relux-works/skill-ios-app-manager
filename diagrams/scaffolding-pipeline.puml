@@ -9,9 +9,14 @@ cloud "SwiftIoC" as ext_swiftioc #E8F0FE
 cloud "SwiftUIRelux" as ext_swiftuirelux #E8F0FE
 
 package "Infra" {
+  component "App Extensions" as mod_app_extensions <<module>> #FFF3CD
+  component "App Intents" as mod_app_intents <<module>> #FFF3CD
   component "Init" as mod_init <<module>> #FFF3CD
   component "IoC" as mod_ioc <<module>> #FFF3CD
+  component "Live Activity" as mod_live_activity <<module>> #FFF3CD
   component "Relux" as mod_relux <<module>> #FFF3CD
+  component "Static Widget" as mod_static_widget <<module>> #FFF3CD
+  component "Widget Base" as mod_widget_base <<module>> #FFF3CD
 }
 
 package "Foundation" {
@@ -25,9 +30,9 @@ package "Network" {
 }
 
 package "Utils" {
-  component "Utilities" as mod_utilities <<module>> #E1BEE7
   component "FoundationPlus" as mod_foundation_plus <<module>> #E1BEE7
   component "SwiftUIPlus" as mod_swiftui_plus <<module>> #E1BEE7
+  component "Utilities" as mod_utilities <<module>> #E1BEE7
 }
 
 package "Feature Layer" {
@@ -43,12 +48,17 @@ FeatureModule ..> mod_app_config
 FeatureModule ..> mod_secure_store
 FeatureModule ..> mod_token_provider
 FeatureModule ..> mod_http_client
-FeatureModule ..> mod_utilities
 FeatureModule ..> mod_foundation_plus
 FeatureModule ..> mod_swiftui_plus
+FeatureModule ..> mod_utilities
 
+mod_app_intents --> mod_widget_base
 mod_ioc --> mod_init
+mod_live_activity --> mod_widget_base
 mod_relux --> mod_ioc
+mod_static_widget --> mod_app_intents
+mod_static_widget --> mod_widget_base
+mod_widget_base --> mod_app_extensions
 mod_app_config --> mod_ioc
 mod_app_config --> mod_secure_store
 mod_http_client --> mod_ioc

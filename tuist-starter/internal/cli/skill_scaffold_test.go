@@ -11,8 +11,8 @@ import (
 func TestIOSAppManagerSkillFrontmatterAndReferences(t *testing.T) {
 	t.Parallel()
 
-	repoRoot := cliTestRepoRoot(t)
-	skillPath := filepath.Join(repoRoot, "agents", "skills", "ios-app-manager", "SKILL.md")
+	repoRoot := skillTestRepoRoot(t)
+	skillPath := filepath.Join(repoRoot, "SKILL.md")
 
 	content, err := os.ReadFile(skillPath)
 	if err != nil {
@@ -47,7 +47,7 @@ func TestIOSAppManagerSkillFrontmatterAndReferences(t *testing.T) {
 		filepath.Join("references", "dsl-reference.md"),
 		filepath.Join("references", "cli-reference.md"),
 	} {
-		fullPath := filepath.Join(repoRoot, "agents", "skills", "ios-app-manager", relPath)
+		fullPath := filepath.Join(repoRoot, relPath)
 		data, readErr := os.ReadFile(fullPath)
 		if readErr != nil {
 			t.Fatalf("read %s: %v", relPath, readErr)
@@ -58,36 +58,8 @@ func TestIOSAppManagerSkillFrontmatterAndReferences(t *testing.T) {
 	}
 }
 
-func TestIOSAppManagerSkillSymlink(t *testing.T) {
-	t.Parallel()
-
-	repoRoot := cliTestRepoRoot(t)
-	linkPath := filepath.Join(repoRoot, ".claude", "skills", "ios-app-manager")
-
-	info, err := os.Lstat(linkPath)
-	if err != nil {
-		t.Fatalf("lstat symlink: %v", err)
-	}
-	if info.Mode()&os.ModeSymlink == 0 {
-		t.Fatalf("%s is not a symlink", linkPath)
-	}
-
-	target, err := os.Readlink(linkPath)
-	if err != nil {
-		t.Fatalf("readlink: %v", err)
-	}
-	if target != "../../agents/skills/ios-app-manager" {
-		t.Fatalf("symlink target = %q, want %q", target, "../../agents/skills/ios-app-manager")
-	}
-
-	resolved := filepath.Clean(filepath.Join(filepath.Dir(linkPath), target))
-	expected := filepath.Join(repoRoot, "agents", "skills", "ios-app-manager")
-	if resolved != expected {
-		t.Fatalf("resolved target = %q, want %q", resolved, expected)
-	}
-}
-
-func cliTestRepoRoot(t *testing.T) string {
+// skillTestRepoRoot returns the root of the skill repo (two levels above tuist-starter/).
+func skillTestRepoRoot(t *testing.T) string {
 	t.Helper()
 
 	_, file, _, ok := runtime.Caller(0)
@@ -95,5 +67,7 @@ func cliTestRepoRoot(t *testing.T) string {
 		t.Fatal("runtime.Caller(0) failed")
 	}
 
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+	// file is tuist-starter/internal/cli/skill_scaffold_test.go
+	// repo root is three levels up from internal/cli/
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
 }
