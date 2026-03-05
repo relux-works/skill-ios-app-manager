@@ -96,6 +96,20 @@ func repoRoot(t *testing.T) string {
 		t.Fatal("runtime.Caller failed")
 	}
 
+	// file is tuist-starter/internal/config/cicd_stubs_test.go
+	// repo root is three levels up
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
+}
+
+// goModuleRoot returns the Go module root (tuist-starter/), two levels up from internal/config/.
+func goModuleRoot(t *testing.T) string {
+	t.Helper()
+
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
 }
 

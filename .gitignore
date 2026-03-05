@@ -5,7 +5,7 @@
 # Go binaries and build output
 bin/
 dist/
-/ios-app-manager
+/tuist-starter/ios-app-manager
 *.exe
 *.exe~
 *.dll

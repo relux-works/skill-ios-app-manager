@@ -125,7 +125,7 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 func TestSampleConfigIsValid(t *testing.T) {
 	t.Parallel()
 
-	path := filepath.Join(repoRoot(t), "testdata", "sample-config.json")
+	path := filepath.Join(goModuleRoot(t), "testdata", "sample-config.json")
 
 	cfg, err := LoadConfig(path)
 	if err != nil {
@@ -140,7 +140,7 @@ func TestSampleConfigIsValid(t *testing.T) {
 func TestXFlowConfigIsValid(t *testing.T) {
 	t.Parallel()
 
-	path := filepath.Join(repoRoot(t), "testdata", "xflow-config.json")
+	path := filepath.Join(goModuleRoot(t), "testdata", "xflow-config.json")
 
 	cfg, err := LoadConfig(path)
 	if err != nil {

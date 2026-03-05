@@ -15,6 +15,34 @@ globs:
 
 Agent-facing workflow for managing Tuist-based iOS projects that follow Relux module conventions.
 
+## Setup
+
+```bash
+# Clone and run setup (builds CLI, registers skill globally, symlinks binary)
+git clone git@github.com:relux-works/skill-ios-app-manager.git
+cd skill-ios-app-manager
+./scripts/setup.sh
+```
+
+Setup does:
+- Builds Go CLI binary in `tuist-starter/`
+- Symlinks skill to `~/.agents/skills/ios-app-manager` -> `~/.claude/skills/` + `~/.codex/skills/`
+- Symlinks binary to `~/.local/bin/ios-app-manager`
+
+## Repository structure
+
+```
+skill-ios-app-manager/
+├── SKILL.md              # This file (skill definition)
+├── references/           # CLI, DSL, workflow docs
+├── diagrams/             # Architecture diagrams (PlantUML)
+├── scripts/setup.sh      # Global skill installer
+└── tuist-starter/        # Go CLI source
+    ├── cmd/, internal/, pkg/
+    ├── go.mod, Makefile
+    └── testdata/
+```
+
 ## Quick start
 
 1. Initialize from config:
@@ -34,7 +62,8 @@ Use `--force` when you intentionally want to overwrite scaffold files:
 - Init scaffold: `ios-app-manager init --config <path> --output <dir> [--force]`
 - Generate Makefile: `ios-app-manager generate makefile`
 - Clean artifacts: `ios-app-manager clean [--deep] [--kill-xcode]`
-- Status placeholder: `ios-app-manager status`
+- Status: `ios-app-manager status`
+- Diagram: `ios-app-manager diagram` — generates PlantUML module dependency diagram
 
 ### Infrastructure setup (run in order)
 
@@ -104,9 +133,13 @@ Module type guidance:
 - Query: `ios-app-manager q '<query>'`
 - Mutation: `ios-app-manager m '<mutation>'`
 
+### Diagnostics
+
+- Diagram: `ios-app-manager diagram` — generates PlantUML dependency graph of all modules in the project
+
 ## Scaffolding pipeline — dependency graph
 
-See [`diagrams/scaffolding-pipeline.puml`](../../../diagrams/scaffolding-pipeline.puml) for the visual dependency graph. Always consult this diagram to understand what depends on what before running setup commands.
+See [`diagrams/scaffolding-pipeline.puml`](diagrams/scaffolding-pipeline.puml) for the visual dependency graph. Always consult this diagram to understand what depends on what before running setup commands.
 
 ### Pipeline elements
 
@@ -128,6 +161,7 @@ See [`diagrams/scaffolding-pipeline.puml`](../../../diagrams/scaffolding-pipelin
 | **module create** | `module create <Name> --type <type>` | Feature/kit/shared/ui/utility module with file layout, Registry re-generation | ioc |
 | **http-client** | `http-client setup` | HttpClient IoC registration, swift-httpclient dep, Configuration constants | ioc |
 | **app-config** | `app-config setup` | 8 AppConfig files: Env, Configuration, Manager, ApiConfigurator. Registry IoC patch | ioc, secure-store |
+| **diagram** | `diagram` | PlantUML dependency graph of all project modules | init |
 
 ### Important: ordering constraints
 
@@ -151,6 +185,7 @@ ios-app-manager live-activity setup
 ios-app-manager module create --from <name>.blueprint.json
 ios-app-manager app-config setup
 ios-app-manager http-client setup
+ios-app-manager diagram
 ```
 
 ## Workflow references
@@ -158,4 +193,4 @@ ios-app-manager http-client setup
 - Command/flag reference: [`references/cli-reference.md`](references/cli-reference.md)
 - DSL syntax and operations: [`references/dsl-reference.md`](references/dsl-reference.md)
 - End-to-end examples: [`references/workflows.md`](references/workflows.md)
-- Dependency diagram: [`diagrams/scaffolding-pipeline.puml`](../../../diagrams/scaffolding-pipeline.puml)
+- Dependency diagram: [`diagrams/scaffolding-pipeline.puml`](diagrams/scaffolding-pipeline.puml)
