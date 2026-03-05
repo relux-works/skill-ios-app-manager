@@ -43,13 +43,24 @@ Use `--force` when you intentionally want to overwrite scaffold files:
 - Keychain wrapper: `ios-app-manager secure-store setup --access-group <group>`
 - Token provider: `ios-app-manager token-provider setup`
 - Utilities: `ios-app-manager utilities setup`
+- FoundationPlus (re-export + helpers): `ios-app-manager foundation-plus setup`
+- SwiftUIPlus (re-export + components): `ios-app-manager swiftui-plus setup`
+- App extensions base: `ios-app-manager app-extensions setup`
+- Widget base (WidgetBundle + WidgetKit): `ios-app-manager widget-base setup`
+- App Intents (interactive widgets): `ios-app-manager app-intents setup`
+- Static widget (timeline widget): `ios-app-manager static-widget setup`
+- Live Activity (ActivityKit + Dynamic Island): `ios-app-manager live-activity setup`
 - HTTP client: `ios-app-manager http-client setup`
 - AppConfig (env switching + ApiConfigurator): `ios-app-manager app-config setup`
 
 Pipeline order matters — each command has prerequisites:
 ```
-init → ioc setup → relux setup → secure-store setup → token-provider setup
-     → utilities setup → module create → http-client setup → app-config setup
+init → ioc → relux → secure-store → token-provider → utilities
+     → foundation-plus → swiftui-plus
+     → app-extensions → widget-base → app-intents → static-widget
+                                    → live-activity
+     → module create (blueprints)
+     → app-config → http-client
 ```
 
 ### Module management
@@ -101,15 +112,22 @@ See [`diagrams/scaffolding-pipeline.puml`](../../../diagrams/scaffolding-pipelin
 
 | Element | CLI command | What it creates | Prerequisites |
 |---------|-------------|-----------------|---------------|
-| **init** | `ios-app-manager init` | Project scaffold: Tuist manifests (Project.swift, Package.swift, Workspace.swift, Tuist.swift), App.swift, Info.plist, entitlements, Configuration namespace, Assets | Config file |
-| **ioc setup** | `ios-app-manager ioc setup` | SwiftIoC integration: Registry.swift with IoC container, App.swift init injection, SwiftIoC package dependency | init |
-| **relux setup** | `ios-app-manager relux setup` | Relux state management: ReluxLogger, Relux infrastructure registrations in Registry, swift-relux + swiftui-relux dependencies | ioc setup |
-| **secure-store setup** | `ios-app-manager secure-store setup --access-group <group>` | SecureStore module (Packages/SecureStore + SecureStoreImpl): Keychain wrapper with interface/impl split, `SecureStoring` protocol | ioc setup |
-| **token-provider setup** | `ios-app-manager token-provider setup` | TokenProvider module (Packages/TokenProvider + TokenProviderImpl): token storage/refresh with interface/impl split | ioc setup |
-| **utilities setup** | `ios-app-manager utilities setup` | Utilities module (Packages/Utilities): shared helpers (HttpClientUtils, etc.) | ioc setup |
-| **module create** | `ios-app-manager module create <Name> --type <type>` | Feature/kit/shared/ui/utility module with appropriate file layout, Registry re-generation | ioc setup |
-| **http-client setup** | `ios-app-manager http-client setup` | HttpClient IoC registration, swift-httpclient dependency, Configuration+HttpClient constants | ioc setup, swift-httpclient |
-| **app-config setup** | `ios-app-manager app-config setup` | 8 AppConfig Swift files in app target: namespace, Env, Configuration, Presets, Protocols (IApiConfigManager), Manager (NSLock + SecureStore keychain persistence), ApiConfigurator struct, UrlComponents. Patches Registry with IoC registration | ioc setup, secure-store setup |
+| **init** | `init` | Project scaffold: Tuist manifests, App.swift, Info.plist, entitlements, Configuration, Assets | Config file |
+| **ioc** | `ioc setup` | SwiftIoC integration: Registry.swift, App.swift init injection, SwiftIoC dependency | init |
+| **relux** | `relux setup` | Relux state management: ReluxLogger, Registry infra, swift-relux + swiftui-relux deps | ioc |
+| **secure-store** | `secure-store setup --access-group <group>` | SecureStore + SecureStoreImpl: Keychain wrapper with interface/impl split | ioc |
+| **token-provider** | `token-provider setup` | TokenProvider + TokenProviderImpl: token storage/refresh | ioc |
+| **utilities** | `utilities setup` | Utilities single-package: HttpClientUtils helpers | ioc |
+| **foundation-plus** | `foundation-plus setup` | FoundationPlus single-package: `@_exported import Foundation`, MaybeData, CompletionStatus | ioc |
+| **swiftui-plus** | `swiftui-plus setup` | SwiftUIPlus single-package: `@_exported import SwiftUI`, AsyncButton | ioc |
+| **app-extensions** | `app-extensions setup` | SharedKit package + Extensions/ directory for extension targets | init |
+| **widget-base** | `widget-base setup` | Widget extension target, WidgetBundle, WidgetKit SDK, App Groups | app-extensions |
+| **app-intents** | `app-intents setup` | AppIntent scaffold (WidgetToggleIntent), AppIntents SDK | widget-base |
+| **static-widget** | `static-widget setup` | StaticConfiguration widget: TimelineProvider, entry, view with interactive Button(intent:) | widget-base, app-intents |
+| **live-activity** | `live-activity setup` | ActivityAttributes in SharedKit, ActivityConfiguration + Dynamic Island, LiveActivityManager | widget-base |
+| **module create** | `module create <Name> --type <type>` | Feature/kit/shared/ui/utility module with file layout, Registry re-generation | ioc |
+| **http-client** | `http-client setup` | HttpClient IoC registration, swift-httpclient dep, Configuration constants | ioc |
+| **app-config** | `app-config setup` | 8 AppConfig files: Env, Configuration, Manager, ApiConfigurator. Registry IoC patch | ioc, secure-store |
 
 ### Important: ordering constraints
 
@@ -123,9 +141,16 @@ ios-app-manager relux setup
 ios-app-manager secure-store setup --access-group <group>
 ios-app-manager token-provider setup
 ios-app-manager utilities setup
-ios-app-manager module create <Name> --type <type>   # all modules first
-ios-app-manager http-client setup                     # patches Registry
-ios-app-manager app-config setup                      # patches Registry
+ios-app-manager foundation-plus setup
+ios-app-manager swiftui-plus setup
+ios-app-manager app-extensions setup
+ios-app-manager widget-base setup
+ios-app-manager app-intents setup
+ios-app-manager static-widget setup
+ios-app-manager live-activity setup
+ios-app-manager module create --from <name>.blueprint.json
+ios-app-manager app-config setup
+ios-app-manager http-client setup
 ```
 
 ## Workflow references

@@ -40,6 +40,13 @@ ios-app-manager [command] [flags]
 | `secure-store setup --access-group <group>` | Create SecureStore keychain wrapper module | `ios-app-manager secure-store setup --access-group group.org.xflow.app` |
 | `token-provider setup` | Create TokenProvider module | `ios-app-manager token-provider setup` |
 | `utilities setup` | Create Utilities module | `ios-app-manager utilities setup` |
+| `foundation-plus setup` | Create FoundationPlus utility module | `ios-app-manager foundation-plus setup` |
+| `swiftui-plus setup` | Create SwiftUIPlus utility module | `ios-app-manager swiftui-plus setup` |
+| `app-extensions setup` | Create SharedKit + Extensions/ base | `ios-app-manager app-extensions setup` |
+| `widget-base setup` | Create WidgetBundle + widget extension target | `ios-app-manager widget-base setup` |
+| `app-intents setup` | Add AppIntent scaffold to widget extension | `ios-app-manager app-intents setup` |
+| `static-widget setup` | Create static timeline widget with interactive toggle | `ios-app-manager static-widget setup` |
+| `live-activity setup` | Create Live Activity + Dynamic Island scaffold | `ios-app-manager live-activity setup` |
 | `http-client setup` | Add HttpClient IoC registration with swift-httpclient | `ios-app-manager http-client setup` |
 | `app-config setup` | Scaffold AppConfig manager with env switching and ApiConfigurator | `ios-app-manager app-config setup` |
 | `status` | Project status placeholder command | `ios-app-manager status` |

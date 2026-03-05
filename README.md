@@ -1,30 +1,74 @@
-# tuist-starter
+# ios-app-manager
 
-Minimal Go CLI starter for managing Tuist-based iOS projects.
+Go CLI tool that scaffolds and manages Tuist-based iOS projects with Relux state management architecture.
 
-## CI/CD (STUB)
+## Build & Run
 
-This section is a placeholder and is not wired to a real project pipeline yet.
+```bash
+make setup    # create local Go cache dirs
+make build    # build binary -> ./ios-app-manager
+make test     # run all tests
+make lint     # go vet
+```
 
-### CI entry points
+## What it does
 
-GitHub Actions workflows call Makefile targets as CI hooks:
+Generates a complete iOS project structure from a JSON config file:
 
-- `make setup`
-- `make build`
-- `make test`
-- `make lint`
+- **Tuist manifests**: Project.swift, Package.swift, Workspace.swift, Tuist.swift
+- **IoC container**: SwiftIoC-based Registry.swift with auto-discovery
+- **Relux state management**: Actions, Effects, State, Flow scaffolding
+- **Foundation modules**: SecureStore (Keychain), TokenProvider, Utilities, FoundationPlus, SwiftUIPlus
+- **Widget extensions**: WidgetKit (static + interactive), Live Activity + Dynamic Island, App Intents
+- **Network**: HttpClient IoC registration with swift-httpclient
+- **AppConfig**: Environment switching with ApiConfigurator
 
-### Adding new CI steps
+## Pipeline
 
-1. Add or update a Makefile target for the new check.
-2. Call that target from the matching workflow in `.github/workflows/`.
-3. Keep workflow logic thin; prefer implementation in Make targets.
+```bash
+ios-app-manager init
+ios-app-manager ioc setup
+ios-app-manager relux setup
+ios-app-manager secure-store setup --access-group <group>
+ios-app-manager token-provider setup
+ios-app-manager utilities setup
+ios-app-manager foundation-plus setup
+ios-app-manager swiftui-plus setup
+ios-app-manager app-extensions setup
+ios-app-manager widget-base setup
+ios-app-manager app-intents setup
+ios-app-manager static-widget setup
+ios-app-manager live-activity setup
+ios-app-manager module create --from <name>.blueprint.json
+ios-app-manager app-config setup
+ios-app-manager http-client setup
+```
 
-### Required secrets (placeholders)
+Order matters -- each command depends on prerequisites from earlier steps.
 
-These are placeholder secret names for future iOS signing/provisioning setup:
+## Module types
 
-- `TEAM_ID`
-- `PROVISIONING_PROFILE_SPECIFIER`
-- `PROVISIONING_PROFILE_BASE64`
+| Type | Description |
+|------|-------------|
+| `feature` | UI module with interface/impl split |
+| `relux-feature` | Blueprint-only: full Relux business logic (Business/Data/UI layers) |
+| `kit` | Business logic library with interface/impl split |
+| `shared` | Shared state/services with interface/impl split |
+| `ui` | Pure UI components with interface/impl split |
+| `utility` | Single-package utility (no interface/impl split) |
+
+## Tools
+
+| Tool | Purpose | Command |
+|------|---------|---------|
+| `make build` | Build CLI binary | `go build -o ios-app-manager ./cmd/ios-app-manager` |
+| `make test` | Run all Go tests | `go test ./...` |
+| `make test-update` | Rebuild golden files + run tests | `go test ./internal/testutil -update && go test ./...` |
+| `make lint` | Lint Go code | `go vet ./...` |
+| `plantuml` | Render dependency diagrams | `plantuml -tpng diagrams/*.puml -o diagrams/` |
+
+## Dependencies
+
+Go: Cobra (CLI framework) + gopkg.in/yaml.v3.
+
+Swift packages managed in generated projects: SwiftIoC, swiftui-relux, swift-relux, swift-httpclient.
