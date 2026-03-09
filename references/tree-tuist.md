@@ -182,21 +182,6 @@ List:
 ios-app-manager entitlements list --config "$CONFIG"
 ```
 
-Add common keys:
-
-```bash
-ios-app-manager entitlements add push --value development --config "$CONFIG"
-ios-app-manager entitlements add app-groups --value 'group.com.example.demo,group.com.example.shared' --config "$CONFIG"
-ios-app-manager entitlements add background-modes --value 'remote-notification,fetch' --config "$CONFIG"
-ios-app-manager entitlements add healthkit --value true --config "$CONFIG"
-```
-
-Remove:
-
-```bash
-ios-app-manager entitlements remove push --config "$CONFIG"
-```
-
 Explicit plist path override:
 
 ```bash
@@ -280,23 +265,12 @@ ios-app-manager clean --deep
    ios-app-manager dep remove A --depends-on B --config "$CONFIG"
    ```
 
-8. `unsupported entitlement key`
-   Fix:
-   - Use supported aliases: `push`, `app-groups`, `keychain`, `icloud`, `healthkit`, `associated-domains`, `background-modes`.
-
-9. `aps-environment must be development or production`
-   Fix:
-   - Use:
-   ```bash
-   ios-app-manager entitlements add push --value development --config "$CONFIG"
-   ```
-
-10. `target dependencies section not found` in dependency edits
+8. `target dependencies section not found` in dependency edits
     Fix:
     - Normalize manifest structure to include `dependencies: [ ... ]` in target/package blocks.
     - Re-run dependency command.
 
-11. Tuist/Xcode cache corruption or stale artifacts
+9. Tuist/Xcode cache corruption or stale artifacts
     Fix:
     ```bash
     ios-app-manager clean --deep --kill-xcode

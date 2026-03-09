@@ -69,7 +69,7 @@ These operations are registered in the current mutation executor:
 | `delete_module` | Module deletion | `module delete` |
 | `add_dep` | Add internal dependency | `dep add` |
 | `remove_dep` | Remove internal dependency | `dep remove` |
-| `add_entitlement` | Add entitlement value | `entitlements add` |
+| `add_entitlement` | Add entitlement value | _(no CLI equivalent yet)_ |
 
 Examples:
 ```bash
