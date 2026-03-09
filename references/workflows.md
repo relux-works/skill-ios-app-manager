@@ -155,7 +155,6 @@ Symptoms:
 Actions:
 ```bash
 ios-app-manager entitlements --path App/App.entitlements list
-ios-app-manager entitlements --path App/App.entitlements add aps-environment --value development
 ```
 
 ## Optional DSL-assisted workflow (scaffold-level)

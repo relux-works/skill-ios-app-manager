@@ -28,10 +28,9 @@ ios-app-manager [command] [flags]
 | `dep remove <module> --depends-on <other>` | Remove internal module dependency | `ios-app-manager dep remove Auth --depends-on CoreKit` |
 | `dep remove-external --package <name>` | Remove external Swift package dependency | `ios-app-manager dep remove-external --package swift-collections` |
 | `dep list [<module>]` | List internal and external dependencies | `ios-app-manager dep list Auth` |
-| `entitlements add <key> [--value <val>]` | Add/update entitlement key | `ios-app-manager entitlements add aps-environment --value development` |
-| `entitlements remove <key>` | Remove entitlement key | `ios-app-manager entitlements remove aps-environment` |
 | `entitlements list` | Print effective entitlement values | `ios-app-manager entitlements list` |
 | `generate makefile` | Generate or update `Makefile` | `ios-app-manager generate makefile` |
+| `generate swiftlint` | Generate or update `.swiftlint.yml` | `ios-app-manager generate swiftlint` |
 | `clean [--deep] [--kill-xcode]` | Clean local/global build artifacts | `ios-app-manager clean --deep` |
 | `push send --token <token> [--env dev\|prod] [--payload <file>]` | Send APNs push using project credentials | `ios-app-manager push send --token "$TOKEN" --env dev` |
 | `push token` | Print latest device token from logs/fallback file | `ios-app-manager push token` |
@@ -239,47 +238,6 @@ ios-app-manager dep list
 ios-app-manager dep list Auth
 ```
 
-### `entitlements add`
-
-Syntax:
-```bash
-ios-app-manager entitlements add <key> [--value <val>]
-```
-
-Description:
-- Adds or updates entitlement key.
-- Value can be omitted for boolean-like keys; arrays can be passed as comma-separated values.
-
-Flags:
-- `--value <val>`: Optional value.
-- `-p, --path <plist>`: Optional explicit entitlements file path.
-- `--config <path>`: Used when `--path` is not provided.
-
-Examples:
-```bash
-ios-app-manager entitlements add aps-environment --value development
-ios-app-manager entitlements add healthkit
-```
-
-### `entitlements remove`
-
-Syntax:
-```bash
-ios-app-manager entitlements remove <key>
-```
-
-Description:
-- Removes an entitlement key.
-
-Flags:
-- `-p, --path <plist>`: Optional explicit entitlements file path.
-- `--config <path>`: Used when `--path` is not provided.
-
-Example:
-```bash
-ios-app-manager entitlements remove aps-environment
-```
-
 ### `entitlements list`
 
 Syntax:
@@ -318,8 +276,23 @@ Example:
 ios-app-manager generate makefile
 ```
 
-Note:
-- `ios-app-manager generate swiftlint` is also available, but not part of this task checklist.
+### `generate swiftlint`
+
+Syntax:
+```bash
+ios-app-manager generate swiftlint
+```
+
+Description:
+- Creates `.swiftlint.yml` if missing, or regenerates it from project config.
+
+Flags:
+- `--config <path>`: Optional command-level config override.
+
+Example:
+```bash
+ios-app-manager generate swiftlint
+```
 
 ### `clean`
 

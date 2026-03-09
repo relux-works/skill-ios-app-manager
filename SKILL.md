@@ -61,6 +61,7 @@ Use `--force` when you intentionally want to overwrite scaffold files:
 
 - Init scaffold: `ios-app-manager init --config <path> --output <dir> [--force]`
 - Generate Makefile: `ios-app-manager generate makefile`
+- Generate SwiftLint config: `ios-app-manager generate swiftlint`
 - Clean artifacts: `ios-app-manager clean [--deep] [--kill-xcode]`
 - Status: `ios-app-manager status`
 - Diagram: `ios-app-manager diagram` — generates PlantUML module dependency diagram
@@ -118,8 +119,6 @@ Module type guidance:
 
 ### Entitlements
 
-- Add key: `ios-app-manager entitlements add <key> [--value <val>]`
-- Remove key: `ios-app-manager entitlements remove <key>`
 - List keys: `ios-app-manager entitlements list`
 - Optional explicit plist path: `--path <entitlements_file>`
 
