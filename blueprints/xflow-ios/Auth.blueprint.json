@@ -1,0 +1,10 @@
+{
+  "name": "Auth",
+  "type": "relux-feature",
+  "data": { "http": true, "ws": false },
+  "ui": {
+    "entryPoint": "Login",
+    "features": ["Login", "AppleSignIn", "PasswordLogin", "TelegramAuth"],
+    "components": []
+  }
+}

@@ -7,6 +7,7 @@ Skill + Go CLI tool that scaffolds and manages Tuist-based iOS projects with Rel
 ```
 skill-ios-app-manager/
 ├── SKILL.md              # Skill definition
+├── blueprints/           # Versioned example blueprints for relux-feature modules
 ├── references/           # CLI, DSL, workflow docs
 ├── diagrams/             # Architecture diagrams
 ├── tuist-starter/        # Go CLI tool source
@@ -61,6 +62,17 @@ cd tuist-starter
 ```
 
 Order matters -- each command depends on prerequisites from earlier steps.
+
+## Blueprint examples
+
+Versioned relux-feature blueprints live under [blueprints/](blueprints/README.md).
+Current examples come from the XFlow iOS migration surface:
+
+- [Auth.blueprint.json](blueprints/xflow-ios/Auth.blueprint.json)
+- [CRM.blueprint.json](blueprints/xflow-ios/CRM.blueprint.json)
+- [Onboarding.blueprint.json](blueprints/xflow-ios/Onboarding.blueprint.json)
+- [Organizations.blueprint.json](blueprints/xflow-ios/Organizations.blueprint.json)
+- [Profile.blueprint.json](blueprints/xflow-ios/Profile.blueprint.json)
 
 ## Module types
 

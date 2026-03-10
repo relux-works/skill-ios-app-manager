@@ -1,0 +1,10 @@
+{
+  "name": "Profile",
+  "type": "relux-feature",
+  "data": { "http": true, "ws": false },
+  "ui": {
+    "entryPoint": "Main",
+    "features": ["Main", "Settings"],
+    "components": []
+  }
+}
