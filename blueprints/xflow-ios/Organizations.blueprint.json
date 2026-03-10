@@ -1,0 +1,10 @@
+{
+  "name": "Organizations",
+  "type": "relux-feature",
+  "data": { "http": true, "ws": false },
+  "ui": {
+    "entryPoint": "Main",
+    "features": ["Main", "Create", "Edit", "Detail", "Participants", "ParticipantSettings"],
+    "components": []
+  }
+}

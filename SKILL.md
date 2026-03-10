@@ -34,6 +34,7 @@ Setup does:
 ```
 skill-ios-app-manager/
 ├── SKILL.md              # This file (skill definition)
+├── blueprints/           # Versioned example relux-feature blueprints
 ├── references/           # CLI, DSL, workflow docs
 ├── diagrams/             # Architecture diagrams (PlantUML)
 ├── scripts/setup.sh      # Global skill installer
@@ -100,6 +101,13 @@ init → ioc → relux → secure-store → token-provider → utilities
 - Generate blueprint template: `ios-app-manager module blueprint <Name>`
 - List modules: `ios-app-manager module list`
 - Delete module: `ios-app-manager module delete <name> [--force]`
+
+Versioned blueprint examples:
+- [`blueprints/xflow-ios/Auth.blueprint.json`](blueprints/xflow-ios/Auth.blueprint.json)
+- [`blueprints/xflow-ios/CRM.blueprint.json`](blueprints/xflow-ios/CRM.blueprint.json)
+- [`blueprints/xflow-ios/Onboarding.blueprint.json`](blueprints/xflow-ios/Onboarding.blueprint.json)
+- [`blueprints/xflow-ios/Organizations.blueprint.json`](blueprints/xflow-ios/Organizations.blueprint.json)
+- [`blueprints/xflow-ios/Profile.blueprint.json`](blueprints/xflow-ios/Profile.blueprint.json)
 
 Module type guidance:
 - `feature`: UI module, interface/implementation split (no Relux business logic)
@@ -193,3 +201,4 @@ ios-app-manager diagram
 - DSL syntax and operations: [`references/dsl-reference.md`](references/dsl-reference.md)
 - End-to-end examples: [`references/workflows.md`](references/workflows.md)
 - Dependency diagram: [`diagrams/scaffolding-pipeline.puml`](diagrams/scaffolding-pipeline.puml)
+- Blueprint examples: [`blueprints/README.md`](blueprints/README.md)

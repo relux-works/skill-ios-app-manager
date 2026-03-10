@@ -1,0 +1,10 @@
+{
+  "name": "CRM",
+  "type": "relux-feature",
+  "data": { "http": true, "ws": false },
+  "ui": {
+    "entryPoint": "Contacts",
+    "features": ["Contacts", "ContactDetail", "Search", "Settings"],
+    "components": []
+  }
+}
