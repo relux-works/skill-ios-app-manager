@@ -26,6 +26,9 @@ func TestAddExternalDepAddsProjectAndModuleDependency(t *testing.T) {
 	if !strings.Contains(projectManifest, projectSnippet) {
 		t.Fatalf("project Package.swift missing external dependency:\n%s", projectManifest)
 	}
+	if !strings.Contains(projectManifest, `"RealmSwift": .framework`) {
+		t.Fatalf("project Package.swift missing framework product type override:\n%s", projectManifest)
+	}
 
 	authManifest := readStringFile(t, filepath.Join(modulesRoot, "Auth", moduleManifestName))
 	if !strings.Contains(authManifest, projectSnippet) {
@@ -118,6 +121,9 @@ func TestRemoveExternalDepRemovesProjectAndModuleDependency(t *testing.T) {
 	projectManifest := readStringFile(t, filepath.Join(projectRoot, moduleManifestName))
 	if strings.Contains(projectManifest, `.package(name: "RealmSwift", url: "https://github.com/realm/realm-swift.git", from: "1.0.0"),`) {
 		t.Fatalf("project Package.swift still contains RealmSwift dependency:\n%s", projectManifest)
+	}
+	if strings.Contains(projectManifest, `"RealmSwift": .framework`) {
+		t.Fatalf("project Package.swift still contains RealmSwift framework override:\n%s", projectManifest)
 	}
 
 	authManifest := readStringFile(t, filepath.Join(modulesRoot, "Auth", moduleManifestName))

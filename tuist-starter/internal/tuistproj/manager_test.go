@@ -213,6 +213,9 @@ let package = Package(
 	if !strings.Contains(rootManifestRaw, "swift-relux") {
 		t.Fatalf("root Package.swift missing swift-relux dependency:\n%s", rootManifestRaw)
 	}
+	if !strings.Contains(rootManifestRaw, `"Relux": .framework`) {
+		t.Fatalf("root Package.swift missing Relux framework product type:\n%s", rootManifestRaw)
+	}
 }
 
 func TestTuistProjectManagerCreateModuleUtilityScaffoldsSinglePackage(t *testing.T) {

@@ -91,6 +91,13 @@ func AddExternalDep(url string, version string, packageName string, targetModule
 			err,
 		)
 	}
+	if err := tuistproj.EnsureFrameworkProductTypes(projectManifestPath, spec.packageName); err != nil {
+		return fmt.Errorf(
+			"ensure framework product type for %q in project manifest: %w",
+			spec.packageName,
+			err,
+		)
+	}
 
 	targetModuleName := strings.TrimSpace(targetModule)
 	if targetModuleName == "" {
@@ -142,6 +149,13 @@ func RemoveExternalDep(packageName string, modulesPath string) error {
 	if err := removeExternalDependencyFromManifest(projectManifestPath, resolvedPackageName, true); err != nil {
 		return fmt.Errorf(
 			"remove external dependency %q from project manifest: %w",
+			resolvedPackageName,
+			err,
+		)
+	}
+	if err := tuistproj.RemoveFrameworkProductTypes(projectManifestPath, resolvedPackageName); err != nil {
+		return fmt.Errorf(
+			"remove framework product type for %q from project manifest: %w",
 			resolvedPackageName,
 			err,
 		)
@@ -564,6 +578,9 @@ func rollbackExternalDependencyAdd(projectManifestPath string, packageName strin
 	rollbackErr := removeExternalDependencyFromManifest(projectManifestPath, packageName, true)
 	if rollbackErr != nil {
 		return fmt.Errorf("%w (rollback failed: %v)", reason, rollbackErr)
+	}
+	if cleanupErr := tuistproj.RemoveFrameworkProductTypes(projectManifestPath, packageName); cleanupErr != nil {
+		return fmt.Errorf("%w (framework cleanup failed: %v)", reason, cleanupErr)
 	}
 	return reason
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/relux-works/ios-app-manager/internal/ioc"
 	"github.com/relux-works/ios-app-manager/internal/scaffold"
+	"github.com/relux-works/ios-app-manager/internal/tuistproj"
 )
 
 //go:embed setup_templates/*.tmpl
@@ -184,34 +185,13 @@ func replaceWindowGroupBody(content, appTypeName string) string {
 	return result
 }
 
-const tuistPackageSettingsBlock = `
-#if TUIST
-import ProjectDescription
-
-let packageSettings = PackageSettings(
-    productTypes: [
-        "Relux": .framework,
-    ]
-)
-#endif
-`
-
-// patchPackageSwiftForRelux appends #if TUIST PackageSettings block to Package.swift.
 func patchPackageSwiftForRelux(packageSwiftPath string) error {
-	content, err := os.ReadFile(packageSwiftPath)
-	if err != nil {
-		return fmt.Errorf("read Package.swift: %w", err)
-	}
-
-	s := string(content)
-
-	if strings.Contains(s, "PackageSettings") {
-		return nil
-	}
-
-	s = strings.TrimRight(s, "\n") + "\n" + tuistPackageSettingsBlock
-
-	return os.WriteFile(packageSwiftPath, []byte(s), 0o644)
+	return tuistproj.EnsureFrameworkProductTypes(
+		packageSwiftPath,
+		"Relux",
+		"ReluxRouter",
+		"SwiftUIRelux",
+	)
 }
 
 func renderSetupTemplate(templatePath, outputPath string, data setupTemplateData) error {

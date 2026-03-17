@@ -835,7 +835,7 @@ func (m *TuistProjectManager) addExternalDepsToRootManifest(deps []ExternalProdu
 	}
 
 	if len(edits) == 0 {
-		return nil
+		return EnsureFrameworkProductTypes(rootPkgPath, collectExternalProductNames(deps)...)
 	}
 
 	if err := ApplyManifestEditsToFile(rootPkgPath, edits...); err != nil {
@@ -845,5 +845,20 @@ func (m *TuistProjectManager) addExternalDepsToRootManifest(deps []ExternalProdu
 		return fmt.Errorf("add external deps to root Package.swift: %w", err)
 	}
 
+	if err := EnsureFrameworkProductTypes(rootPkgPath, collectExternalProductNames(deps)...); err != nil {
+		return fmt.Errorf("ensure framework product types in root Package.swift: %w", err)
+	}
+
 	return nil
+}
+
+func collectExternalProductNames(deps []ExternalProductDep) []string {
+	out := make([]string, 0, len(deps))
+	for _, dep := range deps {
+		if strings.TrimSpace(dep.ProductName) == "" {
+			continue
+		}
+		out = append(out, dep.ProductName)
+	}
+	return out
 }
