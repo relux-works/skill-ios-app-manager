@@ -1,11 +1,13 @@
 package extensions
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/relux-works/ios-app-manager/internal/config"
 	"github.com/relux-works/ios-app-manager/internal/ioc"
 	"github.com/relux-works/ios-app-manager/internal/tuistproj"
 )
@@ -163,6 +165,15 @@ func TestMakeAppExtensionProjectCreatesScaffold(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := t.TempDir()
+	writeConfigFile(t, projectRoot, config.ProjectConfig{
+		AppName:          "DemoApp",
+		BundleID:         "com.demo.app",
+		TeamID:           "TEAM123456",
+		MarketingVersion: "2.3.4",
+		ProjectVersion:   "42",
+		SwiftVersion:     "6.0",
+		MinTarget:        "17.0",
+	})
 
 	err := makeAppExtensionProject(ExtensionProjectInput{
 		ProjectRoot:              projectRoot,
@@ -184,8 +195,14 @@ func TestMakeAppExtensionProjectCreatesScaffold(t *testing.T) {
 	projectSwift := readFile(t, filepath.Join(extensionRoot, "Project.swift"))
 	for _, want := range []string{
 		`name: "WidgetExtension"`,
+		`let marketingVersion = "2.3.4"`,
+		`let currentProjectVersion = "42"`,
 		`bundleId: "\(hostBundleId).widget"`,
+		`"CFBundleShortVersionString": .string(marketingVersion)`,
+		`"CFBundleVersion": .string(currentProjectVersion)`,
 		`"NSExtensionPointIdentifier": .string("com.apple.widgetkit-extension")`,
+		`"MARKETING_VERSION": .string(marketingVersion)`,
+		`"CURRENT_PROJECT_VERSION": .string(currentProjectVersion)`,
 	} {
 		if !strings.Contains(projectSwift, want) {
 			t.Fatalf("Project.swift missing %q:\n%s", want, projectSwift)
@@ -202,6 +219,17 @@ func TestMakeAppExtensionProjectCreatesScaffold(t *testing.T) {
 	if manifest.Targets[0].Name != "WidgetExtension" {
 		t.Fatalf("targets[0].Name = %q, want %q", manifest.Targets[0].Name, "WidgetExtension")
 	}
+}
+
+func writeConfigFile(t *testing.T, projectRoot string, cfg config.ProjectConfig) {
+	t.Helper()
+
+	raw, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatalf("json.Marshal(config) error = %v", err)
+	}
+
+	writeTestFile(t, filepath.Join(projectRoot, config.DefaultConfigPath), string(raw))
 }
 
 func TestMakeAppExtensionProjectValidatesInput(t *testing.T) {

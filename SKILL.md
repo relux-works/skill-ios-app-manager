@@ -50,6 +50,7 @@ skill-ios-app-manager/
    - `ios-app-manager init --config ios-app-manager.json --output .`
 2. Generate helper targets:
    - `ios-app-manager generate makefile`
+   - `ios-app-manager generate versions`
 3. Run local cycle:
    - `make setup && make build && make test`
 
@@ -63,9 +64,27 @@ Use `--force` when you intentionally want to overwrite scaffold files:
 - Init scaffold: `ios-app-manager init --config <path> --output <dir> [--force]`
 - Generate Makefile: `ios-app-manager generate makefile`
 - Generate SwiftLint config: `ios-app-manager generate swiftlint`
+- Generate app/extension versions: `ios-app-manager generate versions`
 - Clean artifacts: `ios-app-manager clean [--deep] [--kill-xcode]`
 - Status: `ios-app-manager status`
 - Diagram: `ios-app-manager diagram` — generates PlantUML module dependency diagram
+
+Generate commands are scaffold generator plugins:
+- Each `generate <artifact>` entrypoint is a separate scaffold plugin with its own responsibility and dependency contract.
+- Use this pattern for scaffold-only sync tasks instead of overloading `init`.
+- `generate versions` depends on the `init` scaffold shape and syncs both `marketing_version` and `project_version` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`.
+
+Version sync workflow:
+```bash
+# 1. bump versions in config
+$EDITOR ios-app-manager.json
+
+# 2. restick marketing/build versions into app + extensions
+ios-app-manager generate versions
+
+# 3. regenerate Tuist project artifacts
+tuist generate
+```
 
 ### Infrastructure setup (run in order)
 

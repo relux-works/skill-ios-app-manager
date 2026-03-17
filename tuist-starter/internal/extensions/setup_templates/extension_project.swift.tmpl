@@ -1,6 +1,8 @@
 import ProjectDescription
 
 let hostBundleId = "{{ .HostBundleID }}"
+let marketingVersion = "{{ .MarketingVersion }}"
+let currentProjectVersion = "{{ .ProjectVersion }}"
 
 let project = Project(
     name: "{{ .ProjectName }}",
@@ -11,13 +13,21 @@ let project = Project(
             product: .appExtension,
             bundleId: "\(hostBundleId).{{ .BundleIDSuffix }}",
             infoPlist: .extendingDefault(with: [
+                "CFBundleShortVersionString": .string(marketingVersion),
+                "CFBundleVersion": .string(currentProjectVersion),
                 "NSExtension": .dictionary([
                     "NSExtensionPointIdentifier": .string("{{ .ExtensionPointIdentifier }}"),
                 ]),
             ]),
             sources: ["Sources/**"],
             dependencies: [
-            ]
+            ],
+            settings: .settings(
+                base: [
+                    "MARKETING_VERSION": .string(marketingVersion),
+                    "CURRENT_PROJECT_VERSION": .string(currentProjectVersion),
+                ]
+            )
         )
     ]
 )

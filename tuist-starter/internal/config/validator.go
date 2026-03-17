@@ -30,6 +30,7 @@ func (c ProjectConfig) Validate() error {
 	requiredString(c.SwiftVersion, "SwiftVersion", &issues)
 	requiredString(c.MinTarget, "MinTarget", &issues)
 	requiredString(c.MarketingVersion, "MarketingVersion", &issues)
+	requiredString(c.ProjectVersion, "ProjectVersion", &issues)
 
 	if value := strings.TrimSpace(c.BundleID); value != "" && !bundleIDPattern.MatchString(value) {
 		issues = append(issues, "BundleID must use reverse-domain format (e.g. com.example.app)")

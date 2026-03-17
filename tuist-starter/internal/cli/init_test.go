@@ -152,6 +152,7 @@ func TestInitCommandWithInvalidConfigReturnsValidationErrors(t *testing.T) {
 		"BundleID must use reverse-domain format",
 		"SwiftVersion must use major.minor format",
 		"MinTarget must use major.minor format",
+		"ProjectVersion is required",
 	}
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(message, snippet) {

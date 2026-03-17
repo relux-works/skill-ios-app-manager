@@ -31,6 +31,7 @@ ios-app-manager [command] [flags]
 | `entitlements list` | Print effective entitlement values | `ios-app-manager entitlements list` |
 | `generate makefile` | Generate or update `Makefile` | `ios-app-manager generate makefile` |
 | `generate swiftlint` | Generate or update `.swiftlint.yml` | `ios-app-manager generate swiftlint` |
+| `generate versions` | Generate or update app + extension versions | `ios-app-manager generate versions` |
 | `clean [--deep] [--kill-xcode]` | Clean local/global build artifacts | `ios-app-manager clean --deep` |
 | `push send --token <token> [--env dev\|prod] [--payload <file>]` | Send APNs push using project credentials | `ios-app-manager push send --token "$TOKEN" --env dev` |
 | `push token` | Print latest device token from logs/fallback file | `ios-app-manager push token` |
@@ -281,6 +282,26 @@ ios-app-manager generate makefile
 Syntax:
 ```bash
 ios-app-manager generate swiftlint
+```
+
+### `generate versions`
+
+Syntax:
+```bash
+ios-app-manager generate versions
+```
+
+Description:
+- Syncs `marketing_version` and `project_version` from config into scaffold-managed `Project.swift` manifests.
+- Updates the host app manifest and every `Extensions/*/Project.swift` generated from scaffold templates.
+- Intended dependency: `init` scaffold must already exist.
+
+Flags:
+- `--config <path>`: Config file path.
+
+Example:
+```bash
+ios-app-manager generate versions
 ```
 
 Description:

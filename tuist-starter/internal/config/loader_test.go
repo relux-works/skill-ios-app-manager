@@ -102,6 +102,7 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
   "bundle_id": "com.example.demo",
   "team_id": "ABCDE12345",
   "marketing_version": "1.0.0",
+  "project_version": "1",
   "swift_version": "6.2",
   "min_target": "17.0"
 }`

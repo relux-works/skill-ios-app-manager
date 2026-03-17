@@ -4,6 +4,8 @@ import ProjectDescriptionHelpers
 let appName = {{ swiftLiteral .AppName }}
 let bundleID = {{ swiftLiteral .BundleID }}
 let developmentTeam = {{ swiftLiteral .TeamID }}
+let marketingVersion = {{ swiftLiteral .MarketingVersion }}
+let currentProjectVersion = {{ swiftLiteral .ProjectVersion }}
 let configurations: [Configuration] = [
 {{- range .Configurations }}
     .{{ configKind . }}(name: {{ swiftLiteral . }}),
@@ -26,8 +28,8 @@ let project = Project(
             infoPlist: .extendingDefault(
                 with: [
                     "CFBundleDisplayName": .string(appName),
-                    "CFBundleShortVersionString": .string({{ swiftLiteral .MarketingVersion }}),
-                    "CFBundleVersion": .string({{ swiftLiteral .ProjectVersion }}),
+                    "CFBundleShortVersionString": .string(marketingVersion),
+                    "CFBundleVersion": .string(currentProjectVersion),
 {{- if .URLScheme }}
                     "CFBundleURLTypes": .array([
                         .dictionary([
@@ -58,8 +60,8 @@ let project = Project(
                     "SWIFT_VERSION": .string({{ swiftLiteral .SwiftVersion }}),
                     "IPHONEOS_DEPLOYMENT_TARGET": .string({{ swiftLiteral .MinTarget }}),
                     "DEVELOPMENT_TEAM": .string(developmentTeam),
-                    "MARKETING_VERSION": .string({{ swiftLiteral .MarketingVersion }}),
-                    "CURRENT_PROJECT_VERSION": .string({{ swiftLiteral .ProjectVersion }}),
+                    "MARKETING_VERSION": .string(marketingVersion),
+                    "CURRENT_PROJECT_VERSION": .string(currentProjectVersion),
                     "CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION": "YES",
                 ]
             )

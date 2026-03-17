@@ -4,6 +4,8 @@ import ProjectDescriptionHelpers
 let appName = "DemoApp"
 let bundleID = "com.example.demo"
 let developmentTeam = "ABCDE12345"
+let marketingVersion = "1.0.0"
+let currentProjectVersion = "1"
 let configurations: [Configuration] = [
     .debug(name: "Debug"),
     .release(name: "Release"),
@@ -25,8 +27,8 @@ let project = Project(
             infoPlist: .extendingDefault(
                 with: [
                     "CFBundleDisplayName": .string(appName),
-                    "CFBundleShortVersionString": .string("1.0.0"),
-                    "CFBundleVersion": .string("1"),
+                    "CFBundleShortVersionString": .string(marketingVersion),
+                    "CFBundleVersion": .string(currentProjectVersion),
                     "CFBundleURLTypes": .array([
                         .dictionary([
                             "CFBundleURLName": .string(bundleID),
@@ -52,8 +54,8 @@ let project = Project(
                     "SWIFT_VERSION": .string("6.2"),
                     "IPHONEOS_DEPLOYMENT_TARGET": .string("17.0"),
                     "DEVELOPMENT_TEAM": .string(developmentTeam),
-                    "MARKETING_VERSION": .string("1.0.0"),
-                    "CURRENT_PROJECT_VERSION": .string("1"),
+                    "MARKETING_VERSION": .string(marketingVersion),
+                    "CURRENT_PROJECT_VERSION": .string(currentProjectVersion),
                     "CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION": "YES",
                 ]
             )

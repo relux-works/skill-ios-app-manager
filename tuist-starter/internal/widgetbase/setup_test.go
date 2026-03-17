@@ -71,6 +71,9 @@ func TestSetupCreatesWidgetExtensionAndPatchesHost(t *testing.T) {
 	extensionProject := readFile(t, filepath.Join(extensionRoot, "Project.swift"))
 	for _, want := range []string{
 		`bundleId: "\(hostBundleId).widget"`,
+		`let marketingVersion = "1.0.0"`,
+		`"CFBundleShortVersionString": .string(marketingVersion)`,
+		`"MARKETING_VERSION": .string(marketingVersion)`,
 		`"NSExtensionPointIdentifier": .string("com.apple.widgetkit-extension")`,
 		`.sdk(name: "WidgetKit", type: .framework)`,
 		`"com.apple.security.application-groups": .array([`,
@@ -233,6 +236,7 @@ func writeConfigFile(t *testing.T, projectRoot, appName, bundleID string, appGro
 		SwiftVersion:     "6.0",
 		MinTarget:        "17.0",
 		MarketingVersion: "1.0.0",
+		ProjectVersion:   "1",
 		AppGroups:        appGroups,
 	}
 
