@@ -24,6 +24,7 @@ func TestProjectConfigValidateMissingRequiredFieldsAllReturned(t *testing.T) {
 		SwiftVersion:     "",
 		MinTarget:        "",
 		MarketingVersion: "",
+		ProjectVersion:   "",
 	}
 
 	err := cfg.Validate()
@@ -39,6 +40,7 @@ func TestProjectConfigValidateMissingRequiredFieldsAllReturned(t *testing.T) {
 		"SwiftVersion is required",
 		"MinTarget is required",
 		"MarketingVersion is required",
+		"ProjectVersion is required",
 	}
 	for _, want := range required {
 		if !strings.Contains(msg, want) {

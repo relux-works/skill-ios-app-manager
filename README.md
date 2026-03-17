@@ -27,6 +27,30 @@ make test     # run all tests
 make lint     # go vet
 ```
 
+## Generate plugins
+
+`generate` is plugin-based. Each `generate <artifact>` entrypoint is a separate scaffold generator with its own responsibility and dependency contract.
+
+Current generators:
+- `generate makefile`
+- `generate swiftlint`
+- `generate versions`
+
+`generate versions` is the scaffold-only version sync plugin. It depends on the `init` scaffold shape and syncs both `marketing_version` and `project_version` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`.
+
+Typical version bump flow:
+
+```bash
+# 1. bump versions in config
+$EDITOR ios-app-manager.json
+
+# 2. sync host app + extension manifests
+./ios-app-manager generate versions
+
+# 3. regenerate Tuist project artifacts
+tuist generate
+```
+
 ## What it does
 
 Generates a complete iOS project structure from a JSON config file:

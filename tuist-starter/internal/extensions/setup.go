@@ -8,6 +8,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/relux-works/ios-app-manager/internal/config"
 	"github.com/relux-works/ios-app-manager/internal/ioc"
 	"github.com/relux-works/ios-app-manager/internal/scaffold"
 	"github.com/relux-works/ios-app-manager/internal/tuistproj"
@@ -48,6 +49,8 @@ type extensionProjectTemplateData struct {
 	HostBundleID             string
 	BundleIDSuffix           string
 	ExtensionPointIdentifier string
+	MarketingVersion         string
+	ProjectVersion           string
 }
 
 // Setup creates shared extension infrastructure and patches host manifests.
@@ -100,6 +103,11 @@ func makeAppExtensionProject(input ExtensionProjectInput) error {
 		return err
 	}
 
+	cfg, err := loadProjectConfig(input.ProjectRoot)
+	if err != nil {
+		return fmt.Errorf("load project config: %w", err)
+	}
+
 	targetName := scaffold.SwiftTypeName(input.ExtensionName)
 	hostBundleID := strings.TrimSuffix(strings.TrimSpace(input.HostBundleID), ".")
 	if hostBundleID == "" {
@@ -120,6 +128,8 @@ func makeAppExtensionProject(input ExtensionProjectInput) error {
 		HostBundleID:             hostBundleID,
 		BundleIDSuffix:           bundleIDSuffix,
 		ExtensionPointIdentifier: strings.TrimSpace(input.ExtensionPointIdentifier),
+		MarketingVersion:         strings.TrimSpace(cfg.MarketingVersion),
+		ProjectVersion:           strings.TrimSpace(cfg.ProjectVersion),
 	}
 
 	projectSwiftPath := filepath.Join(projectDir, "Project.swift")
@@ -137,6 +147,15 @@ func makeAppExtensionProject(input ExtensionProjectInput) error {
 	}
 
 	return nil
+}
+
+func loadProjectConfig(projectRoot string) (config.ProjectConfig, error) {
+	cfgPath := filepath.Join(projectRoot, config.DefaultConfigPath)
+	cfg, err := config.LoadConfig(cfgPath)
+	if err != nil {
+		return config.ProjectConfig{}, err
+	}
+	return cfg, nil
 }
 
 func validateInput(input SetupInput) error {

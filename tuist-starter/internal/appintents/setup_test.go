@@ -192,6 +192,7 @@ let project = Project(
 		SwiftVersion:     "6.0",
 		MinTarget:        "17.0",
 		MarketingVersion: "1.0.0",
+		ProjectVersion:   "1",
 		AppGroups:        appGroups,
 	}
 

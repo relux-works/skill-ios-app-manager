@@ -3,6 +3,7 @@
   "bundle_id": "invalid_bundle_id",
   "team_id": "",
   "marketing_version": "",
+  "project_version": "",
   "swift_version": "6",
   "min_target": "17",
   "app_groups": [

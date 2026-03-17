@@ -25,6 +25,129 @@ func TestGenerateHelpShowsMakefileSubcommand(t *testing.T) {
 	}
 }
 
+func TestGenerateVersionsUpdatesHostAndExtensionManifests(t *testing.T) {
+	t.Parallel()
+
+	cfg := testProjectConfig()
+	configPath := writeTestConfig(t, cfg)
+	projectRoot := filepath.Dir(configPath)
+
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Project.swift"), `import ProjectDescription
+
+let marketingVersion = "1.0.0"
+let currentProjectVersion = "1"
+
+let project = Project(
+    name: "DemoApp",
+    targets: [
+        .target(
+            name: "DemoApp",
+            infoPlist: .extendingDefault(with: [
+                "CFBundleShortVersionString": .string(marketingVersion),
+                "CFBundleVersion": .string(currentProjectVersion),
+            ]),
+            settings: .settings(
+                base: [
+                    "MARKETING_VERSION": .string(marketingVersion),
+                    "CURRENT_PROJECT_VERSION": .string(currentProjectVersion),
+                ]
+            )
+        )
+    ]
+)
+`)
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"), `import ProjectDescription
+
+let marketingVersion = "1.0.0"
+let currentProjectVersion = "1"
+
+let project = Project(
+    name: "DemoWidget",
+    targets: [
+        .target(
+            name: "DemoWidget",
+            infoPlist: .extendingDefault(with: [
+                "CFBundleShortVersionString": .string(marketingVersion),
+                "CFBundleVersion": .string(currentProjectVersion),
+            ]),
+            settings: .settings(
+                base: [
+                    "MARKETING_VERSION": .string(marketingVersion),
+                    "CURRENT_PROJECT_VERSION": .string(currentProjectVersion),
+                ]
+            )
+        )
+    ]
+)
+`)
+
+	updatedCfg := cfg
+	updatedCfg.MarketingVersion = "2.0.0"
+	updatedCfg.ProjectVersion = "55"
+	if err := config.WriteProjectConfig(configPath, updatedCfg); err != nil {
+		t.Fatalf("WriteProjectConfig(%q) error = %v", configPath, err)
+	}
+
+	output, err := executeRootCommand("generate", "--config", configPath, "versions")
+	if err != nil {
+		t.Fatalf("executeRootCommand(generate versions) error = %v", err)
+	}
+	if !strings.Contains(output, "regenerated version manifests in 2 file(s)") {
+		t.Fatalf("generate versions output = %q, want regenerate message", output)
+	}
+
+	for _, manifestPath := range []string{
+		filepath.Join(projectRoot, "Project.swift"),
+		filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"),
+	} {
+		content, err := os.ReadFile(manifestPath)
+		if err != nil {
+			t.Fatalf("ReadFile(%q) error = %v", manifestPath, err)
+		}
+		for _, want := range []string{
+			`let marketingVersion = "2.0.0"`,
+			`let currentProjectVersion = "55"`,
+		} {
+			if !strings.Contains(string(content), want) {
+				t.Fatalf("%s missing %q:\n%s", manifestPath, want, string(content))
+			}
+		}
+	}
+}
+
+func TestGenerateVersionsReportsUpToDateManifests(t *testing.T) {
+	t.Parallel()
+
+	cfg := testProjectConfig()
+	configPath := writeTestConfig(t, cfg)
+	projectRoot := filepath.Dir(configPath)
+
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Project.swift"), `import ProjectDescription
+
+let marketingVersion = "1.0.0"
+let currentProjectVersion = "1"
+`)
+
+	output, err := executeRootCommand("generate", "--config", configPath, "versions")
+	if err != nil {
+		t.Fatalf("executeRootCommand(generate versions) error = %v", err)
+	}
+	if !strings.Contains(output, "version manifests already up to date in 1 file(s)") {
+		t.Fatalf("generate versions output = %q, want up-to-date message", output)
+	}
+}
+
+func writeGenerateVersionManifest(t *testing.T, path, content string) {
+	t.Helper()
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%q) error = %v", filepath.Dir(path), err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", path, err)
+	}
+}
+
 func TestGenerateMakefileCreatesFileWhenMissing(t *testing.T) {
 	t.Parallel()
 
