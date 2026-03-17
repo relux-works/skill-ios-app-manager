@@ -29,6 +29,7 @@ func TestGenerateMakefileContainsRequiredVariablesAndTargets(t *testing.T) {
 		"MODULES_PATH := Packages",
 		"SCHEME ?= DemoApp",
 		"DESTINATION ?= platform=iOS Simulator,name=iPhone 16,OS=17.0",
+		"TUIST_GENERATE_FLAGS ?= --no-open",
 		"setup: ##",
 		"resetup: ##",
 		"generate: ##",
@@ -47,6 +48,7 @@ func TestGenerateMakefileContainsRequiredVariablesAndTargets(t *testing.T) {
 		".PHONY:",
 		generatedTargetsMarker,
 		customTargetsMarker,
+		"@tuist generate $(TUIST_GENERATE_FLAGS)",
 	}
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(makefile, snippet) {

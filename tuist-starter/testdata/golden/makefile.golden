@@ -8,6 +8,7 @@ SCHEME ?= DemoApp
 DESTINATION ?= platform=iOS Simulator,name=iPhone 16,OS=17.0
 WORKSPACE ?= $(APP_NAME).xcworkspace
 DERIVED_DATA_PATH ?= $(CURDIR)/DerivedData
+TUIST_GENERATE_FLAGS ?= --no-open
 
 PUSH_KEY_PATH := certs/AuthKey_ABC123.p8
 PUSH_KEY_ID := ABC123DEF4
@@ -19,14 +20,14 @@ PUSH_DEVICE_TOKEN ?=
 
 setup: ## Install Tuist dependencies and generate project files
 	@tuist install
-	@tuist generate
+	@tuist generate $(TUIST_GENERATE_FLAGS)
 
 resetup: ## Clean and run setup again
 	@$(MAKE) clean
 	@$(MAKE) setup
 
 generate: ## Generate the Xcode project with Tuist
-	@tuist generate
+	@tuist generate $(TUIST_GENERATE_FLAGS)
 
 build: ## Build the app with xcodebuild
 	@xcodebuild -workspace "$(WORKSPACE)" -scheme "$(SCHEME)" -destination "$(DESTINATION)" -derivedDataPath "$(DERIVED_DATA_PATH)" build
