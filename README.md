@@ -38,6 +38,8 @@ Current generators:
 
 `generate versions` is the scaffold-only version sync plugin. It depends on the `init` scaffold shape and syncs both `marketing_version` and `project_version` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`.
 
+Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
+
 Typical version bump flow:
 
 ```bash
@@ -48,7 +50,7 @@ $EDITOR ios-app-manager.json
 ./ios-app-manager generate versions
 
 # 3. regenerate Tuist project artifacts
-tuist generate
+tuist generate --no-open
 ```
 
 ## What it does

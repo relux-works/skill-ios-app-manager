@@ -163,7 +163,12 @@ func (m *TuistProjectManager) Generate(ctx context.Context, opts components.Gene
 		return err
 	}
 
-	args := make([]string, 0, 2)
+	args := make([]string, 0, 3)
+	if opts.Open {
+		args = append(args, "--open")
+	} else {
+		args = append(args, "--no-open")
+	}
 	if configPath := strings.TrimSpace(opts.ConfigPath); configPath != "" {
 		args = append(args, "--path", configPath)
 	}

@@ -59,13 +59,37 @@ func TestTuistProjectManagerDelegatesRunnerCommands(t *testing.T) {
 	}
 
 	wantCalls := []call{
-		{command: CommandGenerate, args: []string{"--path", "Project.swift"}},
+		{command: CommandGenerate, args: []string{"--no-open", "--path", "Project.swift"}},
 		{command: CommandInstall, args: nil},
 		{command: CommandGraph, args: []string{"--format", "json"}},
 		{command: CommandClean, args: nil},
 	}
 	if !reflect.DeepEqual(calls, wantCalls) {
 		t.Fatalf("calls = %#v, want %#v", calls, wantCalls)
+	}
+}
+
+func TestTuistProjectManagerGenerateOpenOptIn(t *testing.T) {
+	t.Parallel()
+
+	var gotArgs []string
+	runner := mockRunner{
+		runFn: func(_ context.Context, command string, extraArgs ...string) (RunResult, error) {
+			if command == CommandGenerate {
+				gotArgs = append([]string(nil), extraArgs...)
+			}
+			return RunResult{}, nil
+		},
+	}
+
+	manager := NewTuistProjectManager(WithRunner(runner))
+	if err := manager.Generate(context.Background(), components.GenerateOpts{Open: true}); err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	wantArgs := []string{"--open"}
+	if !reflect.DeepEqual(gotArgs, wantArgs) {
+		t.Fatalf("args = %#v, want %#v", gotArgs, wantArgs)
 	}
 }
 

@@ -73,6 +73,7 @@ Generate commands are scaffold generator plugins:
 - Each `generate <artifact>` entrypoint is a separate scaffold plugin with its own responsibility and dependency contract.
 - Use this pattern for scaffold-only sync tasks instead of overloading `init`.
 - `generate versions` depends on the `init` scaffold shape and syncs both `marketing_version` and `project_version` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`.
+- Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
 
 Version sync workflow:
 ```bash
@@ -83,7 +84,7 @@ $EDITOR ios-app-manager.json
 ios-app-manager generate versions
 
 # 3. regenerate Tuist project artifacts
-tuist generate
+tuist generate --no-open
 ```
 
 ### Infrastructure setup (run in order)

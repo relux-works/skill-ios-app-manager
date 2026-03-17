@@ -9,6 +9,7 @@ import (
 // GenerateOpts configures Tuist project generation.
 type GenerateOpts struct {
 	ConfigPath string
+	Open       bool
 }
 
 // ExternalDep describes an external package dependency with distinct package/product names.
