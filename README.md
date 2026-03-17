@@ -87,6 +87,13 @@ cd tuist-starter
 
 Order matters -- each command depends on prerequisites from earlier steps.
 
+## Dynamic product policy
+
+- Scaffold-generated local package products are emitted as dynamic libraries by default.
+- External Swift package products added through setup plugins, module blueprints, or `dep add-external` are automatically forced to `.framework` in root `Package.swift` via Tuist `PackageSettings.productTypes`.
+- Removing an external dependency through `dep remove-external` also removes the matching framework override.
+- If a remote package is added by hand outside `ios-app-manager`, this policy does not apply automatically.
+
 ## Blueprint examples
 
 Versioned relux-feature blueprints live under [blueprints/](blueprints/README.md).

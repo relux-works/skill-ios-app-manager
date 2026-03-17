@@ -144,6 +144,12 @@ Module type guidance:
 - External remove: `ios-app-manager dep remove-external --package <name>`
 - List dependencies: `ios-app-manager dep list [<module>]`
 
+Framework policy:
+- Scaffold-generated local package products are emitted as dynamic libraries by default.
+- External Swift package products added through `setup` plugins, `module create --from <blueprint>`, or `dep add-external` are automatically forced to `.framework` in root `Package.swift` under Tuist `PackageSettings.productTypes`.
+- `dep remove-external` also removes the matching framework override from root `Package.swift`.
+- If someone adds a remote package by hand outside `ios-app-manager`, this policy is not applied until the manifest is brought back through the tool flow or patched manually.
+
 ### Entitlements
 
 - List keys: `ios-app-manager entitlements list`
