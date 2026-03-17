@@ -77,8 +77,13 @@ func NewSetupCommand(mod *registry.Module, opts *RootOptions) *cobra.Command {
 			}
 			absModulesRoot := filepath.Join(projectRoot, modulesRoot)
 			projectSwiftPath := filepath.Join(projectRoot, "Project.swift")
+			rootPackageSwiftPath := filepath.Join(projectRoot, "Package.swift")
+			frameworkProducts := make([]string, 0, len(mod.ExternalDeps)+len(mod.AdditionalFrameworkProducts))
 
 			for _, dep := range mod.ExternalDeps {
+				if product := strings.TrimSpace(dep.Product); product != "" {
+					frameworkProducts = append(frameworkProducts, product)
+				}
 				pkgName := dep.Package
 				if pkgName == "" {
 					pkgName = dep.Product
@@ -96,6 +101,10 @@ func NewSetupCommand(mod *registry.Module, opts *RootOptions) *cobra.Command {
 				if err != nil && !strings.Contains(err.Error(), "already contains") {
 					return fmt.Errorf("add %s to Project.swift: %w", dep.Product, err)
 				}
+			}
+			frameworkProducts = append(frameworkProducts, mod.AdditionalFrameworkProducts...)
+			if err := tuistproj.EnsureFrameworkProductTypes(rootPackageSwiftPath, frameworkProducts...); err != nil {
+				return fmt.Errorf("ensure framework product types: %w", err)
 			}
 
 			// Apply capabilities declared in the registry.

@@ -76,7 +76,12 @@ type Module struct {
 	Category     Category // infra, foundation, network, utils
 	Dependencies []ModuleID
 	ExternalDeps []ExternalDep
-	Capabilities []Capability
+	// AdditionalFrameworkProducts are extra Swift package products that should be
+	// forced to frameworks in root Package.swift PackageSettings.
+	// Use this for runtime/transitive products that are not declared as direct
+	// ExternalDeps but must not stay static under Tuist.
+	AdditionalFrameworkProducts []string
+	Capabilities                []Capability
 
 	// Two-phase setup
 	Plan       func(SetupInput) (string, error) // returns plan text

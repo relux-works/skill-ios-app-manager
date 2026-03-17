@@ -568,6 +568,8 @@ func TestSetupCommandAppliesExternalDepsBeforePlan(t *testing.T) {
 			`name: "swiftui-relux"`,
 			`url: "https://github.com/relux-works/swiftui-relux.git"`,
 			`from: "8.0.1"`,
+			`"SwiftIoC": .framework`,
+			`"SwiftUIRelux": .framework`,
 		} {
 			if !strings.Contains(string(packageContent), expected) {
 				t.Fatalf("Package.swift missing %q:\n%s", expected, string(packageContent))

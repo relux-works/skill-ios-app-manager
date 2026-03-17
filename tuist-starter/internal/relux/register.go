@@ -36,6 +36,10 @@ func init() {
 				Package: "swiftui-relux",
 			},
 		},
+		AdditionalFrameworkProducts: []string{
+			"Relux",
+			"ReluxRouter",
+		},
 
 		Plan:       Plan,
 		Setup:      SetupFromRegistry,

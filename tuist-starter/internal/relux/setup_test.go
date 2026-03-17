@@ -305,6 +305,8 @@ let package = Package(
 		"import ProjectDescription",
 		"PackageSettings",
 		`"Relux": .framework`,
+		`"ReluxRouter": .framework`,
+		`"SwiftUIRelux": .framework`,
 		"#endif",
 	} {
 		if !strings.Contains(content, expected) {
@@ -336,6 +338,8 @@ import ProjectDescription
 let packageSettings = PackageSettings(
     productTypes: [
         "Relux": .framework,
+        "ReluxRouter": .framework,
+        "SwiftUIRelux": .framework,
     ]
 )
 #endif
