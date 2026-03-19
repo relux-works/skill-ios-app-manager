@@ -18,7 +18,7 @@ Agent-facing workflow for managing Tuist-based iOS projects that follow Relux mo
 ## Setup
 
 ```bash
-# Clone and run setup (builds CLI, registers skill globally, symlinks binary)
+# Clone and run setup (builds CLI, installs runtime skill copy, symlinks binary)
 git clone git@github.com:relux-works/skill-ios-app-manager.git
 cd skill-ios-app-manager
 ./scripts/setup.sh
@@ -26,7 +26,9 @@ cd skill-ios-app-manager
 
 Setup does:
 - Builds Go CLI binary in `tuist-starter/`
-- Symlinks skill to `~/.agents/skills/ios-app-manager` -> `~/.claude/skills/` + `~/.codex/skills/`
+- Copies the skill repo into `~/.agents/skills/ios-app-manager`
+- Degitizes the installed copy after sync (`.git`, `.gitignore`, `.gitattributes`, `.gitmodules` are removed)
+- Symlinks `~/.claude/skills/ios-app-manager` and `~/.codex/skills/ios-app-manager` to the installed copy in `~/.agents/skills/ios-app-manager`
 - Symlinks binary to `~/.local/bin/ios-app-manager`
 
 ## Repository structure

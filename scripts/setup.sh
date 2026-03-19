@@ -15,11 +15,31 @@ BIN_DIR="$HOME/.local/bin"
 AGENTS_SKILLS="$HOME/.agents/skills"
 CLAUDE_SKILLS="$HOME/.claude/skills"
 CODEX_SKILLS="$HOME/.codex/skills"
+INSTALLED_SKILL_DIR="$AGENTS_SKILLS/$SKILL_NAME"
+
+RUNTIME_EXCLUDES=(
+  --exclude=.git
+  --exclude=.gitignore
+  --exclude=.DS_Store
+  --exclude=.cache
+  --exclude=.github
+  --exclude=.planning
+  --exclude=.research
+  --exclude=.task-board
+  --exclude=.temp
+  --exclude=task-board.config.json
+)
 
 # --- Colors ---
 red()   { print -P "%F{red}$1%f" }
 green() { print -P "%F{green}$1%f" }
 yellow(){ print -P "%F{yellow}$1%f" }
+
+scrub_git_metadata() {
+  local target_dir="$1"
+  rm -rf "$target_dir/.git"
+  rm -f "$target_dir/.gitignore" "$target_dir/.gitattributes" "$target_dir/.gitmodules"
+}
 
 # --- 1. Check / install Go ---
 check_go() {
@@ -64,16 +84,21 @@ build_cli() {
   green "Built: $GO_DIR/$BINARY_NAME"
 }
 
-# --- 3. Register skill globally ---
+# --- 3. Sync installed skill copy + symlinks ---
 register_skill() {
   mkdir -p "$AGENTS_SKILLS" "$CLAUDE_SKILLS" "$CODEX_SKILLS"
 
-  # ~/.agents/skills/ios-app-manager -> repo root
-  _symlink "$AGENTS_SKILLS/$SKILL_NAME" "$SKILL_DIR"
+  if [[ -L "$INSTALLED_SKILL_DIR" ]] || [[ -f "$INSTALLED_SKILL_DIR" ]]; then
+    rm -rf "$INSTALLED_SKILL_DIR"
+  fi
+  mkdir -p "$INSTALLED_SKILL_DIR"
+  rsync -a --delete "${RUNTIME_EXCLUDES[@]}" "$SKILL_DIR/" "$INSTALLED_SKILL_DIR/"
+  scrub_git_metadata "$INSTALLED_SKILL_DIR"
+  green "  Installed copy: $INSTALLED_SKILL_DIR"
 
   # ~/.claude/skills/ and ~/.codex/skills/ -> ~/.agents/skills/
-  _symlink "$CLAUDE_SKILLS/$SKILL_NAME" "$AGENTS_SKILLS/$SKILL_NAME"
-  _symlink "$CODEX_SKILLS/$SKILL_NAME" "$AGENTS_SKILLS/$SKILL_NAME"
+  _symlink "$CLAUDE_SKILLS/$SKILL_NAME" "$INSTALLED_SKILL_DIR"
+  _symlink "$CODEX_SKILLS/$SKILL_NAME" "$INSTALLED_SKILL_DIR"
 }
 
 # --- 4. Symlink binary to PATH ---
