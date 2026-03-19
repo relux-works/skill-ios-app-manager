@@ -17,6 +17,21 @@ skill-ios-app-manager/
 └── .temp/                # Generated demo projects (gitignored)
 ```
 
+## Skill Setup
+
+```bash
+git clone git@github.com:relux-works/skill-ios-app-manager.git
+cd skill-ios-app-manager
+./scripts/setup.sh
+```
+
+Setup behavior:
+- Builds the CLI in `tuist-starter/`
+- Copies the skill runtime into `~/.agents/skills/ios-app-manager`
+- Degitizes that installed copy after sync
+- Symlinks `~/.claude/skills/ios-app-manager` and `~/.codex/skills/ios-app-manager` to the installed copy
+- Symlinks `~/.local/bin/ios-app-manager` to the built binary
+
 ## Build & Run
 
 ```bash
