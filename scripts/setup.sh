@@ -41,6 +41,12 @@ scrub_git_metadata() {
   rm -f "$target_dir/.gitignore" "$target_dir/.gitattributes" "$target_dir/.gitmodules"
 }
 
+codex_uses_shared_agents_runtime() {
+  local codex_agents="$HOME/.codex/AGENTS.md"
+  local shared_agents="$HOME/.agents/.instructions/AGENTS.md"
+  [[ -L "$codex_agents" && "$(readlink "$codex_agents")" == "$shared_agents" ]]
+}
+
 # --- 1. Check / install Go ---
 check_go() {
   if command -v go &>/dev/null; then
@@ -98,7 +104,17 @@ register_skill() {
 
   # ~/.claude/skills/ and ~/.codex/skills/ -> ~/.agents/skills/
   _symlink "$CLAUDE_SKILLS/$SKILL_NAME" "$INSTALLED_SKILL_DIR"
-  _symlink "$CODEX_SKILLS/$SKILL_NAME" "$INSTALLED_SKILL_DIR"
+  if codex_uses_shared_agents_runtime; then
+    if [[ -L "$CODEX_SKILLS/$SKILL_NAME" ]]; then
+      rm "$CODEX_SKILLS/$SKILL_NAME"
+      green "  Removed duplicate Codex skill symlink: $CODEX_SKILLS/$SKILL_NAME"
+    elif [[ -e "$CODEX_SKILLS/$SKILL_NAME" ]]; then
+      yellow "  Leaving existing non-symlink Codex entry in place: $CODEX_SKILLS/$SKILL_NAME"
+    fi
+    green "  Skipping Codex skill symlink; shared runtime uses ~/.agents/skills as source of truth"
+  else
+    _symlink "$CODEX_SKILLS/$SKILL_NAME" "$INSTALLED_SKILL_DIR"
+  fi
 }
 
 # --- 4. Symlink binary to PATH ---

@@ -10,8 +10,15 @@ on:
 jobs:
   lint:
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: tuist-starter
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tuist-starter/go.mod
       - name: Lint
         run: make lint
