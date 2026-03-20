@@ -10,6 +10,9 @@ on:
 jobs:
   lint:
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: tuist-starter
     steps:
       - name: Checkout
         uses: actions/checkout@v4
