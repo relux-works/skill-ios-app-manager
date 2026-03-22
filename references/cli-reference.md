@@ -31,7 +31,9 @@ ios-app-manager [command] [flags]
 | `entitlements list` | Print effective entitlement values | `ios-app-manager entitlements list` |
 | `generate makefile` | Generate or update `Makefile` | `ios-app-manager generate makefile` |
 | `generate swiftlint` | Generate or update `.swiftlint.yml` | `ios-app-manager generate swiftlint` |
+| `generate project-config` | Sync manifest config slices across app + extensions | `ios-app-manager generate project-config` |
 | `generate versions` | Generate or update app + extension versions | `ios-app-manager generate versions` |
+| `generate min-target` | Generate or update app + extension deployment target markers | `ios-app-manager generate min-target` |
 | `clean [--deep] [--kill-xcode]` | Clean local/global build artifacts | `ios-app-manager clean --deep` |
 | `push send --token <token> [--env dev\|prod] [--payload <file>]` | Send APNs push using project credentials | `ios-app-manager push send --token "$TOKEN" --env dev` |
 | `push token` | Print latest device token from logs/fallback file | `ios-app-manager push token` |
@@ -284,6 +286,17 @@ Syntax:
 ios-app-manager generate swiftlint
 ```
 
+Description:
+- Creates `.swiftlint.yml` if missing, or regenerates it from project config.
+
+Flags:
+- `--config <path>`: Optional command-level config override.
+
+Example:
+```bash
+ios-app-manager generate swiftlint
+```
+
 ### `generate versions`
 
 Syntax:
@@ -304,15 +317,47 @@ Example:
 ios-app-manager generate versions
 ```
 
+### `generate min-target`
+
+Syntax:
+```bash
+ios-app-manager generate min-target
+```
+
 Description:
-- Creates `.swiftlint.yml` if missing, or regenerates it from project config.
+- Syncs `min_target` from config into scaffold-managed `Project.swift` manifests.
+- Updates the host app manifest and every `Extensions/*/Project.swift` generated from scaffold templates.
+- Canonicalizes both `deploymentTargets: .iOS(minTarget)` and `"IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget)`.
+- Older manifests without explicit `minTarget` markers are migrated forward during sync.
 
 Flags:
 - `--config <path>`: Optional command-level config override.
 
 Example:
 ```bash
-ios-app-manager generate swiftlint
+ios-app-manager generate min-target
+```
+
+### `generate project-config`
+
+Syntax:
+```bash
+ios-app-manager generate project-config
+```
+
+Description:
+- Orchestrates project-manifest config sync across scaffolded app and extension manifests.
+- Runs the current config-sync leaf plugins in order:
+  - `generate versions`
+  - `generate min-target`
+- Prints one summary that shows the outcome of each leaf sync.
+
+Flags:
+- `--config <path>`: Optional command-level config override.
+
+Example:
+```bash
+ios-app-manager generate project-config
 ```
 
 ### `clean`

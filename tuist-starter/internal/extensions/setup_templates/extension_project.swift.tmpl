@@ -3,6 +3,7 @@ import ProjectDescription
 let hostBundleId = "{{ .HostBundleID }}"
 let marketingVersion = "{{ .MarketingVersion }}"
 let currentProjectVersion = "{{ .ProjectVersion }}"
+let minTarget = "{{ .MinTarget }}"
 
 let project = Project(
     name: "{{ .ProjectName }}",
@@ -12,6 +13,7 @@ let project = Project(
             destinations: .iOS,
             product: .appExtension,
             bundleId: "\(hostBundleId).{{ .BundleIDSuffix }}",
+            deploymentTargets: .iOS(minTarget),
             infoPlist: .extendingDefault(with: [
                 "CFBundleShortVersionString": .string(marketingVersion),
                 "CFBundleVersion": .string(currentProjectVersion),
@@ -24,6 +26,7 @@ let project = Project(
             ],
             settings: .settings(
                 base: [
+                    "IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget),
                     "MARKETING_VERSION": .string(marketingVersion),
                     "CURRENT_PROJECT_VERSION": .string(currentProjectVersion),
                 ]

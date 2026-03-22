@@ -81,6 +81,7 @@ ios-app-manager dep remove-external --package swift-collections
 
 ```bash
 # Keep generated artifacts in sync
+ios-app-manager generate project-config
 ios-app-manager generate makefile
 
 # Project cycle
@@ -98,7 +99,27 @@ ios-app-manager clean --deep
 ios-app-manager clean --kill-xcode
 ```
 
-## 5) Common troubleshooting
+## 5) Bump app + extension manifest config
+
+```bash
+# 1) Edit the source-of-truth config
+$EDITOR ios-app-manager.json
+
+# 2) Sync scaffolded manifests
+ios-app-manager generate project-config
+
+# 3) Regenerate Tuist artifacts
+tuist install && tuist generate
+```
+
+Leaf sync commands remain available when you only want one slice:
+
+```bash
+ios-app-manager generate versions
+ios-app-manager generate min-target
+```
+
+## 6) Common troubleshooting
 
 ### Invalid or missing config
 

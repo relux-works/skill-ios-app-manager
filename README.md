@@ -47,25 +47,38 @@ make lint     # go vet
 `generate` is plugin-based. Each `generate <artifact>` entrypoint is a separate scaffold generator with its own responsibility and dependency contract.
 
 Current generators:
+- `generate project-config`
 - `generate makefile`
 - `generate swiftlint`
 - `generate versions`
+- `generate min-target`
 
-`generate versions` is the scaffold-only version sync plugin. It depends on the `init` scaffold shape and syncs both `marketing_version` and `project_version` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`.
+`generate project-config` is the orchestration entrypoint for manifest config sync. Today it runs:
+- `generate versions` — syncs `marketing_version` and `project_version`
+- `generate min-target` — syncs `min_target` into `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET`
+
+All three depend on the `init` scaffold shape and update the host app `Project.swift` plus every `Extensions/*/Project.swift`.
 
 Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
 
-Typical version bump flow:
+Recommended config sync flow:
 
 ```bash
-# 1. bump versions in config
+# 1. bump project config in ios-app-manager.json
 $EDITOR ios-app-manager.json
 
 # 2. sync host app + extension manifests
-./ios-app-manager generate versions
+./ios-app-manager generate project-config
 
 # 3. regenerate Tuist project artifacts
 tuist generate --no-open
+```
+
+If you only want one slice, the leaf plugins still work directly:
+
+```bash
+./ios-app-manager generate versions
+./ios-app-manager generate min-target
 ```
 
 ## What it does

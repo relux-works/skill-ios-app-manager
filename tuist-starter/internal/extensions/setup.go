@@ -51,6 +51,7 @@ type extensionProjectTemplateData struct {
 	ExtensionPointIdentifier string
 	MarketingVersion         string
 	ProjectVersion           string
+	MinTarget                string
 }
 
 // Setup creates shared extension infrastructure and patches host manifests.
@@ -130,6 +131,7 @@ func makeAppExtensionProject(input ExtensionProjectInput) error {
 		ExtensionPointIdentifier: strings.TrimSpace(input.ExtensionPointIdentifier),
 		MarketingVersion:         strings.TrimSpace(cfg.MarketingVersion),
 		ProjectVersion:           strings.TrimSpace(cfg.ProjectVersion),
+		MinTarget:                strings.TrimSpace(cfg.MinTarget),
 	}
 
 	projectSwiftPath := filepath.Join(projectDir, "Project.swift")

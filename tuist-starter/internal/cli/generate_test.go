@@ -23,6 +23,12 @@ func TestGenerateHelpShowsMakefileSubcommand(t *testing.T) {
 			t.Fatalf("generate --help output missing %q:\n%s", expected, output)
 		}
 	}
+
+	for _, expected := range []string{"versions", "min-target", "project-config"} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("generate --help output missing %q:\n%s", expected, output)
+		}
+	}
 }
 
 func TestGenerateVersionsUpdatesHostAndExtensionManifests(t *testing.T) {
@@ -134,6 +140,229 @@ let currentProjectVersion = "1"
 	}
 	if !strings.Contains(output, "version manifests already up to date in 1 file(s)") {
 		t.Fatalf("generate versions output = %q, want up-to-date message", output)
+	}
+}
+
+func TestGenerateMinTargetUpdatesHostAndExtensionManifests(t *testing.T) {
+	t.Parallel()
+
+	cfg := testProjectConfig()
+	configPath := writeTestConfig(t, cfg)
+	projectRoot := filepath.Dir(configPath)
+
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Project.swift"), `import ProjectDescription
+
+let marketingVersion = "1.0.0"
+let currentProjectVersion = "1"
+
+let project = Project(
+    name: "DemoApp",
+    targets: [
+        .target(
+            name: "DemoApp",
+            bundleId: "com.demo.app",
+            deploymentTargets: .iOS("16.0"),
+            settings: .settings(
+                base: [
+                    "IPHONEOS_DEPLOYMENT_TARGET": .string("16.0"),
+                ]
+            )
+        )
+    ]
+)
+`)
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"), `import ProjectDescription
+
+let marketingVersion = "1.0.0"
+let currentProjectVersion = "1"
+
+let project = Project(
+    name: "DemoWidget",
+    targets: [
+        .target(
+            name: "DemoWidget",
+            product: .appExtension,
+            bundleId: "com.demo.app.widget",
+            settings: .settings(
+                base: [
+                    "MARKETING_VERSION": .string(marketingVersion),
+                ]
+            )
+        )
+    ]
+)
+`)
+
+	updatedCfg := cfg
+	updatedCfg.MinTarget = "18.0"
+	if err := config.WriteProjectConfig(configPath, updatedCfg); err != nil {
+		t.Fatalf("WriteProjectConfig(%q) error = %v", configPath, err)
+	}
+
+	output, err := executeRootCommand("generate", "--config", configPath, "min-target")
+	if err != nil {
+		t.Fatalf("executeRootCommand(generate min-target) error = %v", err)
+	}
+	if !strings.Contains(output, "regenerated min target manifests in 2 file(s)") {
+		t.Fatalf("generate min-target output = %q, want regenerate message", output)
+	}
+
+	for _, manifestPath := range []string{
+		filepath.Join(projectRoot, "Project.swift"),
+		filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"),
+	} {
+		content, err := os.ReadFile(manifestPath)
+		if err != nil {
+			t.Fatalf("ReadFile(%q) error = %v", manifestPath, err)
+		}
+		for _, want := range []string{
+			`let minTarget = "18.0"`,
+			`deploymentTargets: .iOS(minTarget)`,
+			`"IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget)`,
+		} {
+			if !strings.Contains(string(content), want) {
+				t.Fatalf("%s missing %q:\n%s", manifestPath, want, string(content))
+			}
+		}
+	}
+}
+
+func TestGenerateMinTargetReportsUpToDateManifests(t *testing.T) {
+	t.Parallel()
+
+	cfg := testProjectConfig()
+	configPath := writeTestConfig(t, cfg)
+	projectRoot := filepath.Dir(configPath)
+
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Project.swift"), `import ProjectDescription
+
+let minTarget = "17.0"
+
+let project = Project(
+    name: "DemoApp",
+    targets: [
+        .target(
+            name: "DemoApp",
+            bundleId: "com.demo.app",
+            deploymentTargets: .iOS(minTarget),
+            settings: .settings(
+                base: [
+                    "IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget),
+                ]
+            )
+        )
+    ]
+)
+`)
+
+	output, err := executeRootCommand("generate", "--config", configPath, "min-target")
+	if err != nil {
+		t.Fatalf("executeRootCommand(generate min-target) error = %v", err)
+	}
+	if !strings.Contains(output, "min target manifests already up to date in 1 file(s)") {
+		t.Fatalf("generate min-target output = %q, want up-to-date message", output)
+	}
+}
+
+func TestGenerateProjectConfigRunsLeafPlugins(t *testing.T) {
+	t.Parallel()
+
+	cfg := testProjectConfig()
+	configPath := writeTestConfig(t, cfg)
+	projectRoot := filepath.Dir(configPath)
+
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Project.swift"), `import ProjectDescription
+
+let marketingVersion = "1.0.0"
+let currentProjectVersion = "1"
+
+let project = Project(
+    name: "DemoApp",
+    targets: [
+        .target(
+            name: "DemoApp",
+            bundleId: "com.demo.app",
+            deploymentTargets: .iOS("16.0"),
+            settings: .settings(
+                base: [
+                    "IPHONEOS_DEPLOYMENT_TARGET": .string("16.0"),
+                    "MARKETING_VERSION": .string(marketingVersion),
+                    "CURRENT_PROJECT_VERSION": .string(currentProjectVersion),
+                ]
+            )
+        )
+    ]
+)
+`)
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"), `import ProjectDescription
+
+let marketingVersion = "1.0.0"
+let currentProjectVersion = "1"
+
+let project = Project(
+    name: "DemoWidget",
+    targets: [
+        .target(
+            name: "DemoWidget",
+            product: .appExtension,
+            bundleId: "com.demo.app.widget",
+            infoPlist: .extendingDefault(with: [
+                "CFBundleShortVersionString": .string(marketingVersion),
+                "CFBundleVersion": .string(currentProjectVersion),
+            ]),
+            settings: .settings(
+                base: [
+                    "MARKETING_VERSION": .string(marketingVersion),
+                    "CURRENT_PROJECT_VERSION": .string(currentProjectVersion),
+                ]
+            )
+        )
+    ]
+)
+`)
+
+	updatedCfg := cfg
+	updatedCfg.MarketingVersion = "2.0.0"
+	updatedCfg.ProjectVersion = "55"
+	updatedCfg.MinTarget = "18.0"
+	if err := config.WriteProjectConfig(configPath, updatedCfg); err != nil {
+		t.Fatalf("WriteProjectConfig(%q) error = %v", configPath, err)
+	}
+
+	output, err := executeRootCommand("generate", "--config", configPath, "project-config")
+	if err != nil {
+		t.Fatalf("executeRootCommand(generate project-config) error = %v", err)
+	}
+
+	for _, want := range []string{
+		"project config sync summary:",
+		"- versions: regenerated version manifests in 2 file(s)",
+		"- min-target: regenerated min target manifests in 2 file(s)",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("generate project-config output missing %q:\n%s", want, output)
+		}
+	}
+
+	for _, manifestPath := range []string{
+		filepath.Join(projectRoot, "Project.swift"),
+		filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"),
+	} {
+		content, err := os.ReadFile(manifestPath)
+		if err != nil {
+			t.Fatalf("ReadFile(%q) error = %v", manifestPath, err)
+		}
+		for _, want := range []string{
+			`let marketingVersion = "2.0.0"`,
+			`let currentProjectVersion = "55"`,
+			`let minTarget = "18.0"`,
+			`deploymentTargets: .iOS(minTarget)`,
+			`"IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget)`,
+		} {
+			if !strings.Contains(string(content), want) {
+				t.Fatalf("%s missing %q:\n%s", manifestPath, want, string(content))
+			}
+		}
 	}
 }
 

@@ -3,18 +3,10 @@ package scaffold
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/relux-works/ios-app-manager/internal/config"
 )
-
-// VersionSyncResult describes which manifests were scanned and updated.
-type VersionSyncResult struct {
-	Scanned []string
-	Updated []string
-}
 
 type versionField struct {
 	ConstantName    string
@@ -39,7 +31,7 @@ func SyncVersions(projectRoot string, cfg config.ProjectConfig) (VersionSyncResu
 		return VersionSyncResult{}, fmt.Errorf("project version is required")
 	}
 
-	manifestPaths, err := discoverVersionManifestPaths(root)
+	manifestPaths, err := discoverScaffoldManifestPaths(root)
 	if err != nil {
 		return VersionSyncResult{}, err
 	}
@@ -97,46 +89,6 @@ func SyncVersions(projectRoot string, cfg config.ProjectConfig) (VersionSyncResu
 
 	return result, nil
 }
-
-func discoverVersionManifestPaths(projectRoot string) ([]string, error) {
-	paths := make([]string, 0, 4)
-
-	rootProjectPath := filepath.Join(projectRoot, "Project.swift")
-	if _, err := os.Stat(rootProjectPath); err == nil {
-		paths = append(paths, rootProjectPath)
-	} else if !os.IsNotExist(err) {
-		return nil, fmt.Errorf("stat manifest %q: %w", rootProjectPath, err)
-	}
-
-	extensionsRoot := filepath.Join(projectRoot, "Extensions")
-	if _, err := os.Stat(extensionsRoot); err != nil {
-		if os.IsNotExist(err) {
-			return paths, nil
-		}
-		return nil, fmt.Errorf("stat extensions directory %q: %w", extensionsRoot, err)
-	}
-
-	err := filepath.WalkDir(extensionsRoot, func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if d.IsDir() {
-			return nil
-		}
-		if d.Name() != "Project.swift" {
-			return nil
-		}
-		paths = append(paths, path)
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("discover extension manifests: %w", err)
-	}
-
-	sort.Strings(paths)
-	return paths, nil
-}
-
 func syncVersionField(content string, field versionField) (string, bool, error) {
 	lines := strings.Split(content, "\n")
 	hasTrailingNewline := strings.HasSuffix(content, "\n")
@@ -200,35 +152,4 @@ func syncVersionField(content string, field versionField) (string, bool, error) 
 	}
 
 	return updated, changed, nil
-}
-
-func replaceStringLiteralArgument(line, value string) (string, bool) {
-	stringCallIndex := strings.Index(line, ".string(")
-	if stringCallIndex < 0 {
-		return "", false
-	}
-
-	argStart := stringCallIndex + len(".string(")
-	argEnd := strings.Index(line[argStart:], ")")
-	if argEnd < 0 {
-		return "", false
-	}
-	argEnd += argStart
-
-	if argStart >= len(line) || line[argStart] != '"' {
-		return "", false
-	}
-	if argEnd == 0 || line[argEnd-1] != '"' {
-		return "", false
-	}
-
-	return line[:argStart] + fmt.Sprintf("%q", value) + line[argEnd:], true
-}
-
-func leadingIndent(line string) string {
-	end := 0
-	for end < len(line) && (line[end] == ' ' || line[end] == '\t') {
-		end++
-	}
-	return line[:end]
 }
