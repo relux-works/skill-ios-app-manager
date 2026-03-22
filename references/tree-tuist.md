@@ -205,7 +205,7 @@ ios-app-manager generate --config "$CONFIG" swiftlint
 
 Project-config behavior:
 - Runs scaffold config sync across root app + extension manifests.
-- Currently syncs version markers plus min deployment target markers.
+- Currently syncs version markers, min deployment target markers, and strict Swift compiler build flags.
 
 Makefile behavior:
 - Generated section is rewritten from config.

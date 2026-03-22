@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+
+	"github.com/relux-works/ios-app-manager/internal/config"
 )
 
 const packageTemplatePath = "templates/package.swift.tmpl"
@@ -41,6 +43,7 @@ type PackageGenerationInput struct {
 	Dependencies []string
 	ExternalDeps []ExternalProductDep
 	Platform     string
+	Config       config.ProjectConfig
 }
 
 type packageTemplateData struct {
@@ -54,6 +57,7 @@ type packageTemplateData struct {
 	ExternalProducts     []externalProductDep
 	ManifestComment      string
 	SwiftToolsVersionTag string
+	SwiftPackageSettings []string
 }
 
 type packageDependency struct {
@@ -92,10 +96,12 @@ func GeneratePackageSwift(input PackageGenerationInput) (string, error) {
 
 	externalDeps := buildExternalPackageDeps(input.ExternalDeps)
 	externalProducts := buildExternalProductDeps(input.ExternalDeps)
+	effectiveSwift := input.Config.EffectiveSwiftSettings()
 
 	data := packageTemplateData{
 		Platform:             platform,
-		SwiftToolsVersionTag: "6.0",
+		SwiftToolsVersionTag: effectiveSwift.ToolsVersion,
+		SwiftPackageSettings: effectiveSwift.PackageSwiftSettings(),
 		ExternalDependencies: externalDeps,
 		ExternalProducts:     externalProducts,
 	}

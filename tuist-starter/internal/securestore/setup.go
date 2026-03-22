@@ -8,6 +8,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/relux-works/ios-app-manager/internal/config"
 	"github.com/relux-works/ios-app-manager/internal/ioc"
 	"github.com/relux-works/ios-app-manager/internal/scaffold"
 	tmplutil "github.com/relux-works/ios-app-manager/internal/template"
@@ -62,10 +63,20 @@ func Setup(input SetupInput) error {
 
 	modulesRoot := ioc.ResolveModulesPath(input.ProjectRoot, input.ModulesPath)
 	appTypeName := scaffold.SwiftTypeName(input.AppName)
+	cfg := config.ProjectConfig{}
+	cfgPath := filepath.Join(input.ProjectRoot, config.DefaultConfigPath)
+	if _, err := os.Stat(cfgPath); err == nil {
+		cfg, err = config.LoadConfig(cfgPath)
+		if err != nil {
+			return fmt.Errorf("load project config: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat project config: %w", err)
+	}
 
 	// 1. Create interface package: SecureStore (with Package.swift).
 	interfacePkgDir := filepath.Join(modulesRoot, moduleName)
-	if err := createPackageDir(interfacePkgDir, moduleName, tuistproj.PackageTypeInterface, platform); err != nil {
+	if err := createPackageDir(interfacePkgDir, moduleName, tuistproj.PackageTypeInterface, platform, cfg); err != nil {
 		return fmt.Errorf("create %s package: %w", moduleName, err)
 	}
 
@@ -86,7 +97,7 @@ func Setup(input SetupInput) error {
 
 	// 2. Create impl package: SecureStoreImpl (with Package.swift).
 	implPkgDir := filepath.Join(modulesRoot, implPackageName)
-	if err := createPackageDir(implPkgDir, moduleName, tuistproj.PackageTypeImpl, platform); err != nil {
+	if err := createPackageDir(implPkgDir, moduleName, tuistproj.PackageTypeImpl, platform, cfg); err != nil {
 		return fmt.Errorf("create %s package: %w", implPackageName, err)
 	}
 
@@ -161,7 +172,7 @@ func validateInput(input SetupInput) error {
 	return nil
 }
 
-func createPackageDir(pkgDir, modName string, pkgType tuistproj.PackageType, platform string) error {
+func createPackageDir(pkgDir, modName string, pkgType tuistproj.PackageType, platform string, cfg config.ProjectConfig) error {
 	if _, err := os.Stat(pkgDir); err == nil {
 		// Package already exists — idempotent.
 		return nil
@@ -175,6 +186,7 @@ func createPackageDir(pkgDir, modName string, pkgType tuistproj.PackageType, pla
 		ModuleName: modName,
 		Type:       pkgType,
 		Platform:   platform,
+		Config:     cfg,
 	})
 	if err != nil {
 		return fmt.Errorf("generate Package.swift: %w", err)

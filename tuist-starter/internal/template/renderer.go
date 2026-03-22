@@ -41,7 +41,10 @@ type Renderer struct {
 
 type rendererTemplateData struct {
 	config.ProjectConfig
-	LocalPackages []string
+	LocalPackages        []string
+	SwiftToolsVersion    string
+	SwiftBuildSettings   []config.SwiftBuildSetting
+	PackageSwiftSettings []string
 }
 
 // NewRenderer creates a renderer for Tuist template manifests.
@@ -98,9 +101,14 @@ func (r *Renderer) buildTemplateData(cfg config.ProjectConfig) (rendererTemplate
 		return rendererTemplateData{}, err
 	}
 
+	effectiveSwift := normalized.EffectiveSwiftSettings()
+
 	return rendererTemplateData{
-		ProjectConfig: normalized,
-		LocalPackages: localPackages,
+		ProjectConfig:        normalized,
+		LocalPackages:        localPackages,
+		SwiftToolsVersion:    effectiveSwift.ToolsVersion,
+		SwiftBuildSettings:   effectiveSwift.XcodeBuildSettings(),
+		PackageSwiftSettings: effectiveSwift.PackageSwiftSettings(),
 	}, nil
 }
 
@@ -110,10 +118,12 @@ func (r *Renderer) renderTemplate(templateName string, data rendererTemplateData
 	tpl, err := template.New(templateName).
 		Option("missingkey=error").
 		Funcs(template.FuncMap{
-			"configKind":   configKind,
-			"infoPlistKey": InfoPlistKey,
-			"packagePath":  packagePath,
-			"swiftLiteral": swiftLiteral,
+			"configKind":          configKind,
+			"infoPlistKey":        InfoPlistKey,
+			"packageBuildSetting": packageBuildSetting,
+			"packagePath":         packagePath,
+			"projectBuildSetting": projectBuildSetting,
+			"swiftLiteral":        swiftLiteral,
 		}).
 		ParseFS(templatesFS, templatePath)
 	if err != nil {
@@ -183,6 +193,9 @@ func normalizeProjectConfig(cfg config.ProjectConfig) config.ProjectConfig {
 	out.AppGroups = normalizeStringSlice(out.AppGroups)
 	out.Configurations = normalizeConfigurations(out.Configurations)
 	out.ModulesPath = normalizeModulesPath(out.ModulesPath)
+	out.ProjectSettings.Swift.LanguageMode = strings.TrimSpace(out.ProjectSettings.Swift.LanguageMode)
+	out.ProjectSettings.Swift.Concurrency.DefaultActorIsolation = strings.TrimSpace(out.ProjectSettings.Swift.Concurrency.DefaultActorIsolation)
+	out.ProjectSettings.Swift.Concurrency.StrictChecking = strings.TrimSpace(out.ProjectSettings.Swift.Concurrency.StrictChecking)
 
 	return out
 }
@@ -233,6 +246,14 @@ func packagePath(modulesPath, packageName string) string {
 
 func swiftLiteral(value string) string {
 	return strconv.Quote(value)
+}
+
+func projectBuildSetting(key, value string) string {
+	return fmt.Sprintf(`"%s": %s,`, key, strconv.Quote(value))
+}
+
+func packageBuildSetting(key, value string) string {
+	return fmt.Sprintf(`"%s": %s,`, key, strconv.Quote(value))
 }
 
 // InfoPlistKey converts a dotted identifier to an uppercase underscore-separated key.

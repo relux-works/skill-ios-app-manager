@@ -34,6 +34,7 @@ ios-app-manager [command] [flags]
 | `generate project-config` | Sync manifest config slices across app + extensions | `ios-app-manager generate project-config` |
 | `generate versions` | Generate or update app + extension versions | `ios-app-manager generate versions` |
 | `generate min-target` | Generate or update app + extension deployment target markers | `ios-app-manager generate min-target` |
+| `generate build-flags` | Generate or update strict Swift compiler build flags in app + extension manifests | `ios-app-manager generate build-flags` |
 | `clean [--deep] [--kill-xcode]` | Clean local/global build artifacts | `ios-app-manager clean --deep` |
 | `push send --token <token> [--env dev\|prod] [--payload <file>]` | Send APNs push using project credentials | `ios-app-manager push send --token "$TOKEN" --env dev` |
 | `push token` | Print latest device token from logs/fallback file | `ios-app-manager push token` |
@@ -338,6 +339,27 @@ Example:
 ios-app-manager generate min-target
 ```
 
+### `generate build-flags`
+
+Syntax:
+```bash
+ios-app-manager generate build-flags
+```
+
+Description:
+- Syncs a strict Swift compiler baseline into scaffold-managed `Project.swift` manifests.
+- Updates the host app manifest and every `Extensions/*/Project.swift` generated from scaffold templates.
+- Canonicalizes concurrency-related build settings such as strict concurrency checking, default actor isolation, and selected upcoming feature toggles.
+- Current values are fixed by the scaffold plugin rather than loaded from `ios-app-manager.json`.
+
+Flags:
+- `--config <path>`: Optional command-level config override.
+
+Example:
+```bash
+ios-app-manager generate build-flags
+```
+
 ### `generate project-config`
 
 Syntax:
@@ -350,6 +372,7 @@ Description:
 - Runs the current config-sync leaf plugins in order:
   - `generate versions`
   - `generate min-target`
+  - `generate build-flags`
 - Prints one summary that shows the outcome of each leaf sync.
 
 Flags:

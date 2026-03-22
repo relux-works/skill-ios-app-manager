@@ -8,6 +8,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/relux-works/ios-app-manager/internal/config"
 	"github.com/relux-works/ios-app-manager/internal/ioc"
 	"github.com/relux-works/ios-app-manager/internal/scaffold"
 	"github.com/relux-works/ios-app-manager/internal/tuistproj"
@@ -54,10 +55,20 @@ func Setup(input SetupInput) error {
 
 	modulesRoot := ioc.ResolveModulesPath(input.ProjectRoot, input.ModulesPath)
 	appTypeName := scaffold.SwiftTypeName(input.AppName)
+	cfg := config.ProjectConfig{}
+	cfgPath := filepath.Join(input.ProjectRoot, config.DefaultConfigPath)
+	if _, err := os.Stat(cfgPath); err == nil {
+		cfg, err = config.LoadConfig(cfgPath)
+		if err != nil {
+			return fmt.Errorf("load project config: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat project config: %w", err)
+	}
 
 	// 1. Create package directory with Package.swift (utility = single package, interface type).
 	pkgDir := filepath.Join(modulesRoot, moduleName)
-	if err := createPackageDir(pkgDir, moduleName, platform); err != nil {
+	if err := createPackageDir(pkgDir, moduleName, platform, cfg); err != nil {
 		return fmt.Errorf("create %s package: %w", moduleName, err)
 	}
 
@@ -135,7 +146,7 @@ func validateInput(input SetupInput) error {
 	return nil
 }
 
-func createPackageDir(pkgDir, modName, platform string) error {
+func createPackageDir(pkgDir, modName, platform string, cfg config.ProjectConfig) error {
 	if _, err := os.Stat(pkgDir); err == nil {
 		// Package already exists — idempotent.
 		return nil
@@ -149,6 +160,7 @@ func createPackageDir(pkgDir, modName, platform string) error {
 		ModuleName: modName,
 		Type:       tuistproj.PackageTypeInterface,
 		Platform:   platform,
+		Config:     cfg,
 	})
 	if err != nil {
 		return fmt.Errorf("generate Package.swift: %w", err)

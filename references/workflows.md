@@ -117,6 +117,7 @@ Leaf sync commands remain available when you only want one slice:
 ```bash
 ios-app-manager generate versions
 ios-app-manager generate min-target
+ios-app-manager generate build-flags
 ```
 
 ## 6) Common troubleshooting

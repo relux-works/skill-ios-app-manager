@@ -29,7 +29,12 @@ let package = Package(
                 .product(name: "{{ .ProductName }}", package: "{{ .PackageName }}"),
 {{- end }}
             ],
-            path: "Sources"
+            path: "Sources",
+            swiftSettings: [
+{{- range .SwiftPackageSettings }}
+                {{ . }},
+{{- end }}
+            ]
         ),
     ]
 )

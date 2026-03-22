@@ -18,7 +18,7 @@ type ProjectConfig struct {
 	// Versioning
 	MarketingVersion string `json:"marketing_version"` // e.g. "1.0.0"
 	ProjectVersion   string `json:"project_version"`   // build number, e.g. "1"
-	SwiftVersion     string `json:"swift_version"`     // e.g. "6.2"
+	SwiftVersion     string `json:"swift_version"`     // Swift tools / Tuist version, e.g. "6.2"
 	MinTarget        string `json:"min_target"`        // e.g. "17.0"
 
 	// URLs and schemes
@@ -26,8 +26,9 @@ type ProjectConfig struct {
 	AppGroups []string `json:"app_groups,omitempty"`
 
 	// Build
-	ProductName    string   `json:"product_name,omitempty"`   // defaults to AppName
-	Configurations []string `json:"configurations,omitempty"` // e.g. ["Debug", "Release"]
+	ProductName     string          `json:"product_name,omitempty"`   // defaults to AppName
+	Configurations  []string        `json:"configurations,omitempty"` // e.g. ["Debug", "Release"]
+	ProjectSettings ProjectSettings `json:"project_settings,omitempty"`
 
 	// Modules
 	ModulesPath string `json:"modules_path,omitempty"` // default: "Packages"
@@ -46,4 +47,6 @@ func (c *ProjectConfig) applyDefaults() {
 	if strings.TrimSpace(c.ModulesPath) == "" {
 		c.ModulesPath = defaultModulesPath
 	}
+
+	c.applySwiftDefaults()
 }

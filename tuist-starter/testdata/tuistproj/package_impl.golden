@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 import PackageDescription
 
 // Implementation package
@@ -23,7 +23,21 @@ let package = Package(
                 .product(name: "CoreKit", package: "CoreKit"),
                 .product(name: "Analytics", package: "Analytics"),
             ],
-            path: "Sources"
+            path: "Sources",
+            swiftSettings: [
+                .swiftLanguageMode(.v6),
+                .enableUpcomingFeature("ConciseMagicFile"),
+                .enableUpcomingFeature("DisableOutwardActorInference"),
+                .enableUpcomingFeature("GlobalActorIsolatedTypesUsability"),
+                .enableUpcomingFeature("InferIsolatedConformances"),
+                .enableUpcomingFeature("InferSendableFromCaptures"),
+                .enableUpcomingFeature("GlobalConcurrency"),
+                .enableUpcomingFeature("MemberImportVisibility"),
+                .enableUpcomingFeature("NonfrozenEnumExhaustivity"),
+                .enableUpcomingFeature("RegionBasedIsolation"),
+                .enableUpcomingFeature("ExistentialAny"),
+                .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+            ]
         ),
     ]
 )

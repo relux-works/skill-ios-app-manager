@@ -24,7 +24,7 @@ func TestGenerateHelpShowsMakefileSubcommand(t *testing.T) {
 		}
 	}
 
-	for _, expected := range []string{"versions", "min-target", "project-config"} {
+	for _, expected := range []string{"versions", "min-target", "build-flags", "project-config"} {
 		if !strings.Contains(output, expected) {
 			t.Fatalf("generate --help output missing %q:\n%s", expected, output)
 		}
@@ -264,6 +264,208 @@ let project = Project(
 	}
 }
 
+func TestGenerateBuildFlagsUpdatesHostAndExtensionManifests(t *testing.T) {
+	t.Parallel()
+
+	cfg := testProjectConfig()
+	configPath := writeTestConfig(t, cfg)
+	projectRoot := filepath.Dir(configPath)
+
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Project.swift"), `import ProjectDescription
+
+let minTarget = "17.0"
+
+let project = Project(
+    name: "DemoApp",
+    targets: [
+        .target(
+            name: "DemoApp",
+            bundleId: "com.demo.app",
+            deploymentTargets: .iOS(minTarget),
+            settings: .settings(
+                base: [
+                    "SWIFT_VERSION": .string("6.0"),
+                    "IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget),
+                ]
+            )
+        )
+    ]
+)
+`)
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"), `import ProjectDescription
+
+let minTarget = "17.0"
+
+let project = Project(
+    name: "DemoWidget",
+    targets: [
+        .target(
+            name: "DemoWidget",
+            product: .appExtension,
+            bundleId: "com.demo.app.widget",
+            deploymentTargets: .iOS(minTarget),
+            settings: .settings(
+                base: [
+                    "IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget),
+                    "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
+                ]
+            )
+        )
+    ]
+)
+`)
+
+	output, err := executeRootCommand("generate", "--config", configPath, "build-flags")
+	if err != nil {
+		t.Fatalf("executeRootCommand(generate build-flags) error = %v", err)
+	}
+	if !strings.Contains(output, "regenerated build flag manifests in 2 file(s)") {
+		t.Fatalf("generate build-flags output = %q, want regenerate message", output)
+	}
+
+	for _, manifestPath := range []string{
+		filepath.Join(projectRoot, "Project.swift"),
+		filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"),
+	} {
+		content, err := os.ReadFile(manifestPath)
+		if err != nil {
+			t.Fatalf("ReadFile(%q) error = %v", manifestPath, err)
+		}
+		for _, want := range []string{
+			`"SWIFT_APPROACHABLE_CONCURRENCY": "NO"`,
+			`"SWIFT_DEFAULT_ACTOR_ISOLATION": "nonisolated"`,
+			`"SWIFT_STRICT_CONCURRENCY": "complete"`,
+			`"SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_DISABLE_OUTWARD_ACTOR_ISOLATION": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_GLOBAL_ACTOR_ISOLATED_TYPES_USABILITY": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_INFER_ISOLATED_CONFORMANCES": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_GLOBAL_CONCURRENCY": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_NONFROZEN_ENUM_EXHAUSTIVITY": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_REGION_BASED_ISOLATION": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_NONISOLATED_NONSENDING_BY_DEFAULT": "YES"`,
+		} {
+			if !strings.Contains(string(content), want) {
+				t.Fatalf("%s missing %q:\n%s", manifestPath, want, string(content))
+			}
+		}
+	}
+}
+
+func TestGenerateBuildFlagsReportsUpToDateManifests(t *testing.T) {
+	t.Parallel()
+
+	cfg := testProjectConfig()
+	configPath := writeTestConfig(t, cfg)
+	projectRoot := filepath.Dir(configPath)
+
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Project.swift"), `import ProjectDescription
+
+let minTarget = "17.0"
+
+let project = Project(
+    name: "DemoApp",
+    targets: [
+        .target(
+            name: "DemoApp",
+            bundleId: "com.demo.app",
+            deploymentTargets: .iOS(minTarget),
+            settings: .settings(
+                base: [
+                    "SWIFT_VERSION": "6.0",
+                    "SWIFT_APPROACHABLE_CONCURRENCY": "NO",
+                    "SWIFT_DEFAULT_ACTOR_ISOLATION": "nonisolated",
+                    "SWIFT_STRICT_CONCURRENCY": "complete",
+                    "SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE": "YES",
+                    "SWIFT_UPCOMING_FEATURE_DISABLE_OUTWARD_ACTOR_ISOLATION": "YES",
+                    "SWIFT_UPCOMING_FEATURE_GLOBAL_ACTOR_ISOLATED_TYPES_USABILITY": "YES",
+                    "SWIFT_UPCOMING_FEATURE_INFER_ISOLATED_CONFORMANCES": "YES",
+                    "SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES": "YES",
+                    "SWIFT_UPCOMING_FEATURE_GLOBAL_CONCURRENCY": "YES",
+                    "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "YES",
+                    "SWIFT_UPCOMING_FEATURE_NONFROZEN_ENUM_EXHAUSTIVITY": "YES",
+                    "SWIFT_UPCOMING_FEATURE_REGION_BASED_ISOLATION": "YES",
+                    "SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY": "YES",
+                    "SWIFT_UPCOMING_FEATURE_NONISOLATED_NONSENDING_BY_DEFAULT": "YES",
+                    "IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget),
+                ]
+            )
+        )
+    ]
+)
+`)
+
+	output, err := executeRootCommand("generate", "--config", configPath, "build-flags")
+	if err != nil {
+		t.Fatalf("executeRootCommand(generate build-flags) error = %v", err)
+	}
+	if !strings.Contains(output, "build flag manifests already up to date in 1 file(s)") {
+		t.Fatalf("generate build-flags output = %q, want up-to-date message", output)
+	}
+}
+
+func TestGenerateBuildFlagsIsIdempotent(t *testing.T) {
+	t.Parallel()
+
+	cfg := testProjectConfig()
+	configPath := writeTestConfig(t, cfg)
+	projectRoot := filepath.Dir(configPath)
+	projectSwiftPath := filepath.Join(projectRoot, "Project.swift")
+
+	writeGenerateVersionManifest(t, projectSwiftPath, `import ProjectDescription
+
+let minTarget = "17.0"
+
+let project = Project(
+    name: "DemoApp",
+    targets: [
+        .target(
+            name: "DemoApp",
+            bundleId: "com.demo.app",
+            deploymentTargets: .iOS(minTarget),
+            settings: .settings(
+                base: [
+                    "SWIFT_VERSION": .string("6.0"),
+                    "IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget),
+                ]
+            )
+        )
+    ]
+)
+`)
+
+	firstOutput, err := executeRootCommand("generate", "--config", configPath, "build-flags")
+	if err != nil {
+		t.Fatalf("first executeRootCommand(generate build-flags) error = %v", err)
+	}
+	if !strings.Contains(firstOutput, "regenerated build flag manifests in 1 file(s)") {
+		t.Fatalf("first generate build-flags output = %q, want regenerate message", firstOutput)
+	}
+
+	firstContent, err := os.ReadFile(projectSwiftPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%q) after first run error = %v", projectSwiftPath, err)
+	}
+
+	secondOutput, err := executeRootCommand("generate", "--config", configPath, "build-flags")
+	if err != nil {
+		t.Fatalf("second executeRootCommand(generate build-flags) error = %v", err)
+	}
+	if !strings.Contains(secondOutput, "build flag manifests already up to date in 1 file(s)") {
+		t.Fatalf("second generate build-flags output = %q, want up-to-date message", secondOutput)
+	}
+
+	secondContent, err := os.ReadFile(projectSwiftPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%q) after second run error = %v", projectSwiftPath, err)
+	}
+	if string(firstContent) != string(secondContent) {
+		t.Fatalf("build-flags second run changed manifest:\nfirst:\n%s\n\nsecond:\n%s", string(firstContent), string(secondContent))
+	}
+}
+
 func TestGenerateProjectConfigRunsLeafPlugins(t *testing.T) {
 	t.Parallel()
 
@@ -320,6 +522,42 @@ let project = Project(
     ]
 )
 `)
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Package.swift"), `// swift-tools-version: 6.2
+import PackageDescription
+
+let modulesPath = "Packages"
+
+let package = Package(
+    name: "DemoDependencies",
+    dependencies: [
+        .package(path: "./Packages/Auth"),
+    ],
+    targets: []
+)
+`)
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Packages", "Auth", "Package.swift"), `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "Auth",
+    platforms: [
+        .iOS(.v17),
+    ],
+    products: [
+        .library(name: "Auth", type: .dynamic, targets: ["Auth"]),
+    ],
+    dependencies: [
+    ],
+    targets: [
+        .target(
+            name: "Auth",
+            dependencies: [
+            ],
+            path: "Sources"
+        ),
+    ]
+)
+`)
 
 	updatedCfg := cfg
 	updatedCfg.MarketingVersion = "2.0.0"
@@ -338,6 +576,8 @@ let project = Project(
 		"project config sync summary:",
 		"- versions: regenerated version manifests in 2 file(s)",
 		"- min-target: regenerated min target manifests in 2 file(s)",
+		"- build-flags: regenerated build flag manifests in 2 file(s)",
+		"- package-strictness: regenerated package strictness manifests in 2 file(s)",
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("generate project-config output missing %q:\n%s", want, output)
@@ -358,6 +598,20 @@ let project = Project(
 			`let minTarget = "18.0"`,
 			`deploymentTargets: .iOS(minTarget)`,
 			`"IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget)`,
+			`"SWIFT_APPROACHABLE_CONCURRENCY": "NO"`,
+			`"SWIFT_DEFAULT_ACTOR_ISOLATION": "nonisolated"`,
+			`"SWIFT_STRICT_CONCURRENCY": "complete"`,
+			`"SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_DISABLE_OUTWARD_ACTOR_ISOLATION": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_GLOBAL_ACTOR_ISOLATED_TYPES_USABILITY": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_INFER_ISOLATED_CONFORMANCES": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_GLOBAL_CONCURRENCY": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_NONFROZEN_ENUM_EXHAUSTIVITY": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_REGION_BASED_ISOLATION": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY": "YES"`,
+			`"SWIFT_UPCOMING_FEATURE_NONISOLATED_NONSENDING_BY_DEFAULT": "YES"`,
 		} {
 			if !strings.Contains(string(content), want) {
 				t.Fatalf("%s missing %q:\n%s", manifestPath, want, string(content))

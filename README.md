@@ -52,12 +52,14 @@ Current generators:
 - `generate swiftlint`
 - `generate versions`
 - `generate min-target`
+- `generate build-flags`
 
 `generate project-config` is the orchestration entrypoint for manifest config sync. Today it runs:
 - `generate versions` — syncs `marketing_version` and `project_version`
 - `generate min-target` — syncs `min_target` into `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET`
+- `generate build-flags` — syncs a strict Swift compiler baseline for concurrency and upcoming feature settings
 
-All three depend on the `init` scaffold shape and update the host app `Project.swift` plus every `Extensions/*/Project.swift`.
+All four depend on the `init` scaffold shape and update the host app `Project.swift` plus every `Extensions/*/Project.swift`.
 
 Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
 
@@ -79,6 +81,7 @@ If you only want one slice, the leaf plugins still work directly:
 ```bash
 ./ios-app-manager generate versions
 ./ios-app-manager generate min-target
+./ios-app-manager generate build-flags
 ```
 
 ## What it does

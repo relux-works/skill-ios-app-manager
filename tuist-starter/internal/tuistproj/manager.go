@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/relux-works/ios-app-manager/internal/components"
+	"github.com/relux-works/ios-app-manager/internal/config"
 )
 
 const (
@@ -51,15 +52,16 @@ type ManagerOption func(*TuistProjectManager)
 type TuistProjectManager struct {
 	runner Runner
 
-	rootDir     string
-	modulesDir  string
-	projectPath string
-	workspace   string
-	platform    string
-	mkdirAll    func(path string, perm os.FileMode) error
-	writeFile   func(name string, data []byte, perm os.FileMode) error
-	removeAll   func(path string) error
-	stat        func(name string) (os.FileInfo, error)
+	rootDir       string
+	modulesDir    string
+	projectPath   string
+	workspace     string
+	platform      string
+	projectConfig config.ProjectConfig
+	mkdirAll      func(path string, perm os.FileMode) error
+	writeFile     func(name string, data []byte, perm os.FileMode) error
+	removeAll     func(path string) error
+	stat          func(name string) (os.FileInfo, error)
 }
 
 var _ components.TuistProjectManager = (*TuistProjectManager)(nil)
@@ -149,6 +151,13 @@ func WithPackagePlatform(platform string) ManagerOption {
 		if trimmed != "" {
 			m.platform = trimmed
 		}
+	}
+}
+
+// WithProjectConfig sets the config used to derive generated package Swift settings.
+func WithProjectConfig(cfg config.ProjectConfig) ManagerOption {
+	return func(m *TuistProjectManager) {
+		m.projectConfig = cfg
 	}
 }
 
@@ -400,6 +409,7 @@ func (m *TuistProjectManager) createModulePackage(spec modulePackageSpec) (strin
 		Type:         spec.PackageType,
 		ExternalDeps: spec.ExternalDeps,
 		Platform:     m.platform,
+		Config:       m.projectConfig,
 	})
 	if err != nil {
 		return "", fmt.Errorf("generate Package.swift for %q: %w", spec.PackageName, err)
