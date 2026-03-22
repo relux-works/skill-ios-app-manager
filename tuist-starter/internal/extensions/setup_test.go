@@ -197,10 +197,13 @@ func TestMakeAppExtensionProjectCreatesScaffold(t *testing.T) {
 		`name: "WidgetExtension"`,
 		`let marketingVersion = "2.3.4"`,
 		`let currentProjectVersion = "42"`,
+		`let minTarget = "17.0"`,
 		`bundleId: "\(hostBundleId).widget"`,
+		`deploymentTargets: .iOS(minTarget)`,
 		`"CFBundleShortVersionString": .string(marketingVersion)`,
 		`"CFBundleVersion": .string(currentProjectVersion)`,
 		`"NSExtensionPointIdentifier": .string("com.apple.widgetkit-extension")`,
+		`"IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget)`,
 		`"MARKETING_VERSION": .string(marketingVersion)`,
 		`"CURRENT_PROJECT_VERSION": .string(currentProjectVersion)`,
 	} {

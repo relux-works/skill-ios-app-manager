@@ -6,6 +6,7 @@ let bundleID = "com.example.demo"
 let developmentTeam = "ABCDE12345"
 let marketingVersion = "1.0.0"
 let currentProjectVersion = "1"
+let minTarget = "17.0"
 let configurations: [Configuration] = [
     .debug(name: "Debug"),
     .release(name: "Release"),
@@ -23,7 +24,7 @@ let project = Project(
             destinations: .iOS,
             product: .app,
             bundleId: bundleID,
-            deploymentTargets: .iOS("17.0"),
+            deploymentTargets: .iOS(minTarget),
             infoPlist: .extendingDefault(
                 with: [
                     "CFBundleDisplayName": .string(appName),
@@ -52,7 +53,7 @@ let project = Project(
             settings: .settings(
                 base: [
                     "SWIFT_VERSION": .string("6.2"),
-                    "IPHONEOS_DEPLOYMENT_TARGET": .string("17.0"),
+                    "IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget),
                     "DEVELOPMENT_TEAM": .string(developmentTeam),
                     "MARKETING_VERSION": .string(marketingVersion),
                     "CURRENT_PROJECT_VERSION": .string(currentProjectVersion),

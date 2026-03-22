@@ -14,8 +14,8 @@ Use this decision tree:
    Run [C. Manifest Management](#c-manifest-management-package-swift--projectswift).
 4. Need to manage entitlements?
    Run [D. Entitlements](#d-entitlements-management).
-5. Need Makefile/SwiftLint regeneration?
-   Run [E. Generation](#e-makefile--swiftlint-regeneration).
+5. Need Makefile/SwiftLint/project-config regeneration?
+   Run [E. Generation](#e-generated-artifacts--project-config-regeneration).
 6. Need compile/test/cleanup loop?
    Run [F. Build Cycle](#f-build-cycle-generate---build---test---clean).
 7. Stuck on errors?
@@ -68,6 +68,7 @@ ios-app-manager init --config "$CONFIG" --output . --force
 4. Generate/update secondary artifacts from config:
 
 ```bash
+ios-app-manager generate --config "$CONFIG" project-config
 ios-app-manager generate --config "$CONFIG" makefile
 ios-app-manager generate --config "$CONFIG" swiftlint
 ```
@@ -188,7 +189,7 @@ Explicit plist path override:
 ios-app-manager entitlements list --path ./DemoApp.entitlements
 ```
 
-## E. Makefile + SwiftLint Regeneration
+## E. Generated Artifacts + Project Config Regeneration
 
 When to use:
 - Config changed (app name, modules path, target versions, push settings).
@@ -197,9 +198,14 @@ When to use:
 Commands:
 
 ```bash
+ios-app-manager generate --config "$CONFIG" project-config
 ios-app-manager generate --config "$CONFIG" makefile
 ios-app-manager generate --config "$CONFIG" swiftlint
 ```
+
+Project-config behavior:
+- Runs scaffold config sync across root app + extension manifests.
+- Currently syncs version markers plus min deployment target markers.
 
 Makefile behavior:
 - Generated section is rewritten from config.
@@ -276,4 +282,3 @@ ios-app-manager clean --deep
     ios-app-manager clean --deep --kill-xcode
     make setup
     ```
-

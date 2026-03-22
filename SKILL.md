@@ -52,7 +52,7 @@ skill-ios-app-manager/
    - `ios-app-manager init --config ios-app-manager.json --output .`
 2. Generate helper targets:
    - `ios-app-manager generate makefile`
-   - `ios-app-manager generate versions`
+   - `ios-app-manager generate project-config`
 3. Run local cycle:
    - `make setup && make build && make test`
 
@@ -66,7 +66,9 @@ Use `--force` when you intentionally want to overwrite scaffold files:
 - Init scaffold: `ios-app-manager init --config <path> --output <dir> [--force]`
 - Generate Makefile: `ios-app-manager generate makefile`
 - Generate SwiftLint config: `ios-app-manager generate swiftlint`
+- Sync project manifest config: `ios-app-manager generate project-config`
 - Generate app/extension versions: `ios-app-manager generate versions`
+- Generate app/extension min target: `ios-app-manager generate min-target`
 - Clean artifacts: `ios-app-manager clean [--deep] [--kill-xcode]`
 - Status: `ios-app-manager status`
 - Diagram: `ios-app-manager diagram` — generates PlantUML module dependency diagram
@@ -74,19 +76,27 @@ Use `--force` when you intentionally want to overwrite scaffold files:
 Generate commands are scaffold generator plugins:
 - Each `generate <artifact>` entrypoint is a separate scaffold plugin with its own responsibility and dependency contract.
 - Use this pattern for scaffold-only sync tasks instead of overloading `init`.
+- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate versions` plus `generate min-target`.
 - `generate versions` depends on the `init` scaffold shape and syncs both `marketing_version` and `project_version` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`.
+- `generate min-target` depends on the same scaffold shape and syncs `min_target` into both `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET` for the host app and extensions.
 - Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
 
-Version sync workflow:
+Project config sync workflow:
 ```bash
-# 1. bump versions in config
+# 1. bump project config in ios-app-manager.json
 $EDITOR ios-app-manager.json
 
-# 2. restick marketing/build versions into app + extensions
-ios-app-manager generate versions
+# 2. restick manifest config into app + extensions
+ios-app-manager generate project-config
 
 # 3. regenerate Tuist project artifacts
 tuist generate --no-open
+```
+
+Leaf workflows remain available:
+```bash
+ios-app-manager generate versions
+ios-app-manager generate min-target
 ```
 
 ### Infrastructure setup (run in order)
