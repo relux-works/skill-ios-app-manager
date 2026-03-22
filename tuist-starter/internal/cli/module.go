@@ -12,8 +12,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/relux-works/ios-app-manager/internal/blueprint"
-	"github.com/relux-works/ios-app-manager/internal/config"
 	"github.com/relux-works/ios-app-manager/internal/components"
+	"github.com/relux-works/ios-app-manager/internal/config"
 	"github.com/relux-works/ios-app-manager/internal/ioc"
 	"github.com/relux-works/ios-app-manager/internal/modules"
 	"github.com/relux-works/ios-app-manager/internal/relux"
@@ -94,6 +94,7 @@ func newModuleCommand(opts *RootOptions) *cobra.Command {
 			tuistManager := tuistproj.NewTuistProjectManager(
 				tuistproj.WithRootDir(projectRoot),
 				tuistproj.WithModulesDir(normalizedModulesPath),
+				tuistproj.WithProjectConfig(cfg),
 			)
 
 			reluxManager, err := relux.NewReluxManager(modulesRoot)
@@ -258,6 +259,7 @@ func createModuleFromBlueprint(cmd *cobra.Command, bpPath string, configPath str
 	tuistManager := tuistproj.NewTuistProjectManager(
 		tuistproj.WithRootDir(projectRoot),
 		tuistproj.WithModulesDir(normalizedModulesPath),
+		tuistproj.WithProjectConfig(cfg),
 	)
 
 	// Phase 1: Tuist structure (creates Package.swift, Sources/, Tests/, manifest refs).
@@ -343,7 +345,6 @@ func blueprintInternalDeps(bp *blueprint.Blueprint) []internalDep {
 	}
 	return deps
 }
-
 
 func addInternalDepsToPackageSwift(modulesRoot, moduleName string, deps []internalDep) error {
 	for _, dep := range deps {

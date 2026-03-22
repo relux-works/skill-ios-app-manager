@@ -27,6 +27,9 @@ let project = Project(
             settings: .settings(
                 base: [
                     "IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget),
+{{- range .SwiftBuildSettings }}
+                    {{ projectBuildSetting .Key .Value }}
+{{- end }}
                     "MARKETING_VERSION": .string(marketingVersion),
                     "CURRENT_PROJECT_VERSION": .string(currentProjectVersion),
                 ]

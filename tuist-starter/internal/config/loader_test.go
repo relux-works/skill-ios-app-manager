@@ -121,6 +121,18 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 	if cfg.ModulesPath != "Packages" {
 		t.Fatalf("ModulesPath = %q, want %q", cfg.ModulesPath, "Packages")
 	}
+	if cfg.ProjectSettings.Swift.LanguageMode != "v6" {
+		t.Fatalf("ProjectSettings.Swift.LanguageMode = %q, want %q", cfg.ProjectSettings.Swift.LanguageMode, "v6")
+	}
+	if cfg.ProjectSettings.Swift.Concurrency.Approachable == nil || *cfg.ProjectSettings.Swift.Concurrency.Approachable {
+		t.Fatalf("Approachable = %#v, want false", cfg.ProjectSettings.Swift.Concurrency.Approachable)
+	}
+	if cfg.ProjectSettings.Swift.Concurrency.MemberImportVisibility != "yes" {
+		t.Fatalf("MemberImportVisibility = %q, want %q", cfg.ProjectSettings.Swift.Concurrency.MemberImportVisibility, "yes")
+	}
+	if cfg.ProjectSettings.Swift.Concurrency.ExistentialAny != "yes" {
+		t.Fatalf("ExistentialAny = %q, want %q", cfg.ProjectSettings.Swift.Concurrency.ExistentialAny, "yes")
+	}
 }
 
 func TestSampleConfigIsValid(t *testing.T) {
@@ -186,5 +198,26 @@ func validProjectConfig() ProjectConfig {
 		ModulesPath:      "Packages",
 		PushKeyPath:      "certs/AuthKey_ABC123.p8",
 		PushKeyID:        "ABC123DEF4",
+		ProjectSettings: ProjectSettings{
+			Swift: SwiftProjectSettings{
+				LanguageMode: "v6",
+				Concurrency: SwiftConcurrencySettings{
+					Approachable:                      boolPtr(false),
+					DefaultActorIsolation:             "nonisolated",
+					StrictChecking:                    "complete",
+					ConciseMagicFile:                  boolPtr(true),
+					DisableOutwardActorIsolation:      boolPtr(true),
+					GlobalActorIsolatedTypesUsability: boolPtr(true),
+					InferIsolatedConformances:         boolPtr(true),
+					InferSendableFromCaptures:         boolPtr(true),
+					GlobalConcurrency:                 boolPtr(true),
+					MemberImportVisibility:            "yes",
+					NonfrozenEnumExhaustivity:         boolPtr(true),
+					RegionBasedIsolation:              boolPtr(true),
+					ExistentialAny:                    "yes",
+					NonisolatedNonsendingByDefault:    boolPtr(true),
+				},
+			},
+		},
 	}
 }

@@ -19,6 +19,7 @@ func TestRendererRenderWithSampleConfig(t *testing.T) {
 	writeLocalPackageManifest(t, projectRoot, "Packages", "CoreKit")
 
 	cfg := loadConfigFixture(t, "sample-config.json")
+	effectiveSwift := cfg.EffectiveSwiftSettings()
 	renderer := NewRenderer(WithRootDir(projectRoot))
 
 	rendered, err := renderer.Render(cfg)
@@ -46,7 +47,7 @@ func TestRendererRenderWithSampleConfig(t *testing.T) {
 		cfg.BundleID,
 		cfg.TeamID,
 		cfg.OrgName,
-		cfg.SwiftVersion,
+		effectiveSwift.XcodeLanguageVersion,
 		cfg.MinTarget,
 		cfg.MarketingVersion,
 		cfg.ProjectVersion,
@@ -68,7 +69,9 @@ func TestRendererRenderWithSampleConfig(t *testing.T) {
 
 	packageSwift := rendered["Package.swift"]
 	requiredPackageValues := []string{
-		"// swift-tools-version: " + cfg.SwiftVersion,
+		"// swift-tools-version: " + effectiveSwift.ToolsVersion,
+		`let packageSettings = PackageSettings(`,
+		`"SWIFT_VERSION": "6.0",`,
 		".package(path: \"./Packages/Auth\")",
 		".package(path: \"./Packages/CoreKit\")",
 		cfg.ModulesPath,

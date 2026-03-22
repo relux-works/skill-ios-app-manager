@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	bundleIDPattern = regexp.MustCompile(`^[A-Za-z0-9]+(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+$`)
-	versionPattern  = regexp.MustCompile(`^\d+\.\d+$`)
+	bundleIDPattern     = regexp.MustCompile(`^[A-Za-z0-9]+(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+$`)
+	versionPattern      = regexp.MustCompile(`^\d+\.\d+$`)
+	languageModePattern = regexp.MustCompile(`^v\d+(?:_\d+)?$`)
 )
 
 // ValidationErrors aggregates all config validation issues in one error.
@@ -40,6 +41,27 @@ func (c ProjectConfig) Validate() error {
 	}
 	if value := strings.TrimSpace(c.MinTarget); value != "" && !versionPattern.MatchString(value) {
 		issues = append(issues, "MinTarget must use major.minor format (e.g. 17.0)")
+	}
+	if value := strings.TrimSpace(c.ProjectSettings.Swift.LanguageMode); value != "" && !languageModePattern.MatchString(value) {
+		issues = append(issues, "ProjectSettings.Swift.LanguageMode must use SwiftPM format (e.g. v6)")
+	}
+
+	switch value := strings.TrimSpace(c.ProjectSettings.Swift.Concurrency.DefaultActorIsolation); value {
+	case "", defaultSwiftDefaultActorIsolation, swiftDefaultActorIsolationMain:
+	default:
+		issues = append(issues, "ProjectSettings.Swift.Concurrency.DefaultActorIsolation must be nonisolated or MainActor")
+	}
+
+	switch value := strings.TrimSpace(c.ProjectSettings.Swift.Concurrency.StrictChecking); value {
+	case "", "minimal", "targeted", defaultSwiftStrictChecking:
+	default:
+		issues = append(issues, "ProjectSettings.Swift.Concurrency.StrictChecking must be minimal, targeted, or complete")
+	}
+	if !isValidUpcomingFeatureMode(c.ProjectSettings.Swift.Concurrency.MemberImportVisibility) {
+		issues = append(issues, "ProjectSettings.Swift.Concurrency.MemberImportVisibility must be yes, migrate, or no")
+	}
+	if !isValidUpcomingFeatureMode(c.ProjectSettings.Swift.Concurrency.ExistentialAny) {
+		issues = append(issues, "ProjectSettings.Swift.Concurrency.ExistentialAny must be yes, migrate, or no")
 	}
 
 	for i, appGroup := range c.AppGroups {

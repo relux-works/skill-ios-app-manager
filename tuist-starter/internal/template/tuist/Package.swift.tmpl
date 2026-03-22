@@ -1,5 +1,21 @@
-// swift-tools-version: {{ .SwiftVersion }}
+// swift-tools-version: {{ .SwiftToolsVersion }}
 import PackageDescription
+
+{{- if .SwiftBuildSettings }}
+#if TUIST
+import ProjectDescription
+
+let strictPackageBaseSettings: SettingsDictionary = [
+{{- range .SwiftBuildSettings }}
+    {{ packageBuildSetting .Key .Value }}
+{{- end }}
+]
+
+let packageSettings = PackageSettings(
+    baseSettings: .settings(base: strictPackageBaseSettings)
+)
+#endif
+{{- end }}
 
 let modulesPath = {{ swiftLiteral .ModulesPath }}
 

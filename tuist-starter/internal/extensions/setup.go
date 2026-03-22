@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -52,6 +53,7 @@ type extensionProjectTemplateData struct {
 	MarketingVersion         string
 	ProjectVersion           string
 	MinTarget                string
+	SwiftBuildSettings       []config.SwiftBuildSetting
 }
 
 // Setup creates shared extension infrastructure and patches host manifests.
@@ -65,8 +67,19 @@ func Setup(input SetupInput) error {
 		platform = defaultPlatform
 	}
 
+	cfg := config.ProjectConfig{}
+	cfgPath := filepath.Join(input.ProjectRoot, config.DefaultConfigPath)
+	if _, err := os.Stat(cfgPath); err == nil {
+		cfg, err = config.LoadConfig(cfgPath)
+		if err != nil {
+			return fmt.Errorf("load project config: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat project config: %w", err)
+	}
+
 	modulesRoot := ioc.ResolveModulesPath(input.ProjectRoot, input.ModulesPath)
-	if err := scaffoldSharedKit(modulesRoot, platform); err != nil {
+	if err := scaffoldSharedKit(modulesRoot, platform, cfg); err != nil {
 		return fmt.Errorf("scaffold %s: %w", sharedKitModuleName, err)
 	}
 
@@ -132,6 +145,7 @@ func makeAppExtensionProject(input ExtensionProjectInput) error {
 		MarketingVersion:         strings.TrimSpace(cfg.MarketingVersion),
 		ProjectVersion:           strings.TrimSpace(cfg.ProjectVersion),
 		MinTarget:                strings.TrimSpace(cfg.MinTarget),
+		SwiftBuildSettings:       cfg.EffectiveSwiftSettings().XcodeBuildSettings(),
 	}
 
 	projectSwiftPath := filepath.Join(projectDir, "Project.swift")
@@ -194,9 +208,9 @@ func normalizeModulesRelPath(raw string) string {
 	return modulesRelPath
 }
 
-func scaffoldSharedKit(modulesRoot, platform string) error {
+func scaffoldSharedKit(modulesRoot, platform string, cfg config.ProjectConfig) error {
 	pkgDir := filepath.Join(modulesRoot, sharedKitModuleName)
-	if err := createPackageDir(pkgDir, sharedKitModuleName, platform); err != nil {
+	if err := createPackageDir(pkgDir, sharedKitModuleName, platform, cfg); err != nil {
 		return err
 	}
 
@@ -217,7 +231,7 @@ func scaffoldSharedKit(modulesRoot, platform string) error {
 	return nil
 }
 
-func createPackageDir(pkgDir, moduleName, platform string) error {
+func createPackageDir(pkgDir, moduleName, platform string, cfg config.ProjectConfig) error {
 	if _, err := os.Stat(pkgDir); err == nil {
 		return nil
 	}
@@ -230,6 +244,7 @@ func createPackageDir(pkgDir, moduleName, platform string) error {
 		ModuleName: moduleName,
 		Type:       tuistproj.PackageTypeInterface,
 		Platform:   platform,
+		Config:     cfg,
 	})
 	if err != nil {
 		return fmt.Errorf("generate Package.swift: %w", err)
@@ -255,7 +270,11 @@ func renderTemplate(templateName, outputPath string, data any) error {
 		return fmt.Errorf("read template %q: %w", tmplPath, err)
 	}
 
-	tmpl, err := template.New(templateName).Parse(string(content))
+	tmpl, err := template.New(templateName).Funcs(template.FuncMap{
+		"projectBuildSetting": func(key, value string) string {
+			return fmt.Sprintf(`"%s": %s,`, key, strconv.Quote(value))
+		},
+	}).Parse(string(content))
 	if err != nil {
 		return fmt.Errorf("parse template %q: %w", templateName, err)
 	}

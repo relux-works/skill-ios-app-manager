@@ -64,6 +64,10 @@ func TestProjectConfigValidateInvalidFormatsAllReturned(t *testing.T) {
 	cfg.BundleID = "invalid_bundle_id"
 	cfg.SwiftVersion = "6"
 	cfg.MinTarget = "17"
+	cfg.ProjectSettings.Swift.LanguageMode = "6"
+	cfg.ProjectSettings.Swift.Concurrency.StrictChecking = "hard"
+	cfg.ProjectSettings.Swift.Concurrency.MemberImportVisibility = "later"
+	cfg.ProjectSettings.Swift.Concurrency.ExistentialAny = "never"
 	cfg.AppGroups = []string{"", "group.com.example.demo"}
 	cfg.Configurations = []string{"Debug", ""}
 
@@ -77,6 +81,10 @@ func TestProjectConfigValidateInvalidFormatsAllReturned(t *testing.T) {
 		"BundleID must use reverse-domain format",
 		"SwiftVersion must use major.minor format",
 		"MinTarget must use major.minor format",
+		"ProjectSettings.Swift.LanguageMode must use SwiftPM format",
+		"ProjectSettings.Swift.Concurrency.StrictChecking must be minimal, targeted, or complete",
+		"ProjectSettings.Swift.Concurrency.MemberImportVisibility must be yes, migrate, or no",
+		"ProjectSettings.Swift.Concurrency.ExistentialAny must be yes, migrate, or no",
 		"AppGroups[0] must not be empty",
 		"Configurations[1] must not be empty",
 	}

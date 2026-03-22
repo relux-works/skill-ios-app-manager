@@ -69,6 +69,7 @@ Use `--force` when you intentionally want to overwrite scaffold files:
 - Sync project manifest config: `ios-app-manager generate project-config`
 - Generate app/extension versions: `ios-app-manager generate versions`
 - Generate app/extension min target: `ios-app-manager generate min-target`
+- Generate strict Swift build flags: `ios-app-manager generate build-flags`
 - Clean artifacts: `ios-app-manager clean [--deep] [--kill-xcode]`
 - Status: `ios-app-manager status`
 - Diagram: `ios-app-manager diagram` — generates PlantUML module dependency diagram
@@ -76,9 +77,10 @@ Use `--force` when you intentionally want to overwrite scaffold files:
 Generate commands are scaffold generator plugins:
 - Each `generate <artifact>` entrypoint is a separate scaffold plugin with its own responsibility and dependency contract.
 - Use this pattern for scaffold-only sync tasks instead of overloading `init`.
-- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate versions` plus `generate min-target`.
+- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate versions`, `generate min-target`, and `generate build-flags`.
 - `generate versions` depends on the `init` scaffold shape and syncs both `marketing_version` and `project_version` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`.
 - `generate min-target` depends on the same scaffold shape and syncs `min_target` into both `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET` for the host app and extensions.
+- `generate build-flags` depends on the same scaffold shape and syncs a fixed strict Swift compiler baseline for concurrency and upcoming feature settings into the host app and extensions.
 - Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
 
 Project config sync workflow:
@@ -97,6 +99,7 @@ Leaf workflows remain available:
 ```bash
 ios-app-manager generate versions
 ios-app-manager generate min-target
+ios-app-manager generate build-flags
 ```
 
 ### Infrastructure setup (run in order)
