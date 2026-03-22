@@ -25,6 +25,7 @@ type ModuleOpts struct {
 	Name         string
 	Type         string
 	ExternalDeps []ExternalDep
+	Config       config.ProjectConfig
 }
 
 // ManifestEdit describes one manifest mutation.

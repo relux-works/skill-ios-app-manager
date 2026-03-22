@@ -53,13 +53,45 @@ Current generators:
 - `generate versions`
 - `generate min-target`
 - `generate build-flags`
+- `generate package-strictness`
 
 `generate project-config` is the orchestration entrypoint for manifest config sync. Today it runs:
 - `generate versions` — syncs `marketing_version` and `project_version`
 - `generate min-target` — syncs `min_target` into `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET`
-- `generate build-flags` — syncs a strict Swift compiler baseline for concurrency and upcoming feature settings
+- `generate build-flags` — syncs app/extension Swift language and concurrency settings from `project_settings.swift`
+- `generate package-strictness` — syncs root/module `Package.swift` strictness from the same `project_settings.swift`
 
-All four depend on the `init` scaffold shape and update the host app `Project.swift` plus every `Extensions/*/Project.swift`.
+All four depend on the `init` scaffold shape. `versions`, `min-target`, and `build-flags` update the host app `Project.swift` plus every `Extensions/*/Project.swift`. `package-strictness` updates root `Package.swift` plus every module `Packages/*/Package.swift`.
+
+Swift strictness is config-driven. Declare it in `ios-app-manager.json` under `project_settings.swift`; if you omit that block, defaults are derived from `swift_version` and the scaffold's current strict baseline.
+
+Example:
+
+```json
+{
+  "project_settings": {
+    "swift": {
+      "language_mode": "v6",
+      "concurrency": {
+        "approachable": false,
+        "default_actor_isolation": "nonisolated",
+        "strict_checking": "complete",
+        "concise_magic_file": true,
+        "disable_outward_actor_isolation": true,
+        "global_actor_isolated_types_usability": true,
+        "infer_isolated_conformances": true,
+        "infer_sendable_from_captures": true,
+        "global_concurrency": true,
+        "member_import_visibility": "yes",
+        "nonfrozen_enum_exhaustivity": true,
+        "region_based_isolation": true,
+        "existential_any": "yes",
+        "nonisolated_nonsending_by_default": true
+      }
+    }
+  }
+}
+```
 
 Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
 
@@ -69,7 +101,7 @@ Recommended config sync flow:
 # 1. bump project config in ios-app-manager.json
 $EDITOR ios-app-manager.json
 
-# 2. sync host app + extension manifests
+# 2. sync host app + extension + package manifests
 ./ios-app-manager generate project-config
 
 # 3. regenerate Tuist project artifacts
@@ -82,6 +114,7 @@ If you only want one slice, the leaf plugins still work directly:
 ./ios-app-manager generate versions
 ./ios-app-manager generate min-target
 ./ios-app-manager generate build-flags
+./ios-app-manager generate package-strictness
 ```
 
 ## What it does

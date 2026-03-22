@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -273,6 +274,10 @@ func (m *TuistProjectManager) CreateModule(ctx context.Context, opts components.
 	}
 
 	externalDeps := convertComponentExternalDeps(opts.ExternalDeps)
+	effectiveConfig := m.projectConfig
+	if !reflect.DeepEqual(opts.Config, config.ProjectConfig{}) {
+		effectiveConfig = opts.Config
+	}
 
 	specs := buildModulePackageSpecs(moduleName, moduleType)
 	for i := range specs {
@@ -280,7 +285,7 @@ func (m *TuistProjectManager) CreateModule(ctx context.Context, opts components.
 	}
 	createdPaths := make([]string, 0, len(specs))
 	for _, spec := range specs {
-		packagePath, createErr := m.createModulePackage(spec)
+		packagePath, createErr := m.createModulePackage(spec, effectiveConfig)
 		if createErr != nil {
 			m.rollbackCreatedPackages(createdPaths)
 			return createErr
@@ -390,7 +395,7 @@ func (m *TuistProjectManager) requireRunner() (Runner, error) {
 	return m.runner, nil
 }
 
-func (m *TuistProjectManager) createModulePackage(spec modulePackageSpec) (string, error) {
+func (m *TuistProjectManager) createModulePackage(spec modulePackageSpec, cfg config.ProjectConfig) (string, error) {
 	packagePath := filepath.Join(m.modulesRootPath(), spec.PackageName)
 	exists, err := m.pathExists(packagePath)
 	if err != nil {
@@ -409,7 +414,7 @@ func (m *TuistProjectManager) createModulePackage(spec modulePackageSpec) (strin
 		Type:         spec.PackageType,
 		ExternalDeps: spec.ExternalDeps,
 		Platform:     m.platform,
-		Config:       m.projectConfig,
+		Config:       cfg,
 	})
 	if err != nil {
 		return "", fmt.Errorf("generate Package.swift for %q: %w", spec.PackageName, err)

@@ -84,6 +84,47 @@ func TestCreatorCreateKitModule(t *testing.T) {
 	}
 }
 
+func TestCreatorCreateUsesConfigDrivenSwiftSettings(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	creator := newCreatorForTest(t, root, "Packages")
+
+	cfg := config.ProjectConfig{
+		ModulesPath:  filepath.Join(root, "Packages"),
+		SwiftVersion: "6.0",
+		ProjectSettings: config.ProjectSettings{
+			Swift: config.SwiftProjectSettings{
+				LanguageMode: "v6",
+				Concurrency: config.SwiftConcurrencySettings{
+					ExistentialAny: "no",
+				},
+			},
+		},
+	}
+
+	err := creator.Create(context.Background(), "Auth", "feature", cfg)
+	if err != nil {
+		t.Fatalf("Create(feature) error = %v", err)
+	}
+
+	for _, manifestPath := range []string{
+		filepath.Join(root, "Packages", "Auth", "Package.swift"),
+		filepath.Join(root, "Packages", "AuthImpl", "Package.swift"),
+	} {
+		manifest := readFileString(t, manifestPath)
+		if !strings.Contains(manifest, `swiftSettings: [`) {
+			t.Fatalf("%s missing swiftSettings:\n%s", manifestPath, manifest)
+		}
+		if !strings.Contains(manifest, `.swiftLanguageMode(.v6)`) {
+			t.Fatalf("%s missing Swift 6 language mode:\n%s", manifestPath, manifest)
+		}
+		if strings.Contains(manifest, `ExistentialAny`) {
+			t.Fatalf("%s unexpectedly contains ExistentialAny despite config override:\n%s", manifestPath, manifest)
+		}
+	}
+}
+
 func TestCreatorCreateSharedModule(t *testing.T) {
 	t.Parallel()
 

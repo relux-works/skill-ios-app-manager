@@ -121,8 +121,10 @@ func TestAppManagerCreateModuleOrchestrates(t *testing.T) {
 	var gotOpts ModuleOpts
 	var gotInitName string
 	var gotInitType string
+	cfg := validProjectConfig(t)
 
 	manager := &appManager{
+		configPath: "config.json",
 		tuist: &tuistManagerMock{
 			createModuleFn: func(_ context.Context, opts ModuleOpts) error {
 				order = append(order, "tuist")
@@ -138,6 +140,12 @@ func TestAppManagerCreateModuleOrchestrates(t *testing.T) {
 				return nil
 			},
 		},
+		loadConfig: func(path string) (config.ProjectConfig, error) {
+			if path != "config.json" {
+				t.Fatalf("load config path = %q, want %q", path, "config.json")
+			}
+			return cfg, nil
+		},
 	}
 
 	err := manager.CreateModule(context.Background(), "FeatureA", "feature")
@@ -148,7 +156,7 @@ func TestAppManagerCreateModuleOrchestrates(t *testing.T) {
 	if !reflect.DeepEqual(order, []string{"tuist", "relux"}) {
 		t.Fatalf("order = %#v, want %#v", order, []string{"tuist", "relux"})
 	}
-	wantOpts := ModuleOpts{Name: "FeatureA", Type: "feature"}
+	wantOpts := ModuleOpts{Name: "FeatureA", Type: "feature", Config: cfg}
 	if !reflect.DeepEqual(gotOpts, wantOpts) {
 		t.Fatalf("create opts = %#v, want %#v", gotOpts, wantOpts)
 	}

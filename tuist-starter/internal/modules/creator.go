@@ -69,6 +69,7 @@ func (c *Creator) Create(
 		Name:         name,
 		Type:         string(descriptor.Type),
 		ExternalDeps: convertExternalDeps(descriptor.ExternalDeps),
+		Config:       cfg,
 	}); err != nil {
 		return fmt.Errorf("create module in tuist project: %w", err)
 	}

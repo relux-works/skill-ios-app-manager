@@ -69,7 +69,8 @@ Use `--force` when you intentionally want to overwrite scaffold files:
 - Sync project manifest config: `ios-app-manager generate project-config`
 - Generate app/extension versions: `ios-app-manager generate versions`
 - Generate app/extension min target: `ios-app-manager generate min-target`
-- Generate strict Swift build flags: `ios-app-manager generate build-flags`
+- Generate app/extension Swift strictness: `ios-app-manager generate build-flags`
+- Generate root/module package strictness: `ios-app-manager generate package-strictness`
 - Clean artifacts: `ios-app-manager clean [--deep] [--kill-xcode]`
 - Status: `ios-app-manager status`
 - Diagram: `ios-app-manager diagram` — generates PlantUML module dependency diagram
@@ -77,10 +78,12 @@ Use `--force` when you intentionally want to overwrite scaffold files:
 Generate commands are scaffold generator plugins:
 - Each `generate <artifact>` entrypoint is a separate scaffold plugin with its own responsibility and dependency contract.
 - Use this pattern for scaffold-only sync tasks instead of overloading `init`.
-- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate versions`, `generate min-target`, and `generate build-flags`.
+- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate versions`, `generate min-target`, `generate build-flags`, and `generate package-strictness`.
 - `generate versions` depends on the `init` scaffold shape and syncs both `marketing_version` and `project_version` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`.
 - `generate min-target` depends on the same scaffold shape and syncs `min_target` into both `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET` for the host app and extensions.
-- `generate build-flags` depends on the same scaffold shape and syncs a fixed strict Swift compiler baseline for concurrency and upcoming feature settings into the host app and extensions.
+- `generate build-flags` depends on the same scaffold shape and syncs Swift language/concurrency build settings from `project_settings.swift` into the host app and extensions.
+- `generate package-strictness` syncs the same `project_settings.swift` Swift language/concurrency settings into root `Package.swift` and every module `Packages/*/Package.swift`.
+- When `project_settings.swift` is omitted, Swift strictness defaults are derived from `swift_version` and the scaffold's current strict baseline.
 - Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
 
 Project config sync workflow:
@@ -88,11 +91,29 @@ Project config sync workflow:
 # 1. bump project config in ios-app-manager.json
 $EDITOR ios-app-manager.json
 
-# 2. restick manifest config into app + extensions
+# 2. restick manifest config into app + extensions + packages
 ios-app-manager generate project-config
 
 # 3. regenerate Tuist project artifacts
 tuist generate --no-open
+```
+
+Swift strictness lives in `ios-app-manager.json` under `project_settings.swift`, for example:
+```json
+{
+  "project_settings": {
+    "swift": {
+      "language_mode": "v6",
+      "concurrency": {
+        "approachable": false,
+        "default_actor_isolation": "nonisolated",
+        "strict_checking": "complete",
+        "member_import_visibility": "yes",
+        "existential_any": "yes"
+      }
+    }
+  }
+}
 ```
 
 Leaf workflows remain available:
@@ -100,6 +121,7 @@ Leaf workflows remain available:
 ios-app-manager generate versions
 ios-app-manager generate min-target
 ios-app-manager generate build-flags
+ios-app-manager generate package-strictness
 ```
 
 ### Infrastructure setup (run in order)
