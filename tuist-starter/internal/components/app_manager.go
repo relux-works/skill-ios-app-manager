@@ -105,9 +105,24 @@ func (m *appManager) CreateModule(ctx context.Context, name string, moduleType s
 		return errors.New("relux manager is not configured")
 	}
 
+	moduleConfig := config.ProjectConfig{}
+	if m.loadConfig != nil {
+		path := strings.TrimSpace(m.configPath)
+		if path == "" {
+			path = config.DefaultConfigPath
+		}
+
+		loadedConfig, err := m.loadConfig(path)
+		if err != nil {
+			return fmt.Errorf("load config: %w", err)
+		}
+		moduleConfig = loadedConfig
+	}
+
 	if err := m.tuist.CreateModule(ctx, ModuleOpts{
-		Name: moduleName,
-		Type: moduleKind,
+		Name:   moduleName,
+		Type:   moduleKind,
+		Config: moduleConfig,
 	}); err != nil {
 		return fmt.Errorf("create module in tuist project: %w", err)
 	}

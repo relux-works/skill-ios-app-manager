@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/relux-works/ios-app-manager/internal/components"
+	"github.com/relux-works/ios-app-manager/internal/config"
 )
 
 func TestTuistProjectManagerDelegatesRunnerCommands(t *testing.T) {
@@ -162,6 +163,47 @@ func TestTuistProjectManagerCreateModuleProductScaffoldsTwoPackages(t *testing.T
 	implManifestRaw := readFileStringForManagerTest(t, filepath.Join(implRoot, "Package.swift"))
 	if !strings.Contains(implManifestRaw, `.library(name: "AuthImpl", type: .dynamic, targets: ["AuthImpl"])`) {
 		t.Fatalf("impl Package.swift missing dynamic library product:\n%s", implManifestRaw)
+	}
+}
+
+func TestTuistProjectManagerCreateModuleUsesModuleConfigForSwiftSettings(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	manager := NewTuistProjectManager(
+		WithRootDir(root),
+		WithModulesDir("Packages"),
+		WithPackagePlatform("iOS(.v16)"),
+	)
+
+	err := manager.CreateModule(context.Background(), components.ModuleOpts{
+		Name: "Auth",
+		Type: "feature",
+		Config: config.ProjectConfig{
+			SwiftVersion: "6.0",
+			ProjectSettings: config.ProjectSettings{
+				Swift: config.SwiftProjectSettings{
+					LanguageMode: "v6",
+					Concurrency: config.SwiftConcurrencySettings{
+						ExistentialAny: "no",
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateModule() error = %v", err)
+	}
+
+	interfaceManifest := readFileStringForManagerTest(t, filepath.Join(root, "Packages", "Auth", "Package.swift"))
+	if !strings.Contains(interfaceManifest, `swiftSettings: [`) {
+		t.Fatalf("interface Package.swift missing swiftSettings:\n%s", interfaceManifest)
+	}
+	if !strings.Contains(interfaceManifest, `.swiftLanguageMode(.v6)`) {
+		t.Fatalf("interface Package.swift missing Swift 6 language mode:\n%s", interfaceManifest)
+	}
+	if strings.Contains(interfaceManifest, `ExistentialAny`) {
+		t.Fatalf("interface Package.swift unexpectedly contains ExistentialAny despite config override:\n%s", interfaceManifest)
 	}
 }
 

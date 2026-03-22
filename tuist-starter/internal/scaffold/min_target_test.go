@@ -140,3 +140,74 @@ let project = Project(
 		t.Fatalf("SyncMinTarget() error = %q, want min target requirement", err.Error())
 	}
 }
+
+func TestSyncMinTargetDoesNotDropBelowPackageMinimum(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	writeVersionManifest(t, filepath.Join(projectRoot, "Project.swift"), `import ProjectDescription
+
+let marketingVersion = "1.0.0"
+let currentProjectVersion = "1"
+
+let project = Project(
+    name: "DemoApp",
+    targets: [
+        .target(
+            name: "DemoApp",
+            bundleId: "com.demo.app",
+            deploymentTargets: .iOS("16.0"),
+            settings: .settings(
+                base: [
+                    "IPHONEOS_DEPLOYMENT_TARGET": .string("16.0"),
+                ]
+            )
+        )
+    ]
+)
+`)
+	writeVersionManifest(t, filepath.Join(projectRoot, "Packages", "SharedKit", "Package.swift"), `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "SharedKit",
+    platforms: [
+        .iOS(.v18),
+        .macOS(.v14)
+    ],
+    products: [
+        .library(name: "SharedKit", type: .dynamic, targets: ["SharedKit"]),
+    ],
+    dependencies: [],
+    targets: [
+        .target(
+            name: "SharedKit",
+            dependencies: [],
+            path: "Sources"
+        ),
+    ]
+)
+`)
+
+	result, err := SyncMinTarget(projectRoot, config.ProjectConfig{
+		MinTarget:   "17.0",
+		ModulesPath: "Packages",
+	})
+	if err != nil {
+		t.Fatalf("SyncMinTarget() error = %v", err)
+	}
+	if len(result.Updated) != 1 {
+		t.Fatalf("updated len = %d, want 1", len(result.Updated))
+	}
+
+	content := readVersionManifest(t, filepath.Join(projectRoot, "Project.swift"))
+	for _, want := range []string{
+		`let minTarget = "18.0"`,
+		`deploymentTargets: .iOS(minTarget)`,
+		`"IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget)`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("Project.swift missing %q:\n%s", want, content)
+		}
+	}
+}

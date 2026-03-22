@@ -27,29 +27,31 @@ func discoverScaffoldManifestPaths(projectRoot string) ([]string, error) {
 		return nil, fmt.Errorf("stat manifest %q: %w", rootProjectPath, err)
 	}
 
-	extensionsRoot := filepath.Join(projectRoot, "Extensions")
-	if _, err := os.Stat(extensionsRoot); err != nil {
-		if os.IsNotExist(err) {
-			return paths, nil
+	for _, nestedRootName := range []string{"Extensions", "Apps"} {
+		nestedRoot := filepath.Join(projectRoot, nestedRootName)
+		if _, err := os.Stat(nestedRoot); err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("stat %s directory %q: %w", strings.ToLower(nestedRootName), nestedRoot, err)
 		}
-		return nil, fmt.Errorf("stat extensions directory %q: %w", extensionsRoot, err)
-	}
 
-	err := filepath.WalkDir(extensionsRoot, func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if d.IsDir() {
+		err := filepath.WalkDir(nestedRoot, func(path string, d os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if d.IsDir() {
+				return nil
+			}
+			if d.Name() != "Project.swift" {
+				return nil
+			}
+			paths = append(paths, path)
 			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("discover %s manifests: %w", strings.ToLower(nestedRootName), err)
 		}
-		if d.Name() != "Project.swift" {
-			return nil
-		}
-		paths = append(paths, path)
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("discover extension manifests: %w", err)
 	}
 
 	sort.Strings(paths)

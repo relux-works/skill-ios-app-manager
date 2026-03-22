@@ -268,6 +268,7 @@ func createModuleFromBlueprint(cmd *cobra.Command, bpPath string, configPath str
 		Name:         bp.Name,
 		Type:         "relux-feature",
 		ExternalDeps: extDeps,
+		Config:       cfg,
 	}); err != nil {
 		return fmt.Errorf("create module in tuist project: %w", err)
 	}

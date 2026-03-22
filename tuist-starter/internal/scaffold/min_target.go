@@ -3,10 +3,14 @@ package scaffold
 import (
 	"fmt"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/relux-works/ios-app-manager/internal/config"
 )
+
+var packageIOSMinTargetPattern = regexp.MustCompile(`\.iOS\(\.v(\d+)(?:_(\d+))?\)`)
 
 // SyncMinTarget updates scaffolded app and extension manifests to use the configured minimum target.
 func SyncMinTarget(projectRoot string, cfg config.ProjectConfig) (ManifestSyncResult, error) {
@@ -18,6 +22,11 @@ func SyncMinTarget(projectRoot string, cfg config.ProjectConfig) (ManifestSyncRe
 	minTarget := strings.TrimSpace(cfg.MinTarget)
 	if minTarget == "" {
 		return ManifestSyncResult{}, fmt.Errorf("min target is required")
+	}
+
+	effectiveMinTarget, err := resolveEffectiveMinTarget(root, cfg, minTarget)
+	if err != nil {
+		return ManifestSyncResult{}, err
 	}
 
 	manifestPaths, err := discoverScaffoldManifestPaths(root)
@@ -39,7 +48,7 @@ func SyncMinTarget(projectRoot string, cfg config.ProjectConfig) (ManifestSyncRe
 			return ManifestSyncResult{}, fmt.Errorf("read manifest %q: %w", manifestPath, err)
 		}
 
-		updated, changed, err := syncMinTargetManifest(string(payload), minTarget)
+		updated, changed, err := syncMinTargetManifest(string(payload), effectiveMinTarget)
 		if err != nil {
 			return ManifestSyncResult{}, fmt.Errorf("sync minTarget in %q: %w", manifestPath, err)
 		}
@@ -55,6 +64,103 @@ func SyncMinTarget(projectRoot string, cfg config.ProjectConfig) (ManifestSyncRe
 	}
 
 	return result, nil
+}
+
+func resolveEffectiveMinTarget(projectRoot string, cfg config.ProjectConfig, configuredMinTarget string) (string, error) {
+	manifestPaths, err := discoverPackageManifestPaths(projectRoot, cfg.ModulesPath)
+	if err != nil {
+		return "", err
+	}
+
+	effective := configuredMinTarget
+	for _, manifestPath := range manifestPaths {
+		payload, err := os.ReadFile(manifestPath)
+		if err != nil {
+			return "", fmt.Errorf("read package manifest %q: %w", manifestPath, err)
+		}
+
+		packageMinTarget, ok, err := detectPackageIOSMinTarget(string(payload))
+		if err != nil {
+			return "", fmt.Errorf("detect iOS min target in %q: %w", manifestPath, err)
+		}
+		if !ok {
+			continue
+		}
+
+		greater, err := isVersionGreater(packageMinTarget, effective)
+		if err != nil {
+			return "", err
+		}
+		if greater {
+			effective = packageMinTarget
+		}
+	}
+
+	return effective, nil
+}
+
+func detectPackageIOSMinTarget(content string) (string, bool, error) {
+	matches := packageIOSMinTargetPattern.FindAllStringSubmatch(content, -1)
+	if len(matches) == 0 {
+		return "", false, nil
+	}
+
+	maxVersion := ""
+	for _, match := range matches {
+		version := match[1] + ".0"
+		if len(match) > 2 && strings.TrimSpace(match[2]) != "" {
+			version = match[1] + "." + match[2]
+		}
+
+		if maxVersion == "" {
+			maxVersion = version
+			continue
+		}
+
+		greater, err := isVersionGreater(version, maxVersion)
+		if err != nil {
+			return "", false, err
+		}
+		if greater {
+			maxVersion = version
+		}
+	}
+
+	return maxVersion, true, nil
+}
+
+func isVersionGreater(lhs, rhs string) (bool, error) {
+	leftMajor, leftMinor, err := parseMajorMinorVersion(lhs)
+	if err != nil {
+		return false, err
+	}
+	rightMajor, rightMinor, err := parseMajorMinorVersion(rhs)
+	if err != nil {
+		return false, err
+	}
+
+	if leftMajor != rightMajor {
+		return leftMajor > rightMajor, nil
+	}
+	return leftMinor > rightMinor, nil
+}
+
+func parseMajorMinorVersion(value string) (int, int, error) {
+	parts := strings.Split(strings.TrimSpace(value), ".")
+	if len(parts) != 2 {
+		return 0, 0, fmt.Errorf("version %q must use major.minor format", value)
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, fmt.Errorf("parse major version from %q: %w", value, err)
+	}
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, fmt.Errorf("parse minor version from %q: %w", value, err)
+	}
+
+	return major, minor, nil
 }
 
 func syncMinTargetManifest(content, minTarget string) (string, bool, error) {

@@ -10,7 +10,9 @@ import (
 	"github.com/relux-works/ios-app-manager/internal/config"
 )
 
-// SyncPackageStrictness updates root and module Package.swift manifests to use config-driven Swift strictness settings.
+// SyncPackageStrictness updates module Package.swift manifests to use
+// config-driven Swift strictness settings and keeps the root Package.swift
+// limited to the swift-tools-version line.
 func SyncPackageStrictness(projectRoot string, cfg config.ProjectConfig) (ManifestSyncResult, error) {
 	root := strings.TrimSpace(projectRoot)
 	if root == "" {
@@ -114,15 +116,23 @@ func syncRootPackageStrictnessManifest(content string, swift config.EffectiveSwi
 		return "", false, err
 	}
 
-	next, blockChanged, err := ensureRootPackageSettingsBlock(updated, swift.XcodeBuildSettings())
+	next, stripped, err := removeGeneratedRootPackageStrictnessBlock(updated)
 	if err != nil {
 		return "", false, err
 	}
 
-	return next, changed || blockChanged, nil
+	return next, changed || stripped, nil
 }
 
 func syncModulePackageStrictnessManifest(content string, swift config.EffectiveSwiftSettings) (string, bool, error) {
+	currentToolsVersion, err := parseSwiftToolsVersion(content)
+	if err != nil {
+		return "", false, err
+	}
+	if !strings.HasPrefix(currentToolsVersion, "6.") {
+		return content, false, nil
+	}
+
 	updated, changed, err := ensureSwiftToolsVersionLine(content, swift.ToolsVersion)
 	if err != nil {
 		return "", false, err
@@ -137,23 +147,57 @@ func syncModulePackageStrictnessManifest(content string, swift config.EffectiveS
 }
 
 func ensureSwiftToolsVersionLine(content, toolsVersion string) (string, bool, error) {
+	current, err := parseSwiftToolsVersion(content)
+	if err != nil {
+		return "", false, err
+	}
+
+	replacement := "// swift-tools-version: " + toolsVersion
+	if strings.HasPrefix(content, replacement) {
+		return content, false, nil
+	}
+
 	lines := strings.Split(content, "\n")
 	if len(lines) == 0 {
 		return "", false, fmt.Errorf("manifest is empty")
 	}
 
-	const prefix = "// swift-tools-version: "
-	if !strings.HasPrefix(lines[0], prefix) {
-		return "", false, fmt.Errorf("swift tools version header not found")
-	}
+	lines[0] = strings.Replace(lines[0], current, toolsVersion, 1)
+	return strings.Join(lines, "\n"), true, nil
+}
 
-	replacement := prefix + toolsVersion
-	if lines[0] == replacement {
+func removeGeneratedRootPackageStrictnessBlock(content string) (string, bool, error) {
+	const strictSettingsAnchor = "let strictPackageBaseSettings: SettingsDictionary = ["
+
+	strictIndex := strings.Index(content, strictSettingsAnchor)
+	if strictIndex < 0 {
 		return content, false, nil
 	}
 
-	lines[0] = replacement
-	return strings.Join(lines, "\n"), true, nil
+	start := strings.LastIndex(content[:strictIndex], "#if TUIST")
+	if start < 0 {
+		return "", false, fmt.Errorf("generated root strictness block start not found")
+	}
+
+	endRelative := strings.Index(content[strictIndex:], "#endif")
+	if endRelative < 0 {
+		return "", false, fmt.Errorf("generated root strictness block end not found")
+	}
+	end := strictIndex + endRelative + len("#endif")
+
+	prefix := strings.TrimRight(content[:start], "\n")
+	suffix := strings.TrimLeft(content[end:], "\n")
+
+	switch {
+	case prefix == "" && suffix == "":
+		return "", true, nil
+	case prefix == "":
+		return suffix, true, nil
+	case suffix == "":
+		return prefix + "\n", true, nil
+	default:
+		return prefix + "\n\n" + suffix, true, nil
+	}
 }
 
 func ensureRootPackageSettingsBlock(content string, settings []config.SwiftBuildSetting) (string, bool, error) {
@@ -210,70 +254,195 @@ func renderRootPackageSettingsBlock(settings []config.SwiftBuildSetting) string 
 func ensureModulePackageSwiftSettings(content string, settings []string) (string, bool, error) {
 	lines := strings.Split(content, "\n")
 	hasTrailingNewline := strings.HasSuffix(content, "\n")
-
-	pathIndex := -1
-	pathIndent := ""
-	for index, line := range lines {
-		if strings.Contains(line, `path: "Sources"`) {
-			pathIndex = index
-			pathIndent = leadingIndent(line)
-			break
-		}
-	}
-	if pathIndex < 0 {
-		return "", false, fmt.Errorf(`target path "Sources" anchor not found`)
-	}
-
 	changed := false
-	canonicalPathLine := pathIndent + `path: "Sources",`
-	if lines[pathIndex] != canonicalPathLine {
-		lines[pathIndex] = canonicalPathLine
-		changed = true
-	}
+	sawTarget := false
 
-	blockLines := renderModuleSwiftSettingsLines(pathIndent, settings)
-	start := -1
-	end := -1
-	for index, line := range lines {
-		if strings.Contains(line, "swiftSettings: [") {
-			start = index
-			for next := index + 1; next < len(lines); next++ {
-				if strings.TrimSpace(lines[next]) == "]" || strings.TrimSpace(lines[next]) == "]," {
-					end = next
-					break
-				}
-			}
-			if end < 0 {
-				return "", false, fmt.Errorf("unterminated swiftSettings block")
-			}
-			break
-		}
-	}
-
-	if start >= 0 {
-		currentBlock := lines[start : end+1]
-		if sameStringSlice(currentBlock, blockLines) {
-			return joinSyncLines(lines, hasTrailingNewline), changed, nil
+	for index := 0; index < len(lines); index++ {
+		if !isModulePackageTargetLine(lines[index]) {
+			continue
 		}
 
-		updated := append([]string{}, lines[:start]...)
-		updated = append(updated, blockLines...)
-		updated = append(updated, lines[end+1:]...)
-		return joinSyncLines(updated, hasTrailingNewline), true, nil
+		sawTarget = true
+
+		endIndex, err := findDelimitedBlockEnd(lines, index, "(", ")")
+		if err != nil {
+			return "", false, err
+		}
+
+		nextLines, targetChanged, err := ensureModuleTargetSwiftSettings(lines, index, endIndex, settings)
+		if err != nil {
+			return "", false, err
+		}
+		if targetChanged {
+			changed = true
+			endIndex += len(nextLines) - len(lines)
+			lines = nextLines
+		}
+
+		index = endIndex
+	}
+	if !sawTarget {
+		return "", false, fmt.Errorf("no .target(...) blocks found")
 	}
 
-	lines = insertSyncLines(lines, pathIndex+1, blockLines)
-	return joinSyncLines(lines, hasTrailingNewline), true, nil
+	return joinSyncLines(lines, hasTrailingNewline), changed, nil
 }
 
-func renderModuleSwiftSettingsLines(indent string, settings []string) []string {
+func ensureModuleTargetSwiftSettings(lines []string, startIndex, endIndex int, settings []string) ([]string, bool, error) {
+	originalLines := lines
+	originalEndIndex := endIndex
+	propertyIndent := leadingIndent(lines[startIndex]) + "    "
+	swiftSettingsStart := -1
+	swiftSettingsEnd := -1
+	insertIndex := endIndex
+
+	for index := startIndex + 1; index < endIndex; index++ {
+		trimmed := strings.TrimSpace(lines[index])
+		if trimmed == "" {
+			continue
+		}
+		if strings.Contains(trimmed, ":") {
+			propertyIndent = leadingIndent(lines[index])
+		}
+		if strings.HasPrefix(trimmed, "swiftSettings: [") {
+			blockEnd, err := findDelimitedBlockEnd(lines, index, "[", "]")
+			if err != nil {
+				return nil, false, fmt.Errorf("unterminated swiftSettings block")
+			}
+			swiftSettingsStart = index
+			swiftSettingsEnd = blockEnd
+			propertyIndent = leadingIndent(lines[index])
+			index = blockEnd
+			continue
+		}
+		if isPostSwiftSettingsTargetProperty(trimmed) && insertIndex == endIndex {
+			insertIndex = index
+		}
+	}
+
+	lines = append([]string{}, lines...)
+	if swiftSettingsStart >= 0 {
+		lines = append(lines[:swiftSettingsStart], lines[swiftSettingsEnd+1:]...)
+		endIndex -= swiftSettingsEnd - swiftSettingsStart + 1
+		insertIndex = adjustInsertionIndexAfterRemoval(insertIndex, swiftSettingsStart, swiftSettingsEnd)
+	}
+
+	if insertIndex > endIndex {
+		insertIndex = endIndex
+	}
+
+	previousPropertyIndex := insertIndex - 1
+	for previousPropertyIndex > startIndex && strings.TrimSpace(lines[previousPropertyIndex]) == "" {
+		previousPropertyIndex--
+	}
+	if previousPropertyIndex <= startIndex {
+		previousPropertyIndex = findLastTargetPropertyLine(lines, startIndex, endIndex)
+		if previousPropertyIndex < 0 {
+			return nil, false, fmt.Errorf("target property insertion anchor not found")
+		}
+		insertIndex = endIndex
+	}
+
+	if trimmed := strings.TrimSpace(lines[previousPropertyIndex]); trimmed != "" && !strings.HasSuffix(trimmed, ",") {
+		lines[previousPropertyIndex] = lines[previousPropertyIndex] + ","
+	}
+
+	trailingComma := hasNonEmptyLines(lines, insertIndex, endIndex)
+	blockLines := renderModuleSwiftSettingsLines(propertyIndent, settings, trailingComma)
+	lines = insertSyncLines(lines, insertIndex, blockLines)
+
+	updatedEndIndex := originalEndIndex + len(lines) - len(originalLines)
+	currentBlock := lines[startIndex : updatedEndIndex+1]
+	originalBlock := originalLines[startIndex : originalEndIndex+1]
+	if sameStringSlice(currentBlock, originalBlock) {
+		return originalLines, false, nil
+	}
+
+	return lines, true, nil
+}
+
+func renderModuleSwiftSettingsLines(indent string, settings []string, trailingComma bool) []string {
 	lines := make([]string, 0, len(settings)+2)
 	lines = append(lines, indent+`swiftSettings: [`)
 	for _, setting := range settings {
 		lines = append(lines, indent+"    "+setting+",")
 	}
-	lines = append(lines, indent+`]`)
+	closing := indent + `]`
+	if trailingComma {
+		closing += ","
+	}
+	lines = append(lines, closing)
 	return lines
+}
+
+func parseSwiftToolsVersion(content string) (string, error) {
+	lines := strings.Split(content, "\n")
+	if len(lines) == 0 {
+		return "", fmt.Errorf("manifest is empty")
+	}
+
+	const prefix = "// swift-tools-version: "
+	if !strings.HasPrefix(lines[0], prefix) {
+		return "", fmt.Errorf("swift tools version header not found")
+	}
+
+	value := strings.TrimSpace(strings.TrimPrefix(lines[0], prefix))
+	if value == "" {
+		return "", fmt.Errorf("swift tools version header is empty")
+	}
+
+	return value, nil
+}
+
+func isModulePackageTargetLine(line string) bool {
+	return strings.HasPrefix(strings.TrimSpace(line), ".target(")
+}
+
+func findDelimitedBlockEnd(lines []string, startIndex int, open, close string) (int, error) {
+	depth := 0
+	for index := startIndex; index < len(lines); index++ {
+		line := lines[index]
+		depth += strings.Count(line, open)
+		depth -= strings.Count(line, close)
+		if depth == 0 {
+			return index, nil
+		}
+	}
+	return -1, fmt.Errorf("unterminated block starting at line %d", startIndex+1)
+}
+
+func hasNonEmptyLines(lines []string, startIndex, endIndex int) bool {
+	for index := startIndex; index < endIndex; index++ {
+		if strings.TrimSpace(lines[index]) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func findLastTargetPropertyLine(lines []string, startIndex, endIndex int) int {
+	for index := endIndex - 1; index > startIndex; index-- {
+		trimmed := strings.TrimSpace(lines[index])
+		if trimmed == "" {
+			continue
+		}
+		return index
+	}
+	return -1
+}
+
+func isPostSwiftSettingsTargetProperty(trimmed string) bool {
+	return strings.HasPrefix(trimmed, "linkerSettings:") || strings.HasPrefix(trimmed, "plugins:")
+}
+
+func adjustInsertionIndexAfterRemoval(insertIndex, removedStart, removedEnd int) int {
+	if insertIndex <= removedStart {
+		return insertIndex
+	}
+	if insertIndex > removedEnd {
+		return insertIndex - (removedEnd - removedStart + 1)
+	}
+	return removedStart
 }
 
 func sameStringSlice(left, right []string) bool {

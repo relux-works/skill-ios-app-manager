@@ -8,7 +8,7 @@ import (
 	"github.com/relux-works/ios-app-manager/internal/config"
 )
 
-// SyncBuildFlags updates scaffolded app and extension manifests to use the strict Swift build flag baseline.
+// SyncBuildFlags updates scaffolded app, nested app, and extension manifests to use config-driven Swift build flags.
 func SyncBuildFlags(projectRoot string, cfg config.ProjectConfig) (ManifestSyncResult, error) {
 	root := strings.TrimSpace(projectRoot)
 	if root == "" {
@@ -55,84 +55,97 @@ func SyncBuildFlags(projectRoot string, cfg config.ProjectConfig) (ManifestSyncR
 }
 
 func syncBuildFlagsManifest(content string, settings []config.SwiftBuildSetting) (string, bool, error) {
-	updated := content
+	lines := strings.Split(content, "\n")
+	hasTrailingNewline := strings.HasSuffix(content, "\n")
 	changed := false
+	sawBaseBlock := false
 
-	for _, setting := range settings {
-		next, settingChanged, err := ensureBuildFlagSetting(updated, setting, settings)
+	for index := 0; index < len(lines); index++ {
+		if !strings.Contains(lines[index], "base: [") {
+			continue
+		}
+
+		sawBaseBlock = true
+
+		endIndex, err := findDelimitedBlockEnd(lines, index, "[", "]")
 		if err != nil {
 			return "", false, err
 		}
-		updated = next
-		changed = changed || settingChanged
+
+		nextLines, blockChanged, err := ensureBuildFlagSettingsBlock(lines, index, endIndex, settings)
+		if err != nil {
+			return "", false, err
+		}
+		if blockChanged {
+			changed = true
+			endIndex += len(nextLines) - len(lines)
+			lines = nextLines
+		}
+
+		index = endIndex
+	}
+
+	if !sawBaseBlock {
+		return "", false, fmt.Errorf("build flag insertion anchor not found")
+	}
+
+	return joinSyncLines(lines, hasTrailingNewline), changed, nil
+}
+
+func ensureBuildFlagSettingsBlock(lines []string, startIndex, endIndex int, settings []config.SwiftBuildSetting) ([]string, bool, error) {
+	if endIndex <= startIndex {
+		return nil, false, fmt.Errorf("invalid build settings block")
+	}
+
+	blockIndent := leadingIndent(lines[startIndex]) + "    "
+	updated := append([]string{}, lines...)
+	changed := false
+
+	for _, setting := range settings {
+		token := fmt.Sprintf(`"%s":`, setting.Key)
+		found := false
+
+		for index := startIndex + 1; index < endIndex; index++ {
+			if !strings.Contains(updated[index], token) {
+				continue
+			}
+
+			found = true
+			replacement := renderBuildFlagSettingLine(blockIndent, setting)
+			if updated[index] != replacement {
+				updated[index] = replacement
+				changed = true
+			}
+			break
+		}
+
+		if found {
+			continue
+		}
+
+		insertIndex := endIndex
+		lastPropertyIndex := endIndex - 1
+		for lastPropertyIndex > startIndex && strings.TrimSpace(updated[lastPropertyIndex]) == "" {
+			lastPropertyIndex--
+		}
+		if lastPropertyIndex > startIndex {
+			trimmed := strings.TrimSpace(updated[lastPropertyIndex])
+			if trimmed != "" && !strings.HasSuffix(trimmed, ",") {
+				updated[lastPropertyIndex] = updated[lastPropertyIndex] + ","
+				changed = true
+			}
+		}
+
+		updated = insertSyncLine(updated, insertIndex, renderBuildFlagSettingLine(blockIndent, setting))
+		endIndex++
+		changed = true
 	}
 
 	return updated, changed, nil
 }
 
-func ensureBuildFlagSetting(content string, setting config.SwiftBuildSetting, settings []config.SwiftBuildSetting) (string, bool, error) {
-	lines := strings.Split(content, "\n")
-	hasTrailingNewline := strings.HasSuffix(content, "\n")
-
-	token := fmt.Sprintf(`"%s":`, setting.Key)
-	for index, line := range lines {
-		if !strings.Contains(line, token) {
-			continue
-		}
-
-		replacement := leadingIndent(line) + fmt.Sprintf(`"%s": %q,`, setting.Key, setting.Value)
-		if replacement == line {
-			return content, false, nil
-		}
-
-		lines[index] = replacement
-		return joinSyncLines(lines, hasTrailingNewline), true, nil
-	}
-
-	insertIndex, insertIndent := buildFlagInsertionPoint(lines, settings)
-	if insertIndex < 0 {
-		return "", false, fmt.Errorf("build flag insertion anchor not found")
-	}
-
-	insertLine := insertIndent + fmt.Sprintf(`    "%s": %q,`, setting.Key, setting.Value)
-	lines = insertSyncLine(lines, insertIndex, insertLine)
-	return joinSyncLines(lines, hasTrailingNewline), true, nil
-}
-
-func buildFlagInsertionPoint(lines []string, settings []config.SwiftBuildSetting) (int, string) {
-	baseIndex := -1
-	baseIndent := ""
-	lastAnchorIndex := -1
-
-	anchorTokens := []string{
-		`"SWIFT_VERSION":`,
-		`"IPHONEOS_DEPLOYMENT_TARGET":`,
-	}
-	for _, setting := range settings {
-		anchorTokens = append(anchorTokens, fmt.Sprintf(`"%s":`, setting.Key))
-	}
-
-	for index, line := range lines {
-		if baseIndex < 0 && strings.Contains(line, "base: [") {
-			baseIndex = index
-			baseIndent = leadingIndent(line)
-		}
-
-		for _, token := range anchorTokens {
-			if strings.Contains(line, token) {
-				lastAnchorIndex = index
-				break
-			}
-		}
-	}
-
-	if lastAnchorIndex >= 0 {
-		return lastAnchorIndex + 1, baseIndent
-	}
-	if baseIndex >= 0 {
-		return baseIndex + 1, baseIndent
-	}
-	return -1, ""
+func renderBuildFlagSettingLine(indent string, setting config.SwiftBuildSetting) string {
+	return indent + fmt.Sprintf(`"%s": %q,`, setting.Key, setting.Value)
 }
 
 func effectiveBuildFlagSettings(cfg config.ProjectConfig) []config.SwiftBuildSetting {
