@@ -541,12 +541,12 @@ func TestSetupCommandAppliesExternalDepsBeforePlan(t *testing.T) {
 	mod.ExternalDeps = []registry.ExternalDep{
 		{
 			URL:     "https://github.com/relux-works/swift-ioc.git",
-			Version: "1.0.1",
+			Version: "1.0.3",
 			Product: "SwiftIoC",
 		},
 		{
 			URL:     "https://github.com/relux-works/swiftui-relux.git",
-			Version: "8.0.1",
+			Version: "8.0.3",
 			Product: "SwiftUIRelux",
 			Package: "swiftui-relux",
 		},
@@ -564,10 +564,10 @@ func TestSetupCommandAppliesExternalDepsBeforePlan(t *testing.T) {
 		for _, expected := range []string{
 			`name: "SwiftIoC"`,
 			`url: "https://github.com/relux-works/swift-ioc.git"`,
-			`from: "1.0.1"`,
+			`from: "1.0.3"`,
 			`name: "swiftui-relux"`,
 			`url: "https://github.com/relux-works/swiftui-relux.git"`,
-			`from: "8.0.1"`,
+			`from: "8.0.3"`,
 			`"SwiftIoC": .framework`,
 			`"SwiftUIRelux": .framework`,
 		} {
@@ -613,7 +613,7 @@ func TestSetupCommandExternalDepsIdempotent(t *testing.T) {
 	mod.ExternalDeps = []registry.ExternalDep{
 		{
 			URL:     "https://github.com/relux-works/swift-ioc.git",
-			Version: "1.0.1",
+			Version: "1.0.3",
 			Product: "SwiftIoC",
 		},
 	}

@@ -35,7 +35,7 @@ func init() {
 		ExternalDeps: []registry.ExternalDep{
 			{
 				URL:     "https://github.com/relux-works/swift-ioc.git",
-				Version: "1.0.1",
+				Version: "1.0.3",
 				Product: "SwiftIoC",
 			},
 		},
@@ -70,7 +70,7 @@ func Plan(input registry.SetupInput) (string, error) {
       - Groups registrations by category (infra, foundation, features, network, utils)
 
   Patch:
-    Package.swift  — add SwiftIoC dependency (from: 1.0.1)
+    Package.swift  — add SwiftIoC dependency (from: 1.0.3)
     Project.swift  — add .external(name: "SwiftIoC")
     App.swift      — inject init() { Registry.configure() }`, input.AppName, input.AppName)
 	return plan, nil

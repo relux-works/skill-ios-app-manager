@@ -254,6 +254,6 @@ open .temp/demo-project/XFlow.xcworkspace
 Minimal: Cobra (CLI framework) + gopkg.in/yaml.v3. No other external Go deps.
 
 The CLI manages these **Swift** packages in generated projects:
-- **SwiftIoC** (from: 1.0.1) — dependency injection, added by `ioc setup`
-- **swiftui-relux** (from: 8.0.1) — SwiftUI Relux bindings, added by `relux setup`
-- **swift-relux** (from: 9.0.1) — core Relux framework, added automatically when creating modules from blueprints
+- **SwiftIoC** (from: 1.0.3) — dependency injection, added by `ioc setup`
+- **swiftui-relux** (from: 8.0.3) — SwiftUI Relux bindings, added by `relux setup`
+- **swift-relux** (from: 9.0.3) — core Relux framework, added automatically when creating modules from blueprints
