@@ -243,7 +243,7 @@ let package = Package(
 			PackageName: "swift-relux",
 			ProductName: "Relux",
 			URL:         "https://github.com/relux-works/swift-relux.git",
-			Version:     `from: "9.0.1"`,
+			Version:     `from: "9.0.3"`,
 		}},
 	})
 	if err != nil {
