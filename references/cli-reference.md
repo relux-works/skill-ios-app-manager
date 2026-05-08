@@ -272,6 +272,8 @@ ios-app-manager generate makefile
 
 Description:
 - Creates `Makefile` if missing, or regenerates the managed section while preserving custom section.
+- Generated `build` and `test` targets run `tuist generate` before `xcodebuild` and call the `clean-package-artifacts` hook on exit.
+- Project-specific cleanup should be injected by overriding `PACKAGE_ARTIFACT_CLEANUP_CMD` in the preserved custom section; the generated default is a no-op.
 
 Flags:
 - `--config <path>`: Optional command-level config override.

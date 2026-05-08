@@ -104,6 +104,7 @@ Generate commands are scaffold generator plugins:
 - `generate package-strictness` syncs the same `project_settings.swift` Swift language/concurrency settings into root `Package.swift` and every module `Packages/*/Package.swift`.
 - When `project_settings.swift` is omitted, Swift strictness defaults are derived from `swift_version` and the scaffold's current strict baseline.
 - Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
+- Generated `make build` and `make test` run `tuist generate` before `xcodebuild` and reuse `make clean-package-artifacts` on exit. The cleanup hook is a no-op by default (`PACKAGE_ARTIFACT_CLEANUP_CMD ?= :`); projects that need checkout-specific cleanup should override that variable in the Makefile custom section. Build uses a generic iOS Simulator destination by default, while test keeps the configured concrete simulator destination unless overridden.
 
 App Groups capability contract:
 - Configure groups in `ios-app-manager.json` with `app_groups`. Configure the generated shared config package name with `shared_config.module_name`; it defaults to `SharedConfig`.

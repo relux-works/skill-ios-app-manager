@@ -6,9 +6,12 @@ TEAM_ID := ABCDE12345
 MODULES_PATH := Packages
 SCHEME ?= DemoApp
 DESTINATION ?= platform=iOS Simulator,name=iPhone 16,OS=17.0
+BUILD_DESTINATION ?= generic/platform=iOS Simulator
+TEST_DESTINATION ?= $(DESTINATION)
 WORKSPACE ?= $(APP_NAME).xcworkspace
 DERIVED_DATA_PATH ?= $(CURDIR)/DerivedData
 TUIST_GENERATE_FLAGS ?= --no-open
+PACKAGE_ARTIFACT_CLEANUP_CMD ?= :
 
 PUSH_KEY_PATH := certs/AuthKey_ABC123.p8
 PUSH_KEY_ID := ABC123DEF4
@@ -16,7 +19,7 @@ PUSH_ENV ?= development
 PUSH_DEVICE_TOKEN ?=
 
 .DEFAULT_GOAL := help
-.PHONY: setup resetup generate build test clean deep-clean lint format validate install-tools periphery help push-token push-send
+.PHONY: setup resetup generate build test clean-package-artifacts clean deep-clean lint format validate install-tools periphery help push-token push-send
 
 setup: ## Install Tuist dependencies and generate project files
 	@tuist install
@@ -30,10 +33,19 @@ generate: ## Generate the Xcode project with Tuist
 	@tuist generate $(TUIST_GENERATE_FLAGS)
 
 build: ## Build the app with xcodebuild
-	@xcodebuild -workspace "$(WORKSPACE)" -scheme "$(SCHEME)" -destination "$(DESTINATION)" -derivedDataPath "$(DERIVED_DATA_PATH)" build
+	@set -e; \
+	trap '$(MAKE) clean-package-artifacts >/dev/null' EXIT; \
+	tuist generate $(TUIST_GENERATE_FLAGS); \
+	xcodebuild -workspace "$(WORKSPACE)" -scheme "$(SCHEME)" -destination "$(BUILD_DESTINATION)" -derivedDataPath "$(DERIVED_DATA_PATH)" build
 
 test: ## Run tests with xcodebuild
-	@xcodebuild -workspace "$(WORKSPACE)" -scheme "$(SCHEME)" -destination "$(DESTINATION)" -derivedDataPath "$(DERIVED_DATA_PATH)" test
+	@set -e; \
+	trap '$(MAKE) clean-package-artifacts >/dev/null' EXIT; \
+	tuist generate $(TUIST_GENERATE_FLAGS); \
+	xcodebuild -workspace "$(WORKSPACE)" -scheme "$(SCHEME)" -destination "$(TEST_DESTINATION)" -derivedDataPath "$(DERIVED_DATA_PATH)" test
+
+clean-package-artifacts: ## Clean generated artifacts left inside local package checkouts
+	@$(PACKAGE_ARTIFACT_CLEANUP_CMD)
 
 clean: ## Clean Tuist artifacts and local DerivedData
 	@tuist clean

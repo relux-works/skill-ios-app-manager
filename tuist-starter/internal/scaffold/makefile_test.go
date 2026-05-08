@@ -29,12 +29,16 @@ func TestGenerateMakefileContainsRequiredVariablesAndTargets(t *testing.T) {
 		"MODULES_PATH := Packages",
 		"SCHEME ?= DemoApp",
 		"DESTINATION ?= platform=iOS Simulator,name=iPhone 16,OS=17.0",
+		"BUILD_DESTINATION ?= generic/platform=iOS Simulator",
+		"TEST_DESTINATION ?= $(DESTINATION)",
 		"TUIST_GENERATE_FLAGS ?= --no-open",
+		"PACKAGE_ARTIFACT_CLEANUP_CMD ?= :",
 		"setup: ##",
 		"resetup: ##",
 		"generate: ##",
 		"build: ##",
 		"test: ##",
+		"clean-package-artifacts: ##",
 		"clean: ##",
 		"deep-clean: ##",
 		"lint: ##",
@@ -49,6 +53,9 @@ func TestGenerateMakefileContainsRequiredVariablesAndTargets(t *testing.T) {
 		generatedTargetsMarker,
 		customTargetsMarker,
 		"@tuist generate $(TUIST_GENERATE_FLAGS)",
+		"trap '$(MAKE) clean-package-artifacts >/dev/null' EXIT",
+		"-destination \"$(BUILD_DESTINATION)\"",
+		"-destination \"$(TEST_DESTINATION)\"",
 	}
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(makefile, snippet) {
