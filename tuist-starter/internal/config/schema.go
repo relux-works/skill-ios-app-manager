@@ -3,8 +3,9 @@ package config
 import "strings"
 
 const (
-	DefaultConfigPath  = "ios-app-manager.json"
-	defaultModulesPath = "Packages"
+	DefaultConfigPath             = "ios-app-manager.json"
+	DefaultSharedConfigModuleName = "SharedConfig"
+	defaultModulesPath            = "Packages"
 )
 
 // ProjectConfig defines project-init schema for ios-app-manager.
@@ -31,12 +32,17 @@ type ProjectConfig struct {
 	ProjectSettings ProjectSettings `json:"project_settings,omitempty"`
 
 	// Modules
-	ModulesPath string `json:"modules_path,omitempty"` // default: "Packages"
+	ModulesPath  string             `json:"modules_path,omitempty"` // default: "Packages"
+	SharedConfig SharedConfigConfig `json:"shared_config,omitempty"`
 
 	// Push (optional)
 	PushKeyPath   string `json:"push_key_path,omitempty"`
 	PushKeyID     string `json:"push_key_id,omitempty"`
 	PushTokenPath string `json:"push_token_path,omitempty"`
+}
+
+type SharedConfigConfig struct {
+	ModuleName string `json:"module_name,omitempty"` // default: SharedConfig
 }
 
 func (c *ProjectConfig) applyDefaults() {
@@ -46,6 +52,12 @@ func (c *ProjectConfig) applyDefaults() {
 
 	if strings.TrimSpace(c.ModulesPath) == "" {
 		c.ModulesPath = defaultModulesPath
+	}
+
+	if strings.TrimSpace(c.SharedConfig.ModuleName) == "" {
+		c.SharedConfig.ModuleName = DefaultSharedConfigModuleName
+	} else {
+		c.SharedConfig.ModuleName = strings.TrimSpace(c.SharedConfig.ModuleName)
 	}
 
 	c.applySwiftDefaults()

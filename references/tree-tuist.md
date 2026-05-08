@@ -205,7 +205,9 @@ ios-app-manager generate --config "$CONFIG" swiftlint
 
 Project-config behavior:
 - Runs scaffold config sync across root app + extension manifests.
-- Currently syncs version markers, min deployment target markers, and strict Swift compiler build flags.
+- Currently syncs version markers, min deployment target markers, host app capabilities from `app_groups`, strict Swift compiler build flags, and package strictness.
+- Config sync slices are scaffold generator plugins. Broad domains should orchestrate subplugins: `app-capabilities` is the host capability plugin, and `app-groups` is its concrete subplugin with `init` dependency.
+- If a new scaffold concern does not belong to an existing plugin/subplugin, add a new pluggable generator/setup module instead of patching generated files by hand.
 
 Makefile behavior:
 - Generated section is rewritten from config.

@@ -39,7 +39,9 @@ let project = Project(
                             ])
                         ])
                     ]),
-                    "GROUP_COM_EXAMPLE_DEMO": .string("group.com.example.demo"),
+                    "AppGroups": .dictionary([
+                        "main": .string("group.com.example.demo"),
+                    ]),
                     "UILaunchScreen": .dictionary([:]),
                 ]
             ),

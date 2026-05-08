@@ -42,8 +42,12 @@ let project = Project(
                         ])
                     ]),
 {{- end }}
+{{- if .AppGroups }}
+                    "AppGroups": .dictionary([
 {{- range .AppGroups }}
-                    "{{ infoPlistKey . }}": .string({{ swiftLiteral . }}),
+                        "{{ appGroupDictionaryKey $.BundleID . }}": .string({{ swiftLiteral . }}),
+{{- end }}
+                    ]),
 {{- end }}
                     "UILaunchScreen": .dictionary([:]),
                 ]

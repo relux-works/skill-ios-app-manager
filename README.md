@@ -52,16 +52,18 @@ Current generators:
 - `generate swiftlint`
 - `generate versions`
 - `generate min-target`
+- `generate app-capabilities`
 - `generate build-flags`
 - `generate package-strictness`
 
 `generate project-config` is the orchestration entrypoint for manifest config sync. Today it runs:
 - `generate versions` — syncs `marketing_version` and `project_version`
 - `generate min-target` — syncs `min_target` into `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET`
+- `generate app-capabilities` — syncs host app capabilities from config
 - `generate build-flags` — syncs app/extension Swift language and concurrency settings from `project_settings.swift`
 - `generate package-strictness` — syncs root/module `Package.swift` strictness from the same `project_settings.swift`
 
-All four depend on the `init` scaffold shape. `versions`, `min-target`, and `build-flags` update the host app `Project.swift` plus every `Extensions/*/Project.swift`. `package-strictness` updates root `Package.swift` plus every module `Packages/*/Package.swift`.
+These generators depend on the `init` scaffold shape. `versions`, `min-target`, and `build-flags` update the host app `Project.swift` plus every `Extensions/*/Project.swift`. `app-capabilities` syncs capability-owned manifest slices. `package-strictness` updates root `Package.swift` plus every module `Packages/*/Package.swift`.
 
 Swift strictness is config-driven. Declare it in `ios-app-manager.json` under `project_settings.swift`; if you omit that block, defaults are derived from `swift_version` and the scaffold's current strict baseline.
 
@@ -113,9 +115,51 @@ If you only want one slice, the leaf plugins still work directly:
 ```bash
 ./ios-app-manager generate versions
 ./ios-app-manager generate min-target
+./ios-app-manager generate app-capabilities
 ./ios-app-manager generate build-flags
 ./ios-app-manager generate package-strictness
 ```
+
+### App Groups capability
+
+`generate app-capabilities` currently runs the `app-groups` subplugin. Configure it with `app_groups` and, optionally, `shared_config.module_name` in `ios-app-manager.json`:
+
+```json
+{
+  "bundle_id": "com.example.demo.app",
+  "app_groups": [
+    "group.com.example.demo.app.shared",
+    "group.com.example.demo.app.sso"
+  ],
+  "modules_path": "Packages",
+  "shared_config": {
+    "module_name": "SharedConfig"
+  }
+}
+```
+
+Generated output:
+- `Tuist/ProjectDescriptionHelpers/AppCapabilities.swift` gets `.appGroups(...)` declarations used by generated entitlements.
+- Every generated target Info.plist slice gets a single `AppGroups` dictionary, not root-level `APP_GROUP_*` keys.
+- `${modules_path}/${shared_config.module_name}` is generated as a shared package and linked to app/test targets.
+- `Configuration+AppGroups.swift` reads typed values through that shared package instead of hardcoding identifiers.
+
+The Info.plist dictionary key is generated from the app group identifier relative to `bundle_id`:
+- `group.<bundle_id>` maps to `main`.
+- `group.<bundle_id>.<suffix>` maps from `<suffix>`.
+- Other `group.*` values drop only the `group.` prefix.
+- The remaining value is sanitized to a lowerCamelCase Swift/dictionary key; collisions fail validation.
+
+For the config above, the generated Info.plist shape is:
+
+```swift
+"AppGroups": .dictionary([
+    "shared": .string("group.com.example.demo.app.shared"),
+    "sso": .string("group.com.example.demo.app.sso"),
+])
+```
+
+The same generated keys are used by `SharedConfig` reader APIs such as `DemoAppGroups.read(from:)` and `DemoAppGroupSlot.dictionaryKey`.
 
 ## What it does
 

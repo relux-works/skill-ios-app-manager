@@ -117,8 +117,14 @@ Leaf sync commands remain available when you only want one slice:
 ```bash
 ios-app-manager generate versions
 ios-app-manager generate min-target
+ios-app-manager generate app-capabilities
 ios-app-manager generate build-flags
+ios-app-manager generate package-strictness
 ```
+
+Each leaf sync is a scaffold generator plugin. Do not patch generated scaffold-owned files by hand when a slice is missing; add the behavior to the matching plugin or create a new pluggable scaffold module/generator.
+For broad domains, keep the leaf plugin as an orchestrator and add concrete subplugins. App groups, for example, are handled by the `app-groups` subplugin under `generate app-capabilities`, not by hardcoding every capability into one function.
+All scaffold plugins and subplugins must be idempotent: repeated runs with the same config should report no changes and must not duplicate generated declarations, manifest entries, files, dependencies, entitlements, or package settings.
 
 ## 6) Common troubleshooting
 

@@ -51,6 +51,8 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+Keychain.swift"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+AppGroups.swift"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Bundle+InfoPlist.swift"),
+		filepath.Join(outputDir, cfg.ModulesPath, "SharedConfig", "Package.swift"),
+		filepath.Join(outputDir, cfg.ModulesPath, "SharedConfig", "Sources", "SharedConfig.swift"),
 		filepath.Join(assetsPath, "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "AppIcon.png"),
@@ -75,6 +77,7 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		`Targets/` + cfg.AppName + `/Resources/**`,
 		"EntitlementsFactory.make(",
 		"AppCapabilities.app",
+		`.external(name: "SharedConfig")`,
 	}
 	for _, want := range projectChecks {
 		if !strings.Contains(projectManifest, want) {
@@ -95,6 +98,14 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 	packageManifest := readFile(t, filepath.Join(outputDir, "Package.swift"))
 	if !strings.Contains(packageManifest, cfg.ModulesPath) {
 		t.Fatalf("Package.swift missing ModulesPath %q:\n%s", cfg.ModulesPath, packageManifest)
+	}
+	for _, want := range []string{
+		`.package(path: "` + cfg.ModulesPath + `/SharedConfig")`,
+		`"SharedConfig": .framework`,
+	} {
+		if !strings.Contains(packageManifest, want) {
+			t.Fatalf("Package.swift missing %q:\n%s", want, packageManifest)
+		}
 	}
 
 	makefile := readFile(t, filepath.Join(outputDir, "Makefile"))
@@ -181,13 +192,32 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 	appGroupsChecks := []string{
 		"Configuration",
 		"AppGroups",
+		"import SharedConfig",
 		`serviceName: String = "` + cfg.BundleID + `"`,
-		"GROUP_COM_EXAMPLE_DEMO",
-		"readInfoPlistValue",
+		cfg.AppName + "AppGroups.read(from: .main)",
+		"static let main: String",
+		"resolved.main",
 	}
 	for _, want := range appGroupsChecks {
 		if !strings.Contains(appGroupsConfig, want) {
 			t.Fatalf("Configuration+AppGroups.swift missing %q:\n%s", want, appGroupsConfig)
+		}
+	}
+
+	appCapabilities := readFile(t, filepath.Join(outputDir, "Tuist", "ProjectDescriptionHelpers", "AppCapabilities.swift"))
+	if !strings.Contains(appCapabilities, `.appGroups(group: .custom(id: "group.com.example.demo"))`) {
+		t.Fatalf("AppCapabilities.swift missing configured app group:\n%s", appCapabilities)
+	}
+
+	sharedConfiguration := readFile(t, filepath.Join(outputDir, cfg.ModulesPath, "SharedConfig", "Sources", "SharedConfig.swift"))
+	for _, want := range []string{
+		`case appGroups = "AppGroups"`,
+		`case main = "main"`,
+		"public struct " + cfg.AppName + "AppGroups",
+		"public static func read(from bundle: Bundle = .main) throws -> Self",
+	} {
+		if !strings.Contains(sharedConfiguration, want) {
+			t.Fatalf("SharedConfig.swift missing %q:\n%s", want, sharedConfiguration)
 		}
 	}
 

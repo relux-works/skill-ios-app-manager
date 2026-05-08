@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/relux-works/ios-app-manager/internal/config"
 )
 
 func TestGenerateAppCapabilities(t *testing.T) {
@@ -19,6 +21,26 @@ func TestGenerateAppCapabilities(t *testing.T) {
 	for _, want := range checks {
 		if !strings.Contains(content, want) {
 			t.Errorf("GenerateAppCapabilities() missing %q", want)
+		}
+	}
+}
+
+func TestGenerateAppCapabilitiesForConfigIncludesAppGroups(t *testing.T) {
+	t.Parallel()
+
+	content := GenerateAppCapabilitiesForConfig(config.ProjectConfig{
+		AppGroups: []string{
+			"group.com.example.app",
+			"group.com.example.shared",
+		},
+	})
+
+	for _, want := range []string{
+		`.appGroups(group: .custom(id: "group.com.example.app"))`,
+		`.appGroups(group: .custom(id: "group.com.example.shared"))`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("GenerateAppCapabilitiesForConfig() missing %q:\n%s", want, content)
 		}
 	}
 }
@@ -75,6 +97,63 @@ func TestAddToAppCapabilities_AppGroups(t *testing.T) {
 	content := string(data)
 	if !strings.Contains(content, `group.com.example.app`) {
 		t.Errorf("expected appGroups line in content:\n%s", content)
+	}
+}
+
+func TestSyncAppCapabilityDeclarationsAddsConfiguredLines(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	helpersDir := filepath.Join(dir, "Tuist", "ProjectDescriptionHelpers")
+	if err := os.MkdirAll(helpersDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(helpersDir, "AppCapabilities.swift"), []byte(GenerateAppCapabilities()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := config.ProjectConfig{
+		AppGroups: []string{
+			"group.com.example.app",
+			"group.com.example.app",
+			"group.com.example.shared",
+		},
+	}
+	updated, err := SyncAppCapabilityDeclarations(dir, appGroupCapabilityDeclarations(cfg))
+	if err != nil {
+		t.Fatalf("SyncAppCapabilityDeclarations() error = %v", err)
+	}
+	if !updated {
+		t.Fatal("SyncAppCapabilityDeclarations() updated = false, want true")
+	}
+
+	data, err := os.ReadFile(filepath.Join(helpersDir, "AppCapabilities.swift"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	for _, want := range []string{
+		`group.com.example.app`,
+		`group.com.example.shared`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("expected app group %q in content:\n%s", want, content)
+		}
+	}
+
+	secondUpdated, err := SyncAppCapabilityDeclarations(dir, appGroupCapabilityDeclarations(cfg))
+	if err != nil {
+		t.Fatalf("second SyncAppCapabilityDeclarations() error = %v", err)
+	}
+	if secondUpdated {
+		t.Fatal("second SyncAppCapabilityDeclarations() updated = true, want false")
+	}
+	afterSecond, err := os.ReadFile(filepath.Join(helpersDir, "AppCapabilities.swift"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count := strings.Count(string(afterSecond), ".appGroups("); count != 2 {
+		t.Fatalf("app group capability count = %d, want 2:\n%s", count, string(afterSecond))
 	}
 }
 

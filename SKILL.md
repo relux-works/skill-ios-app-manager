@@ -59,6 +59,22 @@ skill-ios-app-manager/
 Use `--force` when you intentionally want to overwrite scaffold files:
 - `ios-app-manager init --config ios-app-manager.json --output . --force`
 
+## Scaffold Change Policy
+
+Follow this policy when changing the scaffold itself or when a project needs scaffold-owned output that the current CLI cannot express.
+
+Do not manually patch files owned by `ios-app-manager` scaffolding or generators (`Project.swift`, `Workspace.swift`, `Package.swift`, `Tuist/ProjectDescriptionHelpers/*`, generated app configuration, module scaffolds) when a required capability is missing from the tool.
+
+If the CLI cannot express the needed setup, document the scaffold gap first: the blocked user intent, the generated files that would otherwise need changes, and the `ios-app-manager` command/generator that should own the behavior. Then decide whether to extend `ios-app-manager`; do not hide the gap with one-off scaffold edits.
+
+Scaffold extensions must follow the plugin architecture. If the behavior belongs to an existing scaffold/setup plugin, extend that plugin. If it is a distinct scaffold concern, add a new pluggable scaffold module/generator and register it through the relevant registry instead of wiring ad hoc logic into unrelated commands.
+
+For broad scaffold domains, keep the top-level plugin as an orchestrator and put concrete concerns into subplugins. Example: `generate app-capabilities` owns the host app capabilities domain, while `app-groups` is a capability subplugin with `init` dependency; future capabilities must be added as separate subplugins rather than collected into one large capability function.
+
+Scaffold code, templates, docs, and tests must stay organization-agnostic. Use generic examples such as `com.example.*` / `group.com.example.*`; the only non-generic organization reference allowed in this skill is Relux Works ownership/module metadata. Do not add external organization, client, product, Jira, GitLab, or project-specific identifiers to scaffold sources.
+
+Scaffold plugins and subplugins must be idempotent. Re-running the same command against the same config must not duplicate Swift declarations, manifest entries, generated files, dependencies, entitlements, or package settings. When config values change, the plugin should converge generated output to the current config rather than append another variant.
+
 ## Command groups
 
 ### Project lifecycle
@@ -67,6 +83,7 @@ Use `--force` when you intentionally want to overwrite scaffold files:
 - Generate Makefile: `ios-app-manager generate makefile`
 - Generate SwiftLint config: `ios-app-manager generate swiftlint`
 - Sync project manifest config: `ios-app-manager generate project-config`
+- Sync host app capabilities from config: `ios-app-manager generate app-capabilities`
 - Generate app/extension versions: `ios-app-manager generate versions`
 - Generate app/extension min target: `ios-app-manager generate min-target`
 - Generate app/extension Swift strictness: `ios-app-manager generate build-flags`
@@ -78,13 +95,24 @@ Use `--force` when you intentionally want to overwrite scaffold files:
 Generate commands are scaffold generator plugins:
 - Each `generate <artifact>` entrypoint is a separate scaffold plugin with its own responsibility and dependency contract.
 - Use this pattern for scaffold-only sync tasks instead of overloading `init`.
-- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate versions`, `generate min-target`, `generate build-flags`, and `generate package-strictness`.
+- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate versions`, `generate min-target`, `generate app-capabilities`, `generate build-flags`, and `generate package-strictness`.
 - `generate versions` depends on the `init` scaffold shape and syncs both `marketing_version` and `project_version` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`.
 - `generate min-target` depends on the same scaffold shape and syncs `min_target` into both `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET` for the host app and extensions.
+- `generate app-capabilities` depends on the same scaffold shape and orchestrates host app capability subplugins.
+- `app-groups` is an app capability subplugin with `init` dependency; it syncs configured `app_groups` into `Tuist/ProjectDescriptionHelpers/AppCapabilities.swift`, host/test target `Project.swift` Info.plist `AppGroups` dictionaries, generated `SharedConfig`, and `Configuration+AppGroups.swift`.
 - `generate build-flags` depends on the same scaffold shape and syncs Swift language/concurrency build settings from `project_settings.swift` into the host app and extensions.
 - `generate package-strictness` syncs the same `project_settings.swift` Swift language/concurrency settings into root `Package.swift` and every module `Packages/*/Package.swift`.
 - When `project_settings.swift` is omitted, Swift strictness defaults are derived from `swift_version` and the scaffold's current strict baseline.
 - Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
+
+App Groups capability contract:
+- Configure groups in `ios-app-manager.json` with `app_groups`. Configure the generated shared config package name with `shared_config.module_name`; it defaults to `SharedConfig`.
+- `app-groups` emits entitlement declarations, root `Package.swift` dependency/product type entries, app/test `.external(name: "<shared_config.module_name>")` dependencies, generated shared package sources, and app/test Info.plist values.
+- Info.plist values are grouped under one dictionary key: `"AppGroups": .dictionary([...])`. Do not emit root-level `APP_GROUP_*` keys for current scaffold output.
+- The dictionary key for each app group is derived from the identifier, not hardcoded. `group.<bundle_id>` maps to `main`; `group.<bundle_id>.<suffix>` maps from `<suffix>`; other `group.*` identifiers drop only the `group.` prefix.
+- Dictionary keys are sanitized to lowerCamelCase Swift identifiers and reused as `AppGroupSlot.dictionaryKey` in the generated shared package. Validation must reject collisions between generated keys.
+- Example: with `bundle_id = "com.example.demo.app"`, `group.com.example.demo.app.shared` maps to `AppGroups.shared`, and `group.com.example.demo.app.sso` maps to `AppGroups.sso`.
+- App code, tests, and extensions should read app groups through generated APIs such as `DemoAppGroups.read(from:)`; do not hardcode group identifiers or duplicate dictionary-key derivation in handwritten code.
 
 Project config sync workflow:
 ```bash
@@ -120,6 +148,7 @@ Leaf workflows remain available:
 ```bash
 ios-app-manager generate versions
 ios-app-manager generate min-target
+ios-app-manager generate app-capabilities
 ios-app-manager generate build-flags
 ios-app-manager generate package-strictness
 ```

@@ -12,7 +12,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
-	path := filepath.Join(dir, "config-mts.json")
+	path := filepath.Join(dir, "config-alpha.json")
 
 	want := validProjectConfig()
 	if err := WriteProjectConfig(path, want); err != nil {
@@ -121,6 +121,9 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 	if cfg.ModulesPath != "Packages" {
 		t.Fatalf("ModulesPath = %q, want %q", cfg.ModulesPath, "Packages")
 	}
+	if cfg.SharedConfig.ModuleName != "SharedConfig" {
+		t.Fatalf("SharedConfig.ModuleName = %q, want %q", cfg.SharedConfig.ModuleName, "SharedConfig")
+	}
 	if cfg.ProjectSettings.Swift.LanguageMode != "v6" {
 		t.Fatalf("ProjectSettings.Swift.LanguageMode = %q, want %q", cfg.ProjectSettings.Swift.LanguageMode, "v6")
 	}
@@ -196,6 +199,7 @@ func validProjectConfig() ProjectConfig {
 		ProductName:      "Demo Product",
 		Configurations:   []string{"Debug", "Release"},
 		ModulesPath:      "Packages",
+		SharedConfig:     SharedConfigConfig{ModuleName: "SharedConfig"},
 		PushKeyPath:      "certs/AuthKey_ABC123.p8",
 		PushKeyID:        "ABC123DEF4",
 		ProjectSettings: ProjectSettings{

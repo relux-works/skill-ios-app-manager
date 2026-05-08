@@ -1,0 +1,145 @@
+@startuml scaffold-plugin-dependencies
+!theme plain
+
+title ios-app-manager scaffold plugin dependency graph
+
+skinparam linetype ortho
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+package "CLI plugin loaders" #F8F9FA {
+  component "NewRootCommand" as cli_root #FFFFFF
+  component "setup command\nregistry.Module" as setup_cmd #FFFFFF
+  component "generate command\nGeneratorPlugin" as gen_cmd #FFFFFF
+}
+
+package "Setup plugins (registry.Module)" {
+  package "Infra" #FFF3CD {
+    component "init" as mod_init
+    component "ioc" as mod_ioc
+    component "relux" as mod_relux
+    component "app-extensions" as mod_app_extensions
+    component "widget-base" as mod_widget_base
+    component "app-intents" as mod_app_intents
+    component "static-widget" as mod_static_widget
+    component "live-activity" as mod_live_activity
+  }
+
+  package "Foundation" #D6EAF8 {
+    component "secure-store" as mod_secure_store
+    component "token-provider" as mod_token_provider
+    component "app-config" as mod_app_config
+  }
+
+  package "Network" #FFE0B2 {
+    component "http-client" as mod_http_client
+  }
+
+  package "Utils" #E1BEE7 {
+    component "utilities" as mod_utilities
+    component "foundation-plus" as mod_foundation_plus
+    component "swiftui-plus" as mod_swiftui_plus
+  }
+}
+
+package "Generate plugins (scaffold.GeneratorPlugin)" #EAF2F8 {
+  component "makefile" as gen_makefile
+  component "swiftlint" as gen_swiftlint
+  component "project-config" as gen_project_config
+  component "versions" as gen_versions
+  component "min-target" as gen_min_target
+  component "build-flags" as gen_build_flags
+  component "package-strictness" as gen_package_strictness
+}
+
+package "Shared scaffold helpers" #FDEDEC {
+  component "AppCapabilities.swift" as app_caps
+  component "AddToAppCapabilities\n(not a plugin)" as cap_helper
+  component "EntitlementsFactory" as entitlements_factory
+  component "Configuration+AppGroups.swift" as config_app_groups
+}
+
+cloud "SwiftIoC" as ext_swiftioc #E8F0FE
+cloud "SwiftUIRelux" as ext_swiftuirelux #E8F0FE
+cloud "HttpClient" as ext_httpclient #E8F0FE
+
+cli_root --> setup_cmd : adds registered setup commands
+cli_root --> gen_cmd : adds generate commands
+setup_cmd --> mod_init
+setup_cmd --> mod_ioc
+setup_cmd --> mod_relux
+setup_cmd --> mod_secure_store
+setup_cmd --> mod_token_provider
+setup_cmd --> mod_app_config
+setup_cmd --> mod_http_client
+setup_cmd --> mod_utilities
+setup_cmd --> mod_foundation_plus
+setup_cmd --> mod_swiftui_plus
+setup_cmd --> mod_app_extensions
+setup_cmd --> mod_widget_base
+setup_cmd --> mod_app_intents
+setup_cmd --> mod_static_widget
+setup_cmd --> mod_live_activity
+
+gen_cmd --> gen_makefile
+gen_cmd --> gen_swiftlint
+gen_cmd --> gen_project_config
+gen_cmd --> gen_versions
+gen_cmd --> gen_min_target
+gen_cmd --> gen_build_flags
+gen_cmd --> gen_package_strictness
+
+mod_ioc --> mod_init
+mod_relux --> mod_ioc
+mod_http_client --> mod_ioc
+mod_app_config --> mod_ioc
+mod_app_config --> mod_secure_store
+mod_widget_base --> mod_app_extensions
+mod_app_intents --> mod_widget_base
+mod_static_widget --> mod_widget_base
+mod_static_widget --> mod_app_intents
+mod_live_activity --> mod_widget_base
+
+mod_ioc --> ext_swiftioc : external dep
+mod_relux --> ext_swiftuirelux : external dep
+mod_http_client --> ext_httpclient : external dep
+
+gen_project_config --> gen_versions : orchestrates
+gen_project_config --> gen_min_target : orchestrates
+gen_project_config --> gen_build_flags : orchestrates
+gen_project_config --> gen_package_strictness : orchestrates
+gen_versions --> mod_init : metadata dep
+gen_min_target --> mod_init : metadata dep
+gen_build_flags --> mod_init : metadata dep
+gen_package_strictness --> mod_init : metadata dep
+
+mod_init --> app_caps : creates empty capability set
+mod_init --> entitlements_factory : embeds helper DSL
+mod_init --> config_app_groups : when app_groups exist
+app_caps --> entitlements_factory : host app entitlements
+setup_cmd ..> cap_helper : applies Module.Capabilities before Plan
+mod_secure_store ..> cap_helper : keychainSharing
+mod_widget_base ..> cap_helper : appGroups direct call
+cap_helper --> app_caps : mutates host app set
+
+note right of cap_helper
+  Capability mutation is currently a helper,
+  not a standalone setup/generate plugin.
+  widget-base wires appGroups directly.
+end note
+
+legend right
+  |= Color |= Meaning |
+  | <#FFF3CD> | Infra setup plugin |
+  | <#D6EAF8> | Foundation setup plugin |
+  | <#FFE0B2> | Network setup plugin |
+  | <#E1BEE7> | Utils setup plugin |
+  | <#EAF2F8> | Generate plugin |
+  | <#FDEDEC> | Shared helper / side effect |
+  | <#E8F0FE> | External Swift package |
+  --
+  Solid arrows = registered dependency or execution path
+  Dotted arrows = helper side effect / non-plugin coupling
+endlegend
+
+@enduml
