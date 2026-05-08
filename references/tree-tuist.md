@@ -212,6 +212,9 @@ Project-config behavior:
 Makefile behavior:
 - Generated section is rewritten from config.
 - Custom section below marker is preserved.
+- `build` and `test` regenerate Tuist project files before invoking `xcodebuild`.
+- `build` and `test` call `clean-package-artifacts` on exit. The hook is a no-op by default and can be wired by overriding `PACKAGE_ARTIFACT_CLEANUP_CMD` in the custom section.
+- `build` uses `BUILD_DESTINATION` (`generic/platform=iOS Simulator` by default); `test` uses `TEST_DESTINATION` (`$(DESTINATION)` by default).
 
 ## F. Build Cycle (Generate -> Build -> Test -> Clean)
 
@@ -232,7 +235,8 @@ Direct commands (equivalent intent):
 
 ```bash
 tuist generate
-xcodebuild -workspace "$APP.xcworkspace" -scheme "$APP" -destination 'platform=iOS Simulator,name=iPhone 16,OS=17.0' build
+make clean-package-artifacts # no-op unless PACKAGE_ARTIFACT_CLEANUP_CMD is overridden
+xcodebuild -workspace "$APP.xcworkspace" -scheme "$APP" -destination 'generic/platform=iOS Simulator' build
 xcodebuild -workspace "$APP.xcworkspace" -scheme "$APP" -destination 'platform=iOS Simulator,name=iPhone 16,OS=17.0' test
 ios-app-manager clean
 ios-app-manager clean --deep

@@ -97,6 +97,8 @@ Example:
 
 Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
 
+Generated `make build` and `make test` run `tuist generate` before `xcodebuild` and reuse `make clean-package-artifacts` on exit. The cleanup hook is a no-op by default (`PACKAGE_ARTIFACT_CLEANUP_CMD ?= :`); projects that need checkout-specific cleanup should override that variable in the Makefile custom section. Build uses a generic iOS Simulator destination by default, while test keeps the configured concrete simulator destination unless overridden.
+
 Recommended config sync flow:
 
 ```bash

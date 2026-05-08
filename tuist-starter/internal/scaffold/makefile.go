@@ -31,8 +31,8 @@ func renderGeneratedMakefile(cfg config.ProjectConfig) string {
 	teamID := sanitizeMakeValue(cfg.TeamID, "TEAMID")
 	modulesPath := sanitizeMakeValue(normalizeModulesPath(cfg.ModulesPath), defaultModulesDir)
 	scheme := appName
-	minTarget := sanitizeMakeValue(cfg.MinTarget, "latest")
-	destination := "platform=iOS Simulator,name=iPhone 16,OS=" + minTarget
+	destination := "platform=iOS Simulator,name=iPhone 16,OS=" + sanitizeMakeValue(cfg.MinTarget, "latest")
+	buildDestination := "generic/platform=iOS Simulator"
 
 	hasPushConfig := strings.TrimSpace(cfg.PushKeyPath) != "" && strings.TrimSpace(cfg.PushKeyID) != ""
 	pushKeyPath := sanitizeMakeValue(cfg.PushKeyPath, "")
@@ -44,6 +44,7 @@ func renderGeneratedMakefile(cfg config.ProjectConfig) string {
 		"generate",
 		"build",
 		"test",
+		"clean-package-artifacts",
 		"clean",
 		"deep-clean",
 		"lint",
@@ -66,9 +67,12 @@ func renderGeneratedMakefile(cfg config.ProjectConfig) string {
 	b.WriteString("MODULES_PATH := " + modulesPath + "\n")
 	b.WriteString("SCHEME ?= " + scheme + "\n")
 	b.WriteString("DESTINATION ?= " + destination + "\n")
+	b.WriteString("BUILD_DESTINATION ?= " + buildDestination + "\n")
+	b.WriteString("TEST_DESTINATION ?= $(DESTINATION)\n")
 	b.WriteString("WORKSPACE ?= $(APP_NAME).xcworkspace\n")
 	b.WriteString("DERIVED_DATA_PATH ?= $(CURDIR)/DerivedData\n")
 	b.WriteString("TUIST_GENERATE_FLAGS ?= --no-open\n")
+	b.WriteString("PACKAGE_ARTIFACT_CLEANUP_CMD ?= :\n")
 	b.WriteString("\n")
 	if hasPushConfig {
 		b.WriteString("PUSH_KEY_PATH := " + pushKeyPath + "\n")
@@ -92,10 +96,19 @@ func renderGeneratedMakefile(cfg config.ProjectConfig) string {
 	b.WriteString("\t@tuist generate $(TUIST_GENERATE_FLAGS)\n")
 	b.WriteString("\n")
 	b.WriteString("build: ## Build the app with xcodebuild\n")
-	b.WriteString("\t@xcodebuild -workspace \"$(WORKSPACE)\" -scheme \"$(SCHEME)\" -destination \"$(DESTINATION)\" -derivedDataPath \"$(DERIVED_DATA_PATH)\" build\n")
+	b.WriteString("\t@set -e; \\\n")
+	b.WriteString("\ttrap '$(MAKE) clean-package-artifacts >/dev/null' EXIT; \\\n")
+	b.WriteString("\ttuist generate $(TUIST_GENERATE_FLAGS); \\\n")
+	b.WriteString("\txcodebuild -workspace \"$(WORKSPACE)\" -scheme \"$(SCHEME)\" -destination \"$(BUILD_DESTINATION)\" -derivedDataPath \"$(DERIVED_DATA_PATH)\" build\n")
 	b.WriteString("\n")
 	b.WriteString("test: ## Run tests with xcodebuild\n")
-	b.WriteString("\t@xcodebuild -workspace \"$(WORKSPACE)\" -scheme \"$(SCHEME)\" -destination \"$(DESTINATION)\" -derivedDataPath \"$(DERIVED_DATA_PATH)\" test\n")
+	b.WriteString("\t@set -e; \\\n")
+	b.WriteString("\ttrap '$(MAKE) clean-package-artifacts >/dev/null' EXIT; \\\n")
+	b.WriteString("\ttuist generate $(TUIST_GENERATE_FLAGS); \\\n")
+	b.WriteString("\txcodebuild -workspace \"$(WORKSPACE)\" -scheme \"$(SCHEME)\" -destination \"$(TEST_DESTINATION)\" -derivedDataPath \"$(DERIVED_DATA_PATH)\" test\n")
+	b.WriteString("\n")
+	b.WriteString("clean-package-artifacts: ## Clean generated artifacts left inside local package checkouts\n")
+	b.WriteString("\t@$(PACKAGE_ARTIFACT_CLEANUP_CMD)\n")
 	b.WriteString("\n")
 	b.WriteString("clean: ## Clean Tuist artifacts and local DerivedData\n")
 	b.WriteString("\t@tuist clean\n")
