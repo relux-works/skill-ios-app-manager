@@ -79,10 +79,8 @@ func TestStubCommandsPrintNotImplemented(t *testing.T) {
 		name string
 		args []string
 	}{
-		{name: "status", args: []string{"status"}},
 		{name: "module", args: []string{"module"}},
 		{name: "entitlements", args: []string{"entitlements"}},
-		{name: "short flags", args: []string{"-v", "-c", "custom.json", "status"}},
 	}
 
 	for _, tc := range testCases {

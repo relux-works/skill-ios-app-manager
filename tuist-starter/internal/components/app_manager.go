@@ -73,7 +73,12 @@ func (m *appManager) Status(_ context.Context) (*ProjectStatus, error) {
 		return nil, err
 	}
 
-	modules, err := m.scanModules()
+	modulesPath := strings.TrimSpace(cfg.ModulesPath)
+	if modulesPath == "" {
+		modulesPath = m.packagesDir
+	}
+
+	modules, err := m.scanModules(modulesPath)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +86,7 @@ func (m *appManager) Status(_ context.Context) (*ProjectStatus, error) {
 	return &ProjectStatus{
 		ConfigPath:            path,
 		Config:                cfg,
-		ModulesPath:           m.packagesDir,
+		ModulesPath:           modulesPath,
 		Modules:               modules,
 		DependencyGraphHealth: "unknown",
 	}, nil
@@ -163,14 +168,14 @@ func (m *appManager) DeleteModule(ctx context.Context, name string) error {
 	return nil
 }
 
-func (m *appManager) scanModules() ([]string, error) {
-	entries, err := m.readDir(m.packagesDir)
+func (m *appManager) scanModules(modulesPath string) ([]string, error) {
+	entries, err := m.readDir(modulesPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return []string{}, nil
 		}
 
-		return nil, fmt.Errorf("count modules in %q: %w", m.packagesDir, err)
+		return nil, fmt.Errorf("count modules in %q: %w", modulesPath, err)
 	}
 
 	modules := make([]string, 0, len(entries))
