@@ -45,6 +45,7 @@ func newModuleCommand(opts *RootOptions) *cobra.Command {
 
 	var moduleType string
 	var blueprintPath string
+	var modulePlatformFlags []string
 	createCommand := &cobra.Command{
 		Use:   "create <name>",
 		Short: "Create a module",
@@ -53,7 +54,7 @@ func newModuleCommand(opts *RootOptions) *cobra.Command {
 
 			// Blueprint path: bypass normal create flow.
 			if strings.TrimSpace(blueprintPath) != "" {
-				return createModuleFromBlueprint(cmd, blueprintPath, selectedConfigPath)
+				return createModuleFromBlueprint(cmd, blueprintPath, selectedConfigPath, modulePlatformFlags)
 			}
 
 			moduleName, moduleKind, selectedConfigPath, err := parseCreateModuleInput(args, moduleType, configPath)
@@ -86,6 +87,10 @@ func newModuleCommand(opts *RootOptions) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("load config: %w", err)
 			}
+			modulePlatforms, err := parseModulePlatformFlags(modulePlatformFlags)
+			if err != nil {
+				return err
+			}
 
 			normalizedModulesPath := normalizeCLIPath(cfg.ModulesPath)
 			projectRoot := filepath.Dir(selectedConfigPath)
@@ -104,7 +109,13 @@ func newModuleCommand(opts *RootOptions) *cobra.Command {
 
 			creator := modules.NewCreator(tuistManager, reluxManager)
 			cfg.ModulesPath = modulesRoot
-			if err := creator.Create(context.Background(), moduleName, string(descriptor.Type), cfg); err != nil {
+			if err := creator.Create(
+				context.Background(),
+				moduleName,
+				string(descriptor.Type),
+				cfg,
+				modules.WithPlatforms(modulePlatforms),
+			); err != nil {
 				return err
 			}
 
@@ -133,6 +144,12 @@ func newModuleCommand(opts *RootOptions) *cobra.Command {
 		"from",
 		"",
 		"Path to blueprint JSON config (bypasses --type and <name>)",
+	)
+	createCommand.PersistentFlags().StringArrayVar(
+		&modulePlatformFlags,
+		"platform",
+		nil,
+		"Generated package platform tuple <platform>:<min_target>; repeat for multiple platforms (default: iOS:<config min_target>)",
 	)
 
 	var forceDelete bool
@@ -238,7 +255,7 @@ func newModuleCommand(opts *RootOptions) *cobra.Command {
 	return cmd
 }
 
-func createModuleFromBlueprint(cmd *cobra.Command, bpPath string, configPath string) error {
+func createModuleFromBlueprint(cmd *cobra.Command, bpPath string, configPath string, platformFlags []string) error {
 	bp, err := blueprint.ParseFile(bpPath)
 	if err != nil {
 		return err
@@ -250,6 +267,10 @@ func createModuleFromBlueprint(cmd *cobra.Command, bpPath string, configPath str
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
+	}
+	modulePlatforms, err := parseModulePlatformFlags(platformFlags)
+	if err != nil {
+		return err
 	}
 
 	normalizedModulesPath := normalizeCLIPath(cfg.ModulesPath)
@@ -268,6 +289,7 @@ func createModuleFromBlueprint(cmd *cobra.Command, bpPath string, configPath str
 		Name:         bp.Name,
 		Type:         "relux-feature",
 		ExternalDeps: extDeps,
+		Platforms:    modulePlatforms,
 		Config:       cfg,
 	}); err != nil {
 		return fmt.Errorf("create module in tuist project: %w", err)
@@ -390,6 +412,65 @@ func addInternalDepsToPackageSwift(modulesRoot, moduleName string, deps []intern
 		}
 	}
 	return nil
+}
+
+func parseModulePlatformFlags(rawPlatforms []string) ([]components.PlatformTarget, error) {
+	if len(rawPlatforms) == 0 {
+		return nil, nil
+	}
+
+	platforms := make([]components.PlatformTarget, 0, len(rawPlatforms))
+	for index, raw := range rawPlatforms {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			return nil, fmt.Errorf(
+				"module platform tuple #%d is empty; expected <platform>:<min_target>, e.g. iOS:16.0",
+				index+1,
+			)
+		}
+
+		separator := strings.Index(value, ":")
+		if separator < 0 {
+			separator = strings.Index(value, "=")
+		}
+		if separator < 0 {
+			return nil, fmt.Errorf(
+				"module platform tuple #%d %q must use <platform>:<min_target>, e.g. iOS:16.0",
+				index+1,
+				raw,
+			)
+		}
+
+		platform := strings.TrimSpace(value[:separator])
+		minTarget := strings.TrimSpace(value[separator+1:])
+		if platform == "" {
+			return nil, fmt.Errorf(
+				"module platform tuple #%d has empty platform; expected <platform>:<min_target>, e.g. iOS:16.0",
+				index+1,
+			)
+		}
+		if minTarget == "" {
+			return nil, fmt.Errorf(
+				"module platform tuple #%d has empty min target; expected <platform>:<min_target>, e.g. iOS:16.0",
+				index+1,
+			)
+		}
+		parsedPlatform, err := components.ParsePlatform(platform)
+		if err != nil {
+			return nil, fmt.Errorf("module platform tuple #%d: %w", index+1, err)
+		}
+
+		platforms = append(platforms, components.PlatformTarget{
+			Platform:  parsedPlatform,
+			MinTarget: minTarget,
+		})
+	}
+
+	if len(platforms) == 0 {
+		return nil, fmt.Errorf("module platforms are required: provide at least one --platform <platform>:<min_target>")
+	}
+
+	return platforms, nil
 }
 
 func parseCreateModuleInput(

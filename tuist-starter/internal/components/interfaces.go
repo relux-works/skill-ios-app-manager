@@ -20,11 +20,18 @@ type ExternalDep struct {
 	Version     string // e.g., `from: "9.0.0"`
 }
 
+// PlatformTarget describes a generated SwiftPM platform and its minimum version.
+type PlatformTarget struct {
+	Platform  Platform // e.g., PlatformIOS
+	MinTarget string   // e.g., "16.0"
+}
+
 // ModuleOpts identifies a module operation target.
 type ModuleOpts struct {
 	Name         string
 	Type         string
 	ExternalDeps []ExternalDep
+	Platforms    []PlatformTarget
 	Config       config.ProjectConfig
 }
 
