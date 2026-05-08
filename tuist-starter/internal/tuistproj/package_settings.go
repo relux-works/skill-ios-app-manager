@@ -41,6 +41,17 @@ func EnsureFrameworkProductTypes(path string, productNames ...string) error {
 	return nil
 }
 
+// EnsureFrameworkProductTypesInContent forces the provided Swift package
+// products to be generated as frameworks in a root Package.swift payload.
+func EnsureFrameworkProductTypesInContent(content string, productNames ...string) (string, error) {
+	normalized := normalizeFrameworkProductNames(productNames)
+	if len(normalized) == 0 {
+		return content, nil
+	}
+
+	return ensureFrameworkProductTypesContent(content, normalized)
+}
+
 // RemoveFrameworkProductTypes removes the provided framework product overrides
 // from root Package.swift PackageSettings when present.
 func RemoveFrameworkProductTypes(path string, productNames ...string) error {
@@ -68,6 +79,17 @@ func RemoveFrameworkProductTypes(path string, productNames ...string) error {
 	}
 
 	return nil
+}
+
+// RemoveFrameworkProductTypesInContent removes the provided framework product
+// overrides from a root Package.swift payload.
+func RemoveFrameworkProductTypesInContent(content string, productNames ...string) (string, error) {
+	normalized := normalizeFrameworkProductNames(productNames)
+	if len(normalized) == 0 {
+		return content, nil
+	}
+
+	return removeFrameworkProductTypesContent(content, normalized)
 }
 
 func ensureFrameworkProductTypesContent(content string, productNames []string) (string, error) {

@@ -24,10 +24,66 @@ func TestGenerateHelpShowsMakefileSubcommand(t *testing.T) {
 		}
 	}
 
-	for _, expected := range []string{"versions", "min-target", "build-flags", "project-config"} {
+	for _, expected := range []string{"versions", "min-target", "app-capabilities", "build-flags", "project-config"} {
 		if !strings.Contains(output, expected) {
 			t.Fatalf("generate --help output missing %q:\n%s", expected, output)
 		}
+	}
+}
+
+func TestGenerateAppCapabilitiesAddsConfiguredAppGroups(t *testing.T) {
+	t.Parallel()
+
+	cfg := testProjectConfig()
+	configPath := writeTestConfig(t, cfg)
+	projectRoot := filepath.Dir(configPath)
+
+	writeGenerateVersionManifest(
+		t,
+		filepath.Join(projectRoot, "Tuist", "ProjectDescriptionHelpers", "AppCapabilities.swift"),
+		scaffold.GenerateAppCapabilities(),
+	)
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Project.swift"), `import ProjectDescription
+
+let project = Project(
+    name: "DemoApp",
+    targets: [
+        .target(
+            name: "DemoApp",
+            infoPlist: .extendingDefault(
+                with: [
+                    "UILaunchScreen": .dictionary([:]),
+                ]
+            )
+            dependencies: []
+        )
+    ]
+)
+`)
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Package.swift"), `// swift-tools-version: 6.2
+import PackageDescription
+
+let package = Package(
+    name: "DemoDependencies",
+    dependencies: [],
+    targets: []
+)
+`)
+
+	output, err := executeRootCommand("generate", "--config", configPath, "app-capabilities")
+	if err != nil {
+		t.Fatalf("executeRootCommand(generate app-capabilities) error = %v", err)
+	}
+	if !strings.Contains(output, "regenerated app capabilities via 1 enabled subplugin(s), updated 6 file(s)") {
+		t.Fatalf("generate app-capabilities output = %q, want regenerate message", output)
+	}
+
+	content, err := os.ReadFile(filepath.Join(projectRoot, "Tuist", "ProjectDescriptionHelpers", "AppCapabilities.swift"))
+	if err != nil {
+		t.Fatalf("ReadFile(AppCapabilities.swift) error = %v", err)
+	}
+	if !strings.Contains(string(content), `.appGroups(group: .custom(id: "group.com.example.demo"))`) {
+		t.Fatalf("AppCapabilities.swift missing app group:\n%s", string(content))
 	}
 }
 
@@ -162,6 +218,11 @@ let project = Project(
             name: "DemoApp",
             bundleId: "com.demo.app",
             deploymentTargets: .iOS("16.0"),
+            infoPlist: .extendingDefault(
+                with: [
+                    "UILaunchScreen": .dictionary([:]),
+                ]
+            ),
             settings: .settings(
                 base: [
                     "IPHONEOS_DEPLOYMENT_TARGET": .string("16.0"),
@@ -485,6 +546,11 @@ let project = Project(
             name: "DemoApp",
             bundleId: "com.demo.app",
             deploymentTargets: .iOS("16.0"),
+            infoPlist: .extendingDefault(
+                with: [
+                    "UILaunchScreen": .dictionary([:]),
+                ]
+            ),
             settings: .settings(
                 base: [
                     "IPHONEOS_DEPLOYMENT_TARGET": .string("16.0"),
@@ -558,6 +624,11 @@ let package = Package(
     ]
 )
 `)
+	writeGenerateVersionManifest(
+		t,
+		filepath.Join(projectRoot, "Tuist", "ProjectDescriptionHelpers", "AppCapabilities.swift"),
+		scaffold.GenerateAppCapabilities(),
+	)
 
 	updatedCfg := cfg
 	updatedCfg.MarketingVersion = "2.0.0"
@@ -575,7 +646,8 @@ let package = Package(
 	for _, want := range []string{
 		"project config sync summary:",
 		"- versions: regenerated version manifests in 2 file(s)",
-		"- min-target: regenerated min target manifests in 2 file(s)",
+		"- min-target: regenerated min target manifests in 3 file(s)",
+		"- app-capabilities: regenerated app capabilities via 1 enabled subplugin(s), updated 7 file(s)",
 		"- build-flags: regenerated build flag manifests in 2 file(s)",
 		"- package-strictness: regenerated package strictness manifests in 1 file(s)",
 	} {
@@ -617,6 +689,22 @@ let package = Package(
 				t.Fatalf("%s missing %q:\n%s", manifestPath, want, string(content))
 			}
 		}
+	}
+
+	packageManifest, err := os.ReadFile(filepath.Join(projectRoot, "Packages", "Auth", "Package.swift"))
+	if err != nil {
+		t.Fatalf("ReadFile(Packages/Auth/Package.swift) error = %v", err)
+	}
+	if !strings.Contains(string(packageManifest), `.iOS(.v18)`) {
+		t.Fatalf("Package.swift missing synced iOS minimum:\n%s", string(packageManifest))
+	}
+
+	appCapabilities, err := os.ReadFile(filepath.Join(projectRoot, "Tuist", "ProjectDescriptionHelpers", "AppCapabilities.swift"))
+	if err != nil {
+		t.Fatalf("ReadFile(AppCapabilities.swift) error = %v", err)
+	}
+	if !strings.Contains(string(appCapabilities), `.appGroups(group: .custom(id: "group.com.example.demo"))`) {
+		t.Fatalf("AppCapabilities.swift missing app group:\n%s", string(appCapabilities))
 	}
 }
 

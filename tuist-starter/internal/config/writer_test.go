@@ -92,6 +92,7 @@ func TestWriteProjectConfigAppliesDefaults(t *testing.T) {
 	cfg := validProjectConfig()
 	cfg.ProductName = ""
 	cfg.ModulesPath = ""
+	cfg.SharedConfig.ModuleName = ""
 
 	if err := WriteProjectConfig(path, cfg); err != nil {
 		t.Fatalf("WriteProjectConfig() error = %v", err)
@@ -107,5 +108,8 @@ func TestWriteProjectConfigAppliesDefaults(t *testing.T) {
 	}
 	if got.ModulesPath != "Packages" {
 		t.Fatalf("ModulesPath = %q, want %q", got.ModulesPath, "Packages")
+	}
+	if got.SharedConfig.ModuleName != "SharedConfig" {
+		t.Fatalf("SharedConfig.ModuleName = %q, want %q", got.SharedConfig.ModuleName, "SharedConfig")
 	}
 }

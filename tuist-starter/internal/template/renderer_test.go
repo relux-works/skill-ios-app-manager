@@ -264,6 +264,8 @@ func TestInfoPlistKey(t *testing.T) {
 	}{
 		{"group.com.example.demo", "GROUP_COM_EXAMPLE_DEMO"},
 		{"group.com.example.shared", "GROUP_COM_EXAMPLE_SHARED"},
+		{"group.com.example-demo.app.shared", "GROUP_COM_EXAMPLE_DEMO_APP_SHARED"},
+		{" group.com.example--shared ", "GROUP_COM_EXAMPLE_SHARED"},
 		{"single", "SINGLE"},
 		{"a.b.c.d", "A_B_C_D"},
 	}
@@ -272,6 +274,65 @@ func TestInfoPlistKey(t *testing.T) {
 		if got != tt.want {
 			t.Fatalf("InfoPlistKey(%q) = %q, want %q", tt.input, got, tt.want)
 		}
+	}
+}
+
+func TestAppGroupGeneratedNamesUseConfigValuesWithoutLeakingGroupValueShape(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		bundleID     string
+		group        string
+		wantKey      string
+		wantProperty string
+	}{
+		{
+			name:         "main app group",
+			bundleID:     "com.example.app",
+			group:        "group.com.example.app",
+			wantKey:      "APP_GROUP_MAIN",
+			wantProperty: "main",
+		},
+		{
+			name:         "shared suffix",
+			bundleID:     "com.example.app",
+			group:        "group.com.example.app.shared",
+			wantKey:      "APP_GROUP_SHARED",
+			wantProperty: "shared",
+		},
+		{
+			name:         "hyphenated suffix",
+			bundleID:     "com.example-demo.app",
+			group:        "group.com.example-demo.app.user-cache",
+			wantKey:      "APP_GROUP_USER_CACHE",
+			wantProperty: "userCache",
+		},
+		{
+			name:         "sdk suffix",
+			bundleID:     "com.example.app",
+			group:        "group.com.example.app.pushsdk",
+			wantKey:      "APP_GROUP_PUSHSDK",
+			wantProperty: "pushSDK",
+		},
+		{
+			name:         "external group remains generic",
+			bundleID:     "com.example.app",
+			group:        "group.com.partner.shared",
+			wantKey:      "APP_GROUP_COM_PARTNER_SHARED",
+			wantProperty: "comPartnerShared",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := AppGroupInfoPlistKey(tt.bundleID, tt.group); got != tt.wantKey {
+				t.Fatalf("AppGroupInfoPlistKey(%q, %q) = %q, want %q", tt.bundleID, tt.group, got, tt.wantKey)
+			}
+			if got := AppGroupSwiftIdentifier(tt.bundleID, tt.group); got != tt.wantProperty {
+				t.Fatalf("AppGroupSwiftIdentifier(%q, %q) = %q, want %q", tt.bundleID, tt.group, got, tt.wantProperty)
+			}
+		})
 	}
 }
 

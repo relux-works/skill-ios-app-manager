@@ -118,12 +118,14 @@ func (r *Renderer) renderTemplate(templateName string, data rendererTemplateData
 	tpl, err := template.New(templateName).
 		Option("missingkey=error").
 		Funcs(template.FuncMap{
-			"configKind":          configKind,
-			"infoPlistKey":        InfoPlistKey,
-			"packageBuildSetting": packageBuildSetting,
-			"packagePath":         packagePath,
-			"projectBuildSetting": projectBuildSetting,
-			"swiftLiteral":        swiftLiteral,
+			"appGroupDictionaryKey": AppGroupSwiftIdentifier,
+			"appGroupInfoPlistKey":  AppGroupInfoPlistKey,
+			"configKind":            configKind,
+			"infoPlistKey":          InfoPlistKey,
+			"packageBuildSetting":   packageBuildSetting,
+			"packagePath":           packagePath,
+			"projectBuildSetting":   projectBuildSetting,
+			"swiftLiteral":          swiftLiteral,
 		}).
 		ParseFS(templatesFS, templatePath)
 	if err != nil {
@@ -256,8 +258,153 @@ func packageBuildSetting(key, value string) string {
 	return fmt.Sprintf(`"%s": %s,`, key, strconv.Quote(value))
 }
 
-// InfoPlistKey converts a dotted identifier to an uppercase underscore-separated key.
-// Example: "group.com.example.demo" → "GROUP_COM_EXAMPLE_DEMO"
+// InfoPlistKey converts an identifier to an uppercase underscore-separated key.
+// Example: "group.com.example-demo" -> "GROUP_COM_EXAMPLE_DEMO"
 func InfoPlistKey(s string) string {
-	return strings.ToUpper(strings.ReplaceAll(s, ".", "_"))
+	var b strings.Builder
+	previousUnderscore := false
+
+	for _, r := range strings.TrimSpace(s) {
+		switch {
+		case r >= 'a' && r <= 'z':
+			b.WriteRune(r - ('a' - 'A'))
+			previousUnderscore = false
+		case r >= 'A' && r <= 'Z':
+			b.WriteRune(r)
+			previousUnderscore = false
+		case r >= '0' && r <= '9':
+			b.WriteRune(r)
+			previousUnderscore = false
+		default:
+			if !previousUnderscore {
+				b.WriteByte('_')
+				previousUnderscore = true
+			}
+		}
+	}
+
+	return strings.Trim(b.String(), "_")
+}
+
+// AppGroupInfoPlistKey returns a short app-group Info.plist key.
+// Example: bundle "com.example.app", group "group.com.example.app.shared" -> "APP_GROUP_SHARED".
+func AppGroupInfoPlistKey(bundleID, group string) string {
+	key := InfoPlistKey(appGroupStem(bundleID, group))
+	if key == "" {
+		key = "MAIN"
+	}
+	return "APP_GROUP_" + key
+}
+
+// AppGroupSwiftIdentifier returns a Swift lowerCamelCase property name for an app group.
+// Example: bundle "com.example.app", group "group.com.example.app.shared" -> "shared".
+func AppGroupSwiftIdentifier(bundleID, group string) string {
+	identifier := lowerCamelIdentifier(appGroupStem(bundleID, group))
+	if identifier == "" {
+		return "main"
+	}
+	return avoidSwiftKeyword(identifier)
+}
+
+func appGroupStem(bundleID, group string) string {
+	bundleID = strings.TrimSpace(bundleID)
+	group = strings.TrimSpace(group)
+	if group == "" {
+		return ""
+	}
+
+	if bundleID != "" {
+		prefix := "group." + bundleID
+		switch {
+		case group == prefix:
+			return "main"
+		case strings.HasPrefix(group, prefix+"."):
+			return strings.TrimPrefix(group, prefix+".")
+		}
+	}
+
+	return strings.TrimPrefix(group, "group.")
+}
+
+func lowerCamelIdentifier(raw string) string {
+	parts := alphanumericParts(raw)
+	if len(parts) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	for index, part := range parts {
+		part = strings.ToLower(part)
+		if index == 0 {
+			b.WriteString(applyKnownAcronymSuffixes(part))
+			continue
+		}
+		b.WriteString(strings.ToUpper(part[:1]))
+		if len(part) > 1 {
+			b.WriteString(applyKnownAcronymSuffixes(part[1:]))
+		}
+	}
+
+	out := b.String()
+	if out == "" {
+		return ""
+	}
+	if out[0] >= '0' && out[0] <= '9' {
+		return "appGroup" + strings.ToUpper(out[:1]) + out[1:]
+	}
+	return out
+}
+
+func applyKnownAcronymSuffixes(part string) string {
+	for _, acronym := range []string{"sdk"} {
+		if strings.HasSuffix(part, acronym) && len(part) > len(acronym) {
+			return part[:len(part)-len(acronym)] + strings.ToUpper(acronym)
+		}
+	}
+	return part
+}
+
+func alphanumericParts(raw string) []string {
+	parts := make([]string, 0)
+	var current strings.Builder
+
+	flush := func() {
+		if current.Len() == 0 {
+			return
+		}
+		parts = append(parts, current.String())
+		current.Reset()
+	}
+
+	for _, r := range strings.TrimSpace(raw) {
+		switch {
+		case r >= 'a' && r <= 'z':
+			current.WriteRune(r)
+		case r >= 'A' && r <= 'Z':
+			current.WriteRune(r)
+		case r >= '0' && r <= '9':
+			current.WriteRune(r)
+		default:
+			flush()
+		}
+	}
+	flush()
+
+	return parts
+}
+
+func avoidSwiftKeyword(identifier string) string {
+	switch identifier {
+	case "associatedtype", "class", "deinit", "enum", "extension", "fileprivate",
+		"func", "import", "init", "inout", "internal", "let", "open", "operator",
+		"private", "precedencegroup", "protocol", "public", "rethrows", "static",
+		"struct", "subscript", "typealias", "var", "break", "case", "catch",
+		"continue", "default", "defer", "do", "else", "fallthrough", "for",
+		"guard", "if", "in", "repeat", "return", "throw", "switch", "where",
+		"while", "as", "Any", "false", "is", "nil", "self", "Self", "super",
+		"throws", "true", "try":
+		return identifier + "Group"
+	default:
+		return identifier
+	}
 }

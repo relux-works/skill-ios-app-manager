@@ -12,23 +12,23 @@ func TestListConfigs(t *testing.T) {
 
 	dir := t.TempDir()
 
-	mtsPath := filepath.Join(dir, "config-mts.json")
-	fcPath := filepath.Join(dir, "config-fc.json")
+	alphaPath := filepath.Join(dir, "config-alpha.json")
+	betaPath := filepath.Join(dir, "config-beta.json")
 	invalidPath := filepath.Join(dir, "config-invalid.json")
 	nonJSONPath := filepath.Join(dir, "README.txt")
 
-	mtsCfg := validProjectConfig()
-	mtsCfg.BundleID = "com.example.mts"
-	mtsCfg.AppName = "MTS"
-	if err := WriteProjectConfig(mtsPath, mtsCfg); err != nil {
-		t.Fatalf("WriteProjectConfig(%q) error = %v", mtsPath, err)
+	alphaCfg := validProjectConfig()
+	alphaCfg.BundleID = "com.example.alpha"
+	alphaCfg.AppName = "Alpha"
+	if err := WriteProjectConfig(alphaPath, alphaCfg); err != nil {
+		t.Fatalf("WriteProjectConfig(%q) error = %v", alphaPath, err)
 	}
 
-	fcCfg := validProjectConfig()
-	fcCfg.BundleID = "com.example.fc"
-	fcCfg.AppName = "FC"
-	if err := WriteProjectConfig(fcPath, fcCfg); err != nil {
-		t.Fatalf("WriteProjectConfig(%q) error = %v", fcPath, err)
+	betaCfg := validProjectConfig()
+	betaCfg.BundleID = "com.example.beta"
+	betaCfg.AppName = "Beta"
+	if err := WriteProjectConfig(betaPath, betaCfg); err != nil {
+		t.Fatalf("WriteProjectConfig(%q) error = %v", betaPath, err)
 	}
 
 	if err := os.WriteFile(invalidPath, []byte(`{"app_name":"oops"}`), 0o644); err != nil {
@@ -44,7 +44,7 @@ func TestListConfigs(t *testing.T) {
 		t.Fatalf("ListConfigs(%q) error = %v", dir, err)
 	}
 
-	want := []string{fcPath, mtsPath}
+	want := []string{alphaPath, betaPath}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("ListConfigs(%q) = %#v, want %#v", dir, got, want)
 	}

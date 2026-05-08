@@ -68,6 +68,7 @@ func TestProjectConfigValidateInvalidFormatsAllReturned(t *testing.T) {
 	cfg.ProjectSettings.Swift.Concurrency.StrictChecking = "hard"
 	cfg.ProjectSettings.Swift.Concurrency.MemberImportVisibility = "later"
 	cfg.ProjectSettings.Swift.Concurrency.ExistentialAny = "never"
+	cfg.SharedConfig.ModuleName = "Shared-Config"
 	cfg.AppGroups = []string{"", "group.com.example.demo"}
 	cfg.Configurations = []string{"Debug", ""}
 
@@ -85,6 +86,7 @@ func TestProjectConfigValidateInvalidFormatsAllReturned(t *testing.T) {
 		"ProjectSettings.Swift.Concurrency.StrictChecking must be minimal, targeted, or complete",
 		"ProjectSettings.Swift.Concurrency.MemberImportVisibility must be yes, migrate, or no",
 		"ProjectSettings.Swift.Concurrency.ExistentialAny must be yes, migrate, or no",
+		"SharedConfig.ModuleName must be a valid Swift module identifier",
 		"AppGroups[0] must not be empty",
 		"Configurations[1] must not be empty",
 	}

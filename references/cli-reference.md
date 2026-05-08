@@ -34,6 +34,7 @@ ios-app-manager [command] [flags]
 | `generate project-config` | Sync manifest config slices across app + extensions | `ios-app-manager generate project-config` |
 | `generate versions` | Generate or update app + extension versions | `ios-app-manager generate versions` |
 | `generate min-target` | Generate or update app + extension deployment target markers | `ios-app-manager generate min-target` |
+| `generate app-capabilities` | Generate or update host app capabilities from config | `ios-app-manager generate app-capabilities` |
 | `generate build-flags` | Generate or update strict Swift compiler build flags in app + extension manifests | `ios-app-manager generate build-flags` |
 | `clean [--deep] [--kill-xcode]` | Clean local/global build artifacts | `ios-app-manager clean --deep` |
 | `push send --token <token> [--env dev\|prod] [--payload <file>]` | Send APNs push using project credentials | `ios-app-manager push send --token "$TOKEN" --env dev` |
@@ -339,6 +340,26 @@ Example:
 ios-app-manager generate min-target
 ```
 
+### `generate app-capabilities`
+
+Syntax:
+```bash
+ios-app-manager generate app-capabilities
+```
+
+Description:
+- Orchestrates host app capability subplugins.
+- `app-groups` is the current capability subplugin. It syncs configured `app_groups` from `ios-app-manager.json` into `Tuist/ProjectDescriptionHelpers/AppCapabilities.swift`, host `Project.swift` Info.plist keys, and `Configuration+AppGroups.swift`.
+- Runs as a scaffold generator plugin with explicit `init` dependency. Concrete capability concerns should be added as subplugins rather than collected into one large capability function.
+
+Flags:
+- `--config <path>`: Optional command-level config override.
+
+Example:
+```bash
+ios-app-manager generate app-capabilities
+```
+
 ### `generate build-flags`
 
 Syntax:
@@ -372,7 +393,9 @@ Description:
 - Runs the current config-sync leaf plugins in order:
   - `generate versions`
   - `generate min-target`
+  - `generate app-capabilities`
   - `generate build-flags`
+  - `generate package-strictness`
 - Prints one summary that shows the outcome of each leaf sync.
 
 Flags:

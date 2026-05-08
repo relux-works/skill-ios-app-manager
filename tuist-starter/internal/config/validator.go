@@ -10,6 +10,7 @@ var (
 	bundleIDPattern     = regexp.MustCompile(`^[A-Za-z0-9]+(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+$`)
 	versionPattern      = regexp.MustCompile(`^\d+\.\d+$`)
 	languageModePattern = regexp.MustCompile(`^v\d+(?:_\d+)?$`)
+	swiftModulePattern  = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 )
 
 // ValidationErrors aggregates all config validation issues in one error.
@@ -44,6 +45,9 @@ func (c ProjectConfig) Validate() error {
 	}
 	if value := strings.TrimSpace(c.ProjectSettings.Swift.LanguageMode); value != "" && !languageModePattern.MatchString(value) {
 		issues = append(issues, "ProjectSettings.Swift.LanguageMode must use SwiftPM format (e.g. v6)")
+	}
+	if value := strings.TrimSpace(c.SharedConfig.ModuleName); value != "" && !swiftModulePattern.MatchString(value) {
+		issues = append(issues, "SharedConfig.ModuleName must be a valid Swift module identifier (e.g. SharedConfig)")
 	}
 
 	switch value := strings.TrimSpace(c.ProjectSettings.Swift.Concurrency.DefaultActorIsolation); value {
