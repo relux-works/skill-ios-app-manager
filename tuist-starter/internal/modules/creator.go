@@ -27,6 +27,23 @@ type Creator struct {
 	stat  func(name string) (os.FileInfo, error)
 }
 
+// CreateOption configures module creation.
+type CreateOption func(*CreateOptions)
+
+// CreateOptions configures module creation.
+type CreateOptions struct {
+	Platforms []components.PlatformTarget
+}
+
+// WithPlatforms overrides generated SwiftPM package platforms.
+func WithPlatforms(platforms []components.PlatformTarget) CreateOption {
+	return func(options *CreateOptions) {
+		if len(platforms) > 0 {
+			options.Platforms = append([]components.PlatformTarget(nil), platforms...)
+		}
+	}
+}
+
 // NewCreator constructs a module creator facade.
 func NewCreator(tuist components.TuistProjectManager, relux components.ReluxManager) *Creator {
 	return &Creator{
@@ -42,6 +59,7 @@ func (c *Creator) Create(
 	moduleName string,
 	moduleType string,
 	cfg config.ProjectConfig,
+	createOptions ...CreateOption,
 ) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -65,10 +83,18 @@ func (c *Creator) Create(
 		return err
 	}
 
+	options := CreateOptions{}
+	for _, apply := range createOptions {
+		if apply != nil {
+			apply(&options)
+		}
+	}
+
 	if err := c.tuist.CreateModule(ctx, components.ModuleOpts{
 		Name:         name,
 		Type:         string(descriptor.Type),
 		ExternalDeps: convertExternalDeps(descriptor.ExternalDeps),
+		Platforms:    options.Platforms,
 		Config:       cfg,
 	}); err != nil {
 		return fmt.Errorf("create module in tuist project: %w", err)

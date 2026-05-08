@@ -39,11 +39,12 @@ var (
 )
 
 type modulePackageSpec struct {
-	ModuleName   string
-	PackageName  string
-	TargetName   string
-	PackageType  PackageType
-	ExternalDeps []ExternalProductDep
+	ModuleName      string
+	PackageName     string
+	TargetName      string
+	PackageType     PackageType
+	ExternalDeps    []ExternalProductDep
+	PlatformTargets []components.PlatformTarget
 }
 
 // ManagerOption configures TuistProjectManager.
@@ -279,9 +280,15 @@ func (m *TuistProjectManager) CreateModule(ctx context.Context, opts components.
 		effectiveConfig = opts.Config
 	}
 
+	platforms, err := resolveModulePackagePlatforms(opts.Platforms, effectiveConfig)
+	if err != nil {
+		return err
+	}
+
 	specs := buildModulePackageSpecs(moduleName, moduleType)
 	for i := range specs {
 		specs[i].ExternalDeps = externalDeps
+		specs[i].PlatformTargets = platforms
 	}
 	createdPaths := make([]string, 0, len(specs))
 	for _, spec := range specs {
@@ -413,6 +420,7 @@ func (m *TuistProjectManager) createModulePackage(spec modulePackageSpec, cfg co
 		ModuleName:   spec.ModuleName,
 		Type:         spec.PackageType,
 		ExternalDeps: spec.ExternalDeps,
+		Platforms:    spec.PlatformTargets,
 		Platform:     m.platform,
 		Config:       cfg,
 	})
@@ -436,6 +444,71 @@ func (m *TuistProjectManager) createModulePackage(spec modulePackageSpec, cfg co
 	}
 
 	return packagePath, nil
+}
+
+func resolveModulePackagePlatforms(
+	platforms []components.PlatformTarget,
+	cfg config.ProjectConfig,
+) ([]components.PlatformTarget, error) {
+	if len(platforms) > 0 {
+		return validateModulePackagePlatforms(platforms)
+	}
+
+	minTarget := strings.TrimSpace(cfg.MinTarget)
+	if minTarget == "" {
+		return nil, fmt.Errorf(
+			"module package platforms are required: pass --platform iOS:16.0 or set min_target in ios-app-manager.json",
+		)
+	}
+
+	return validateModulePackagePlatforms([]components.PlatformTarget{
+		{
+			Platform:  components.PlatformIOS,
+			MinTarget: minTarget,
+		},
+	})
+}
+
+func validateModulePackagePlatforms(platforms []components.PlatformTarget) ([]components.PlatformTarget, error) {
+	if len(platforms) == 0 {
+		return nil, fmt.Errorf(
+			"module package platforms are required: provide at least one <platform>:<min_target> tuple",
+		)
+	}
+
+	normalized := make([]components.PlatformTarget, 0, len(platforms))
+	for index, platform := range platforms {
+		name := strings.TrimSpace(string(platform.Platform))
+		minTarget := strings.TrimSpace(platform.MinTarget)
+		if name == "" {
+			return nil, fmt.Errorf(
+				"module package platform #%d has empty platform; expected <platform>:<min_target>, e.g. iOS:16.0",
+				index+1,
+			)
+		}
+		if minTarget == "" {
+			return nil, fmt.Errorf(
+				"module package platform #%d has empty min target; expected <platform>:<min_target>, e.g. iOS:16.0",
+				index+1,
+			)
+		}
+		parsedPlatform, err := components.ParsePlatform(name)
+		if err != nil {
+			return nil, fmt.Errorf("module package platform #%d: %w", index+1, err)
+		}
+
+		normalizedTarget := components.PlatformTarget{
+			Platform:  parsedPlatform,
+			MinTarget: minTarget,
+		}
+		if _, err := swiftPackagePlatform(normalizedTarget); err != nil {
+			return nil, fmt.Errorf("module package platform #%d: %w", index+1, err)
+		}
+
+		normalized = append(normalized, normalizedTarget)
+	}
+
+	return normalized, nil
 }
 
 func (m *TuistProjectManager) rollbackCreatedPackages(paths []string) {

@@ -22,6 +22,7 @@ func TestCreatorCreateFeatureModule(t *testing.T) {
 
 	err := creator.Create(context.Background(), "Auth", "feature", config.ProjectConfig{
 		ModulesPath: filepath.Join(root, "Packages"),
+		MinTarget:   "16.0",
 	})
 	if err != nil {
 		t.Fatalf("Create(feature) error = %v", err)
@@ -44,6 +45,7 @@ func TestCreatorCreateUtilityModule(t *testing.T) {
 
 	err := creator.Create(context.Background(), "Logger", "utility", config.ProjectConfig{
 		ModulesPath: filepath.Join(root, "Packages"),
+		MinTarget:   "16.0",
 	})
 	if err != nil {
 		t.Fatalf("Create(utility) error = %v", err)
@@ -64,6 +66,7 @@ func TestCreatorCreateKitModule(t *testing.T) {
 
 	err := creator.Create(context.Background(), "Networking", "kit", config.ProjectConfig{
 		ModulesPath: filepath.Join(root, "Packages"),
+		MinTarget:   "16.0",
 	})
 	if err != nil {
 		t.Fatalf("Create(kit) error = %v", err)
@@ -92,6 +95,7 @@ func TestCreatorCreateUsesConfigDrivenSwiftSettings(t *testing.T) {
 
 	cfg := config.ProjectConfig{
 		ModulesPath:  filepath.Join(root, "Packages"),
+		MinTarget:    "16.0",
 		SwiftVersion: "6.0",
 		ProjectSettings: config.ProjectSettings{
 			Swift: config.SwiftProjectSettings{
@@ -133,6 +137,7 @@ func TestCreatorCreateSharedModule(t *testing.T) {
 
 	err := creator.Create(context.Background(), "Storage", "shared", config.ProjectConfig{
 		ModulesPath: filepath.Join(root, "Packages"),
+		MinTarget:   "16.0",
 	})
 	if err != nil {
 		t.Fatalf("Create(shared) error = %v", err)
@@ -155,6 +160,7 @@ func TestCreatorCreateUIModule(t *testing.T) {
 
 	err := creator.Create(context.Background(), "DesignSystem", "ui", config.ProjectConfig{
 		ModulesPath: filepath.Join(root, "Packages"),
+		MinTarget:   "16.0",
 	})
 	if err != nil {
 		t.Fatalf("Create(ui) error = %v", err)
@@ -181,6 +187,7 @@ func TestCreatorCreateDetectsConflicts(t *testing.T) {
 
 	err := creator.Create(context.Background(), "Auth", "feature", config.ProjectConfig{
 		ModulesPath: filepath.Join(root, "Packages"),
+		MinTarget:   "16.0",
 	})
 	if err == nil {
 		t.Fatal("Create(feature) error = nil, want conflict error")

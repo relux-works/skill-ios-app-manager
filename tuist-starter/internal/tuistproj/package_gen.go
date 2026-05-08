@@ -3,9 +3,11 @@ package tuistproj
 import (
 	"embed"
 	"fmt"
+	"strconv"
 	"strings"
 	"text/template"
 
+	"github.com/relux-works/ios-app-manager/internal/components"
 	"github.com/relux-works/ios-app-manager/internal/config"
 )
 
@@ -42,6 +44,7 @@ type PackageGenerationInput struct {
 	Type         PackageType
 	Dependencies []string
 	ExternalDeps []ExternalProductDep
+	Platforms    []components.PlatformTarget
 	Platform     string
 	Config       config.ProjectConfig
 }
@@ -50,7 +53,7 @@ type packageTemplateData struct {
 	PackageName          string
 	ProductName          string
 	TargetName           string
-	Platform             string
+	Platforms            []string
 	PackageDependencies  []packageDependency
 	TargetDependencies   []packageDependency
 	ExternalDependencies []externalPackageDep
@@ -82,9 +85,12 @@ func GeneratePackageSwift(input PackageGenerationInput) (string, error) {
 		return "", fmt.Errorf("ModuleName is required")
 	}
 
-	platform := normalizePackagePlatform(input.Platform)
-	if platform == "" {
-		return "", fmt.Errorf("Platform is required")
+	platforms, err := normalizePackagePlatforms(input.Platforms, input.Platform)
+	if err != nil {
+		return "", err
+	}
+	if len(platforms) == 0 {
+		return "", fmt.Errorf("Platforms are required: provide at least one <platform>:<min_target> tuple")
 	}
 
 	moduleType := normalizePackageType(input.Type)
@@ -99,7 +105,7 @@ func GeneratePackageSwift(input PackageGenerationInput) (string, error) {
 	effectiveSwift := input.Config.EffectiveSwiftSettings()
 
 	data := packageTemplateData{
-		Platform:             platform,
+		Platforms:            platforms,
 		SwiftToolsVersionTag: effectiveSwift.ToolsVersion,
 		SwiftPackageSettings: effectiveSwift.PackageSwiftSettings(),
 		ExternalDependencies: externalDeps,
@@ -162,6 +168,80 @@ func normalizePackagePlatform(raw string) string {
 		return value
 	}
 	return "." + value
+}
+
+func normalizePackagePlatforms(targets []components.PlatformTarget, legacyPlatform string) ([]string, error) {
+	platforms := make([]string, 0, len(targets))
+	seen := make(map[string]struct{}, len(targets))
+	for index, target := range targets {
+		platform, err := swiftPackagePlatform(target)
+		if err != nil {
+			return nil, fmt.Errorf("platform tuple #%d: %w", index+1, err)
+		}
+		if _, exists := seen[platform]; exists {
+			continue
+		}
+		seen[platform] = struct{}{}
+		platforms = append(platforms, platform)
+	}
+
+	if len(platforms) > 0 {
+		return platforms, nil
+	}
+
+	platform := normalizePackagePlatform(legacyPlatform)
+	if platform == "" {
+		return nil, nil
+	}
+	return []string{platform}, nil
+}
+
+func swiftPackagePlatform(target components.PlatformTarget) (string, error) {
+	platformName, err := swiftPackagePlatformName(target.Platform)
+	if err != nil {
+		return "", err
+	}
+
+	version, err := swiftPackagePlatformVersion(target.MinTarget)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf(".%s(%s)", platformName, version), nil
+}
+
+func swiftPackagePlatformName(raw components.Platform) (string, error) {
+	platform, err := components.ParsePlatform(string(raw))
+	if err != nil {
+		return "", err
+	}
+	return string(platform), nil
+}
+
+func swiftPackagePlatformVersion(raw string) (string, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "", fmt.Errorf("min target is required, e.g. 16.0")
+	}
+
+	parts := strings.Split(value, ".")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("min target %q must use major.minor format, e.g. 16.0", raw)
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return "", fmt.Errorf("min target %q has invalid major version: %w", raw, err)
+	}
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return "", fmt.Errorf("min target %q has invalid minor version: %w", raw, err)
+	}
+
+	if minor == 0 {
+		return fmt.Sprintf(".v%d", major), nil
+	}
+	return fmt.Sprintf(".v%d_%d", major, minor), nil
 }
 
 func normalizeDependencies(dependencies []string) []string {

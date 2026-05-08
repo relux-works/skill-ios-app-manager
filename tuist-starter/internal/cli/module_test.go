@@ -43,6 +43,123 @@ func TestModuleCreateFeature(t *testing.T) {
 	requireFileExists(t, filepath.Join(projectRoot, "Packages", "AuthImpl", "Sources", "Module", "Auth.Module+Impl.swift"))
 }
 
+func TestModuleCreateUsesConfiguredMinTargetByDefault(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	cfg := testProjectConfig()
+	cfg.MinTarget = "16.0"
+	configPath := writeModuleConfig(t, projectRoot, cfg)
+
+	_, err := executeRootCommand(
+		"--config",
+		configPath,
+		"module",
+		"create",
+		"Logger",
+		"--type",
+		"utility",
+	)
+	if err != nil {
+		t.Fatalf("executeRootCommand(module create Logger) error = %v", err)
+	}
+
+	manifest := readFileString(t, filepath.Join(projectRoot, "Packages", "Logger", "Package.swift"))
+	if !strings.Contains(manifest, `.iOS(.v16)`) {
+		t.Fatalf("Package.swift missing configured iOS min target:\n%s", manifest)
+	}
+	if strings.Contains(manifest, `.iOS(.v17)`) {
+		t.Fatalf("Package.swift kept stale default iOS min target:\n%s", manifest)
+	}
+}
+
+func TestModuleCreateAcceptsPlatformTuples(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	configPath := writeModuleConfig(t, projectRoot, testProjectConfig())
+
+	_, err := executeRootCommand(
+		"--config",
+		configPath,
+		"module",
+		"create",
+		"Logger",
+		"--type",
+		"utility",
+		"--platform",
+		"iOS:16.0",
+		"--platform",
+		"macOS:13.0",
+	)
+	if err != nil {
+		t.Fatalf("executeRootCommand(module create Logger) error = %v", err)
+	}
+
+	manifest := readFileString(t, filepath.Join(projectRoot, "Packages", "Logger", "Package.swift"))
+	for _, want := range []string{`.iOS(.v16)`, `.macOS(.v13)`} {
+		if !strings.Contains(manifest, want) {
+			t.Fatalf("Package.swift missing %q:\n%s", want, manifest)
+		}
+	}
+}
+
+func TestModuleCreateRejectsEmptyPlatformTuple(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	configPath := writeModuleConfig(t, projectRoot, testProjectConfig())
+
+	_, err := executeRootCommand(
+		"--config",
+		configPath,
+		"module",
+		"create",
+		"Logger",
+		"--type",
+		"utility",
+		"--platform",
+		"",
+	)
+	if err == nil {
+		t.Fatal("executeRootCommand(module create --platform '') error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "module platform tuple #1 is empty") {
+		t.Fatalf("error = %q, want empty tuple message", err.Error())
+	}
+}
+
+func TestModuleCreateRejectsUnknownPlatform(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	configPath := writeModuleConfig(t, projectRoot, testProjectConfig())
+
+	_, err := executeRootCommand(
+		"--config",
+		configPath,
+		"module",
+		"create",
+		"Logger",
+		"--type",
+		"utility",
+		"--platform",
+		"linux:1.0",
+	)
+	if err == nil {
+		t.Fatal("executeRootCommand(module create --platform linux:1.0) error = nil, want error")
+	}
+	for _, want := range []string{
+		"module platform tuple #1",
+		"unsupported platform",
+		"supported platforms: iOS, macOS, tvOS, watchOS, visionOS",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %q, want %q", err.Error(), want)
+		}
+	}
+}
+
 func TestModuleCreateUtility(t *testing.T) {
 	t.Parallel()
 

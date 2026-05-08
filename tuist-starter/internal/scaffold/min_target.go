@@ -24,11 +24,6 @@ func SyncMinTarget(projectRoot string, cfg config.ProjectConfig) (ManifestSyncRe
 		return ManifestSyncResult{}, fmt.Errorf("min target is required")
 	}
 
-	effectiveMinTarget, err := resolveEffectiveMinTarget(root, cfg, minTarget)
-	if err != nil {
-		return ManifestSyncResult{}, err
-	}
-
 	manifestPaths, err := discoverScaffoldManifestPaths(root)
 	if err != nil {
 		return ManifestSyncResult{}, err
@@ -37,9 +32,14 @@ func SyncMinTarget(projectRoot string, cfg config.ProjectConfig) (ManifestSyncRe
 		return ManifestSyncResult{}, fmt.Errorf("no scaffold Project.swift manifests found in %q; run init first", root)
 	}
 
+	packageManifestPaths, err := discoverPackageManifestPaths(root, cfg.ModulesPath)
+	if err != nil {
+		return ManifestSyncResult{}, err
+	}
+
 	result := ManifestSyncResult{
-		Scanned: append([]string(nil), manifestPaths...),
-		Updated: make([]string, 0, len(manifestPaths)),
+		Scanned: append(append([]string(nil), manifestPaths...), packageManifestPaths...),
+		Updated: make([]string, 0, len(manifestPaths)+len(packageManifestPaths)),
 	}
 
 	for _, manifestPath := range manifestPaths {
@@ -48,7 +48,7 @@ func SyncMinTarget(projectRoot string, cfg config.ProjectConfig) (ManifestSyncRe
 			return ManifestSyncResult{}, fmt.Errorf("read manifest %q: %w", manifestPath, err)
 		}
 
-		updated, changed, err := syncMinTargetManifest(string(payload), effectiveMinTarget)
+		updated, changed, err := syncMinTargetManifest(string(payload), minTarget)
 		if err != nil {
 			return ManifestSyncResult{}, fmt.Errorf("sync minTarget in %q: %w", manifestPath, err)
 		}
@@ -58,6 +58,27 @@ func SyncMinTarget(projectRoot string, cfg config.ProjectConfig) (ManifestSyncRe
 
 		if err := os.WriteFile(manifestPath, []byte(updated), 0o644); err != nil {
 			return ManifestSyncResult{}, fmt.Errorf("write manifest %q: %w", manifestPath, err)
+		}
+
+		result.Updated = append(result.Updated, manifestPath)
+	}
+
+	for _, manifestPath := range packageManifestPaths {
+		payload, err := os.ReadFile(manifestPath)
+		if err != nil {
+			return ManifestSyncResult{}, fmt.Errorf("read package manifest %q: %w", manifestPath, err)
+		}
+
+		updated, changed, err := syncPackageMinTargetManifest(string(payload), minTarget)
+		if err != nil {
+			return ManifestSyncResult{}, fmt.Errorf("sync package minTarget in %q: %w", manifestPath, err)
+		}
+		if !changed {
+			continue
+		}
+
+		if err := os.WriteFile(manifestPath, []byte(updated), 0o644); err != nil {
+			return ManifestSyncResult{}, fmt.Errorf("write package manifest %q: %w", manifestPath, err)
 		}
 
 		result.Updated = append(result.Updated, manifestPath)
@@ -127,6 +148,21 @@ func detectPackageIOSMinTarget(content string) (string, bool, error) {
 	}
 
 	return maxVersion, true, nil
+}
+
+func syncPackageMinTargetManifest(content, minTarget string) (string, bool, error) {
+	major, minor, err := parseMajorMinorVersion(minTarget)
+	if err != nil {
+		return "", false, err
+	}
+
+	swiftPlatform := fmt.Sprintf(".iOS(.v%d)", major)
+	if minor != 0 {
+		swiftPlatform = fmt.Sprintf(".iOS(.v%d_%d)", major, minor)
+	}
+
+	updated := packageIOSMinTargetPattern.ReplaceAllString(content, swiftPlatform)
+	return updated, updated != content, nil
 }
 
 func isVersionGreater(lhs, rhs string) (bool, error) {

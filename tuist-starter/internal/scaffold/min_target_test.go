@@ -55,22 +55,43 @@ let project = Project(
     ]
 )
 `)
+	writeVersionManifest(t, filepath.Join(projectRoot, "Packages", "Utilities", "Package.swift"), `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "Utilities",
+    platforms: [
+        .iOS(.v16),
+        .macOS(.v13)
+    ],
+    products: [
+        .library(name: "Utilities", targets: ["Utilities"]),
+    ],
+    targets: [
+        .target(name: "Utilities"),
+    ]
+)
+`)
 
 	result, err := SyncMinTarget(projectRoot, config.ProjectConfig{
-		MinTarget: "17.0",
+		MinTarget:   "17.0",
+		ModulesPath: "Packages",
 	})
 	if err != nil {
 		t.Fatalf("SyncMinTarget() error = %v", err)
 	}
 
-	if len(result.Scanned) != 2 {
-		t.Fatalf("scanned len = %d, want 2", len(result.Scanned))
+	if len(result.Scanned) != 3 {
+		t.Fatalf("scanned len = %d, want 3", len(result.Scanned))
 	}
-	if len(result.Updated) != 2 {
-		t.Fatalf("updated len = %d, want 2", len(result.Updated))
+	if len(result.Updated) != 3 {
+		t.Fatalf("updated len = %d, want 3", len(result.Updated))
 	}
 
-	for _, manifestPath := range result.Updated {
+	for _, manifestPath := range []string{
+		filepath.Join(projectRoot, "Project.swift"),
+		filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"),
+	} {
 		content := readVersionManifest(t, manifestPath)
 		for _, want := range []string{
 			`let minTarget = "17.0"`,
@@ -81,6 +102,14 @@ let project = Project(
 				t.Fatalf("%s missing %q:\n%s", manifestPath, want, content)
 			}
 		}
+	}
+
+	packageContent := readVersionManifest(t, filepath.Join(projectRoot, "Packages", "Utilities", "Package.swift"))
+	if !strings.Contains(packageContent, `.iOS(.v17)`) {
+		t.Fatalf("package manifest missing synced iOS platform:\n%s", packageContent)
+	}
+	if !strings.Contains(packageContent, `.macOS(.v13)`) {
+		t.Fatalf("package manifest should preserve non-iOS platforms:\n%s", packageContent)
 	}
 }
 
@@ -141,7 +170,7 @@ let project = Project(
 	}
 }
 
-func TestSyncMinTargetDoesNotDropBelowPackageMinimum(t *testing.T) {
+func TestSyncMinTargetSyncsPackageManifestsToConfiguredMinimum(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := t.TempDir()
@@ -196,18 +225,26 @@ let package = Package(
 	if err != nil {
 		t.Fatalf("SyncMinTarget() error = %v", err)
 	}
-	if len(result.Updated) != 1 {
-		t.Fatalf("updated len = %d, want 1", len(result.Updated))
+	if len(result.Updated) != 2 {
+		t.Fatalf("updated len = %d, want 2", len(result.Updated))
 	}
 
 	content := readVersionManifest(t, filepath.Join(projectRoot, "Project.swift"))
 	for _, want := range []string{
-		`let minTarget = "18.0"`,
+		`let minTarget = "17.0"`,
 		`deploymentTargets: .iOS(minTarget)`,
 		`"IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget)`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("Project.swift missing %q:\n%s", want, content)
 		}
+	}
+
+	packageContent := readVersionManifest(t, filepath.Join(projectRoot, "Packages", "SharedKit", "Package.swift"))
+	if !strings.Contains(packageContent, `.iOS(.v17)`) {
+		t.Fatalf("package manifest missing configured iOS minimum:\n%s", packageContent)
+	}
+	if strings.Contains(packageContent, `.iOS(.v18)`) {
+		t.Fatalf("package manifest kept stale iOS minimum:\n%s", packageContent)
 	}
 }

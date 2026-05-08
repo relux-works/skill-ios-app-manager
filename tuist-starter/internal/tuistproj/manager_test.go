@@ -127,6 +127,9 @@ func TestTuistProjectManagerCreateModuleProductScaffoldsTwoPackages(t *testing.T
 	err := manager.CreateModule(context.Background(), components.ModuleOpts{
 		Name: "Auth",
 		Type: "feature",
+		Config: config.ProjectConfig{
+			MinTarget: "16.0",
+		},
 	})
 	if err != nil {
 		t.Fatalf("CreateModule() error = %v", err)
@@ -166,6 +169,53 @@ func TestTuistProjectManagerCreateModuleProductScaffoldsTwoPackages(t *testing.T
 	}
 }
 
+func TestTuistProjectManagerCreateModuleRequiresPlatformTargets(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	manager := NewTuistProjectManager(
+		WithRootDir(root),
+		WithModulesDir("Packages"),
+	)
+
+	err := manager.CreateModule(context.Background(), components.ModuleOpts{
+		Name: "Auth",
+		Type: "feature",
+	})
+	if err == nil {
+		t.Fatal("CreateModule() error = nil, want platform requirement")
+	}
+	if !strings.Contains(err.Error(), "module package platforms are required") {
+		t.Fatalf("CreateModule() error = %q, want platform requirement", err.Error())
+	}
+	requireNotExists(t, filepath.Join(root, "Packages", "Auth"))
+}
+
+func TestTuistProjectManagerCreateModuleRejectsInvalidPlatformVersion(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	manager := NewTuistProjectManager(
+		WithRootDir(root),
+		WithModulesDir("Packages"),
+	)
+
+	err := manager.CreateModule(context.Background(), components.ModuleOpts{
+		Name: "Auth",
+		Type: "feature",
+		Platforms: []components.PlatformTarget{
+			{Platform: components.PlatformIOS, MinTarget: "16"},
+		},
+	})
+	if err == nil {
+		t.Fatal("CreateModule() error = nil, want invalid min target")
+	}
+	if !strings.Contains(err.Error(), `min target "16" must use major.minor format`) {
+		t.Fatalf("CreateModule() error = %q, want invalid min target message", err.Error())
+	}
+	requireNotExists(t, filepath.Join(root, "Packages", "Auth"))
+}
+
 func TestTuistProjectManagerCreateModuleUsesModuleConfigForSwiftSettings(t *testing.T) {
 	t.Parallel()
 
@@ -180,6 +230,7 @@ func TestTuistProjectManagerCreateModuleUsesModuleConfigForSwiftSettings(t *test
 		Name: "Auth",
 		Type: "feature",
 		Config: config.ProjectConfig{
+			MinTarget:    "16.0",
 			SwiftVersion: "6.0",
 			ProjectSettings: config.ProjectSettings{
 				Swift: config.SwiftProjectSettings{
@@ -239,6 +290,9 @@ let package = Package(
 	err := manager.CreateModule(context.Background(), components.ModuleOpts{
 		Name: "Auth",
 		Type: "relux-feature",
+		Config: config.ProjectConfig{
+			MinTarget: "17.0",
+		},
 		ExternalDeps: []components.ExternalDep{{
 			PackageName: "swift-relux",
 			ProductName: "Relux",
@@ -297,6 +351,9 @@ func TestTuistProjectManagerCreateModuleUtilityScaffoldsSinglePackage(t *testing
 	err := manager.CreateModule(context.Background(), components.ModuleOpts{
 		Name: "CoreKit",
 		Type: "utility",
+		Config: config.ProjectConfig{
+			MinTarget: "16.0",
+		},
 	})
 	if err != nil {
 		t.Fatalf("CreateModule() error = %v", err)
@@ -342,6 +399,9 @@ let package = Package(
 	err := manager.CreateModule(context.Background(), components.ModuleOpts{
 		Name: "Auth",
 		Type: "feature",
+		Config: config.ProjectConfig{
+			MinTarget: "16.0",
+		},
 	})
 	if err != nil {
 		t.Fatalf("CreateModule() error = %v", err)
