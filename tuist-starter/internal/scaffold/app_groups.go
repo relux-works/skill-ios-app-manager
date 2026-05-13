@@ -201,34 +201,15 @@ func appendUniqueStrings(values []string, additions ...string) []string {
 }
 
 func configurationAppGroupsPath(root string, appName string) string {
-	for _, candidate := range configurationAppGroupsCandidatePaths(root, appName) {
-		if fileExists(candidate) {
-			return candidate
-		}
-	}
-	return defaultConfigurationAppGroupsPath(root, appName)
+	return configurationFilePath(root, appName, "Configuration+AppGroups.swift")
 }
 
 func staleConfigurationAppGroupsPaths(root string, appName string, selectedPath string) []string {
-	stalePaths := make([]string, 0)
-	for _, candidate := range configurationAppGroupsCandidatePaths(root, appName) {
-		if candidate == selectedPath || !fileExists(candidate) {
-			continue
-		}
-		stalePaths = append(stalePaths, candidate)
-	}
-	return stalePaths
-}
-
-func configurationAppGroupsCandidatePaths(root string, appName string) []string {
-	return []string{
-		filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Runtime", "Configuration+AppGroups.swift"),
-		defaultConfigurationAppGroupsPath(root, appName),
-	}
+	return staleConfigurationFilePaths(root, appName, "Configuration+AppGroups.swift", selectedPath)
 }
 
 func defaultConfigurationAppGroupsPath(root string, appName string) string {
-	return filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Configuration+AppGroups.swift")
+	return defaultConfigurationFilePath(root, appName, "Configuration+AppGroups.swift")
 }
 
 func fileExists(path string) bool {
@@ -311,65 +292,23 @@ func syncProjectManifestAppGroupContent(content string, bundleID string, appGrou
 	lines := strings.Split(content, "\n")
 	hasTrailingNewline := strings.HasSuffix(content, "\n")
 
-	filtered, err := removeProjectManifestAppGroupInfoPlistEntries(lines)
-	if err != nil {
-		return "", false, err
-	}
-
-	if len(appGroups) == 0 {
-		updated := joinSyncLines(filtered, hasTrailingNewline)
-		return updated, updated != content, nil
-	}
-
-	targets := findProjectTargetBlocks(filtered)
-	if len(targets) == 0 {
-		return "", false, fmt.Errorf("Project.swift target declarations not found")
-	}
-
-	updatedLines := filtered
-	for index := len(targets) - 1; index >= 0; index-- {
-		target := targets[index]
-		targetLines := append([]string(nil), updatedLines[target.start:target.end+1]...)
-		nextTargetLines, _, err := syncTargetAppGroupInfoPlistLines(targetLines, bundleID, appGroups)
-		if err != nil {
-			return "", false, err
-		}
-
-		nextLines := make([]string, 0, len(updatedLines)-len(targetLines)+len(nextTargetLines))
-		nextLines = append(nextLines, updatedLines[:target.start]...)
-		nextLines = append(nextLines, nextTargetLines...)
-		nextLines = append(nextLines, updatedLines[target.end+1:]...)
-		updatedLines = nextLines
-	}
-
-	updated := joinSyncLines(updatedLines, hasTrailingNewline)
-	return updated, updated != content, nil
-}
-
-func removeProjectManifestAppGroupInfoPlistEntries(lines []string) ([]string, error) {
 	filtered := make([]string, 0, len(lines))
-	for index := 0; index < len(lines); index++ {
-		line := lines[index]
+	for _, line := range lines {
 		if appGroupInfoPlistLinePattern.MatchString(line) {
-			continue
-		}
-		if isAppGroupsInfoPlistDictionaryLine(line) {
-			closeLine, ok := findArrayCloseLine(lines, index)
-			if !ok {
-				return nil, fmt.Errorf("AppGroups Info.plist dictionary opened on line %d has no closing bracket", index+1)
-			}
-			index = closeLine
 			continue
 		}
 		filtered = append(filtered, line)
 	}
 
-	return filtered, nil
-}
-
-func isAppGroupsInfoPlistDictionaryLine(line string) bool {
-	return strings.Contains(line, strconv.Quote(appGroupsInfoPlistKey)+":") &&
-		strings.Contains(line, ".dictionary(")
+	withoutLegacyRootKeys := joinSyncLines(filtered, hasTrailingNewline)
+	return syncProjectManifestInfoPlistDictionaryContent(
+		withoutLegacyRootKeys,
+		appGroupsInfoPlistKey,
+		len(appGroups) > 0,
+		func(indent string) []string {
+			return renderAppGroupInfoPlistLines(indent, bundleID, appGroups)
+		},
+	)
 }
 
 type projectTargetBlock struct {
@@ -441,91 +380,6 @@ func parenDeltaOutsideStrings(line string, start int) int {
 	}
 
 	return delta
-}
-
-func syncTargetAppGroupInfoPlistLines(lines []string, bundleID string, appGroups []string) ([]string, bool, error) {
-	infoPlistLine := findLineContaining(lines, "infoPlist:")
-	if infoPlistLine >= 0 {
-		return syncExistingInfoPlistAppGroupLines(lines, infoPlistLine, bundleID, appGroups)
-	}
-
-	return insertInfoPlistAppGroupLines(lines, bundleID, appGroups)
-}
-
-func syncExistingInfoPlistAppGroupLines(lines []string, infoPlistLine int, bundleID string, appGroups []string) ([]string, bool, error) {
-	withLine := -1
-	for index := infoPlistLine; index < len(lines); index++ {
-		if strings.Contains(lines[index], "with:") && strings.Contains(lines[index], "[") {
-			withLine = index
-			break
-		}
-		if strings.Contains(lines[index], "sources:") || strings.Contains(lines[index], "dependencies:") {
-			break
-		}
-	}
-	if withLine < 0 {
-		return nil, false, fmt.Errorf("infoPlist declaration does not use .extendingDefault(with: [...])")
-	}
-
-	closeLine, ok := findArrayCloseLine(lines, withLine)
-	if !ok {
-		return nil, false, fmt.Errorf("Info.plist dictionary opened on line %d has no closing bracket", withLine+1)
-	}
-
-	insertIndex := closeLine
-	insertIndent := leadingIndent(lines[closeLine]) + "    "
-	for index := withLine + 1; index < closeLine; index++ {
-		if strings.Contains(lines[index], `"UILaunchScreen":`) {
-			insertIndex = index
-			insertIndent = leadingIndent(lines[index])
-			break
-		}
-	}
-
-	rendered := renderAppGroupInfoPlistLines(insertIndent, bundleID, appGroups)
-	updated := make([]string, 0, len(lines)+len(rendered))
-	updated = append(updated, lines[:insertIndex]...)
-	updated = append(updated, rendered...)
-	updated = append(updated, lines[insertIndex:]...)
-
-	return updated, true, nil
-}
-
-func insertInfoPlistAppGroupLines(lines []string, bundleID string, appGroups []string) ([]string, bool, error) {
-	insertIndex := findFirstLineContainingAny(lines, []string{
-		"sources:",
-		"resources:",
-		"entitlements:",
-		"dependencies:",
-		"settings:",
-	})
-	insertIndent := ""
-	if insertIndex >= 0 {
-		insertIndent = leadingIndent(lines[insertIndex])
-	} else {
-		insertIndex = len(lines) - 1
-		if insertIndex < 0 {
-			return nil, false, fmt.Errorf("empty target declaration")
-		}
-		insertIndent = leadingIndent(lines[insertIndex]) + "    "
-	}
-
-	rendered := []string{
-		insertIndent + "infoPlist: .extendingDefault(",
-		insertIndent + "    with: [",
-	}
-	rendered = append(rendered, renderAppGroupInfoPlistLines(insertIndent+"        ", bundleID, appGroups)...)
-	rendered = append(rendered,
-		insertIndent+"    ]",
-		insertIndent+"),",
-	)
-
-	updated := make([]string, 0, len(lines)+len(rendered))
-	updated = append(updated, lines[:insertIndex]...)
-	updated = append(updated, rendered...)
-	updated = append(updated, lines[insertIndex:]...)
-
-	return updated, true, nil
 }
 
 func findLineContaining(lines []string, pattern string) int {

@@ -23,6 +23,7 @@ func runGenerateProjectConfig(input GenerateInput) (GenerateResult, error) {
 	leafRuns := []leafRun{
 		{name: "versions", run: runGenerateVersions},
 		{name: "min-target", run: runGenerateMinTarget},
+		{name: "application-configuration", run: runGenerateApplicationConfiguration},
 		{name: "app-capabilities", run: runGenerateAppCapabilities},
 		{name: "build-flags", run: runGenerateBuildFlags},
 		{name: "package-strictness", run: runGeneratePackageStrictness},

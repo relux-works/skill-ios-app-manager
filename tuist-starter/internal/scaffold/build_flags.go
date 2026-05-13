@@ -61,7 +61,7 @@ func syncBuildFlagsManifest(content string, settings []config.SwiftBuildSetting)
 	sawBaseBlock := false
 
 	for index := 0; index < len(lines); index++ {
-		if !strings.Contains(lines[index], "base: [") {
+		if !isBuildSettingsDictionaryBlockLine(lines[index]) {
 			continue
 		}
 
@@ -90,6 +90,11 @@ func syncBuildFlagsManifest(content string, settings []config.SwiftBuildSetting)
 	}
 
 	return joinSyncLines(lines, hasTrailingNewline), changed, nil
+}
+
+func isBuildSettingsDictionaryBlockLine(line string) bool {
+	return strings.Contains(line, "base: [") ||
+		(strings.Contains(line, "SettingsDictionary") && strings.Contains(line, "["))
 }
 
 func ensureBuildFlagSettingsBlock(lines []string, startIndex, endIndex int, settings []config.SwiftBuildSetting) ([]string, bool, error) {

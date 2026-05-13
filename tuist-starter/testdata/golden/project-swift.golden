@@ -39,6 +39,12 @@ let project = Project(
                             ])
                         ])
                     ]),
+                    "ApplicationConfiguration": .dictionary([
+                        "appName": .string(appName),
+                        "applicationBundleIdentifier": .string(bundleID),
+                        "developmentTeamID": .string(developmentTeam),
+                        "urlScheme": .string("demoapp"),
+                    ]),
                     "AppGroups": .dictionary([
                         "main": .string("group.com.example.demo"),
                     ]),

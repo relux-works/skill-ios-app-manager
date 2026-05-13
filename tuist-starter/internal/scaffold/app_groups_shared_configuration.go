@@ -27,17 +27,37 @@ func legacyAppGroupSharedConfigurationModuleName(appName string) string {
 	return appGroupSharedConfigurationTypePrefix(appName) + "SharedConfiguration"
 }
 
-func appGroupSharedConfigurationPackagePath(root string, cfg config.ProjectConfig) string {
+func sharedConfigurationPackagePath(root string, cfg config.ProjectConfig) string {
 	return filepath.Join(root, normalizeModulesPath(cfg.ModulesPath), appGroupSharedConfigurationModuleName(cfg))
 }
 
+func appGroupSharedConfigurationPackagePath(root string, cfg config.ProjectConfig) string {
+	return sharedConfigurationPackagePath(root, cfg)
+}
+
+func sharedConfigurationPackageSwiftPath(root string, cfg config.ProjectConfig) string {
+	return filepath.Join(sharedConfigurationPackagePath(root, cfg), "Package.swift")
+}
+
 func appGroupSharedConfigurationPackageSwiftPath(root string, cfg config.ProjectConfig) string {
-	return filepath.Join(appGroupSharedConfigurationPackagePath(root, cfg), "Package.swift")
+	return sharedConfigurationPackageSwiftPath(root, cfg)
+}
+
+func sharedConfigurationSourcesPath(root string, cfg config.ProjectConfig) string {
+	return filepath.Join(sharedConfigurationPackagePath(root, cfg), "Sources")
+}
+
+func sharedConfigurationInfoPlistReadingSourcePath(root string, cfg config.ProjectConfig) string {
+	return filepath.Join(sharedConfigurationSourcesPath(root, cfg), "InfoPlistReading.swift")
 }
 
 func appGroupSharedConfigurationSourcePath(root string, cfg config.ProjectConfig) string {
+	return filepath.Join(sharedConfigurationSourcesPath(root, cfg), "AppGroups.swift")
+}
+
+func legacyAppGroupSharedConfigurationSourcePath(root string, cfg config.ProjectConfig) string {
 	moduleName := appGroupSharedConfigurationModuleName(cfg)
-	return filepath.Join(appGroupSharedConfigurationPackagePath(root, cfg), "Sources", moduleName+".swift")
+	return filepath.Join(sharedConfigurationSourcesPath(root, cfg), moduleName+".swift")
 }
 
 func appGroupSharedConfigurationTypePrefix(appName string) string {
@@ -99,6 +119,10 @@ func swiftIdentifierParts(raw string) []string {
 }
 
 func GenerateAppGroupSharedConfigurationPackageSwift(cfg config.ProjectConfig) (string, error) {
+	return GenerateSharedConfigurationPackageSwift(cfg)
+}
+
+func GenerateSharedConfigurationPackageSwift(cfg config.ProjectConfig) (string, error) {
 	moduleName := appGroupSharedConfigurationModuleName(cfg)
 	return tuistproj.GeneratePackageSwift(tuistproj.PackageGenerationInput{
 		ModuleName: moduleName,
@@ -117,6 +141,67 @@ func appGroupSharedConfigurationPackagePlatform(cfg config.ProjectConfig) string
 		major = "17"
 	}
 	return "iOS(.v" + major + ")"
+}
+
+func GenerateSharedConfigurationInfoPlistReadingSwift(cfg config.ProjectConfig) string {
+	appName := normalizeAppName(cfg.AppName)
+	typePrefix := appGroupSharedConfigurationTypePrefix(appName)
+	lowerTypePrefix := lowerFirst(typePrefix)
+
+	var b strings.Builder
+	b.WriteString("import Foundation\n\n")
+	b.WriteString("public enum " + typePrefix + "SharedConfigError: Error, LocalizedError, Equatable {\n")
+	b.WriteString("    case missingInfoPlistDictionary(key: String, bundleIdentifier: String?)\n")
+	b.WriteString("    case missingInfoPlistValue(key: String, dictionaryKey: String, bundleIdentifier: String?)\n\n")
+	b.WriteString("    public var errorDescription: String? {\n")
+	b.WriteString("        switch self {\n")
+	b.WriteString("        case let .missingInfoPlistDictionary(key, bundleIdentifier):\n")
+	b.WriteString("            \"Missing Info.plist dictionary \\(key) in bundle \\(bundleIdentifier ?? \"<unknown>\")\"\n")
+	b.WriteString("        case let .missingInfoPlistValue(key, dictionaryKey, bundleIdentifier):\n")
+	b.WriteString("            \"Missing Info.plist value \\(key).\\(dictionaryKey) in bundle \\(bundleIdentifier ?? \"<unknown>\")\"\n")
+	b.WriteString("        }\n")
+	b.WriteString("    }\n")
+	b.WriteString("}\n\n")
+	b.WriteString("public extension Bundle {\n")
+	b.WriteString("    func " + lowerTypePrefix + "String(for key: String, dictionaryKey: String) throws -> String {\n")
+	b.WriteString("        guard let value = try " + lowerTypePrefix + "OptionalString(for: key, dictionaryKey: dictionaryKey) else {\n")
+	b.WriteString("            throw " + typePrefix + "SharedConfigError.missingInfoPlistValue(\n")
+	b.WriteString("                key: key,\n")
+	b.WriteString("                dictionaryKey: dictionaryKey,\n")
+	b.WriteString("                bundleIdentifier: bundleIdentifier\n")
+	b.WriteString("            )\n")
+	b.WriteString("        }\n\n")
+	b.WriteString("        return value\n")
+	b.WriteString("    }\n\n")
+	b.WriteString("    func " + lowerTypePrefix + "OptionalString(for key: String, dictionaryKey: String) throws -> String? {\n")
+	b.WriteString("        let values = try " + lowerTypePrefix + "Dictionary(for: key)\n")
+	b.WriteString("        guard let value = values[dictionaryKey] else {\n")
+	b.WriteString("            return nil\n")
+	b.WriteString("        }\n\n")
+	b.WriteString("        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)\n")
+	b.WriteString("        return trimmedValue.isEmpty ? nil : trimmedValue\n")
+	b.WriteString("    }\n\n")
+	b.WriteString("    func " + lowerTypePrefix + "Dictionary(for key: String) throws -> [String: String] {\n")
+	b.WriteString("        if let value = object(forInfoDictionaryKey: key) as? [String: String] {\n")
+	b.WriteString("            return value\n")
+	b.WriteString("        }\n\n")
+	b.WriteString("        if let rawValue = object(forInfoDictionaryKey: key) as? [String: Any] {\n")
+	b.WriteString("            var value: [String: String] = [:]\n")
+	b.WriteString("            for (dictionaryKey, dictionaryValue) in rawValue {\n")
+	b.WriteString("                if let stringValue = dictionaryValue as? String {\n")
+	b.WriteString("                    value[dictionaryKey] = stringValue\n")
+	b.WriteString("                }\n")
+	b.WriteString("            }\n")
+	b.WriteString("            return value\n")
+	b.WriteString("        }\n\n")
+	b.WriteString("        throw " + typePrefix + "SharedConfigError.missingInfoPlistDictionary(\n")
+	b.WriteString("            key: key,\n")
+	b.WriteString("            bundleIdentifier: bundleIdentifier\n")
+	b.WriteString("        )\n")
+	b.WriteString("    }\n")
+	b.WriteString("}\n")
+
+	return b.String()
 }
 
 func GenerateAppGroupSharedConfigurationSwift(cfg config.ProjectConfig) string {
@@ -143,16 +228,13 @@ func GenerateAppGroupSharedConfigurationSwift(cfg config.ProjectConfig) string {
 
 	var b strings.Builder
 	b.WriteString("import Foundation\n\n")
-	b.WriteString("public enum " + typePrefix + "InfoPlistKey: String, Sendable {\n")
-	b.WriteString("    case appGroups = " + strconv.Quote(appGroupsInfoPlistKey) + "\n")
-	b.WriteString("}\n\n")
 	b.WriteString("public enum " + typePrefix + "AppGroupSlot: String, Sendable {\n")
 	for _, group := range groups {
 		b.WriteString("    case " + group.SlotCaseName + " = " + strconv.Quote(group.DictionaryKey) + "\n")
 	}
 	b.WriteString("\n")
-	b.WriteString("    public var infoPlistKey: " + typePrefix + "InfoPlistKey {\n")
-	b.WriteString("        .appGroups\n")
+	b.WriteString("    public var infoPlistKey: String {\n")
+	b.WriteString("        " + strconv.Quote(appGroupsInfoPlistKey) + "\n")
 	b.WriteString("    }\n\n")
 	b.WriteString("    public var dictionaryKey: String {\n")
 	b.WriteString("        rawValue\n")
@@ -192,56 +274,11 @@ func GenerateAppGroupSharedConfigurationSwift(cfg config.ProjectConfig) string {
 		if index == len(groups)-1 {
 			suffix = ""
 		}
-		b.WriteString("            " + group.PropertyName + ": bundle." + lowerFirst(typePrefix) + "AppGroupString(for: ." + group.SlotCaseName + ")" + suffix + "\n")
+		b.WriteString("            " + group.PropertyName + ": bundle." + lowerFirst(typePrefix) + "String(for: " + typePrefix + "AppGroupSlot." + group.SlotCaseName + ".infoPlistKey, dictionaryKey: " + typePrefix + "AppGroupSlot." + group.SlotCaseName + ".dictionaryKey)" + suffix + "\n")
 	}
 	b.WriteString("        )\n")
 	b.WriteString("    }\n")
 	b.WriteString("}\n\n")
-	b.WriteString("public enum " + typePrefix + "SharedConfigError: Error, LocalizedError, Equatable {\n")
-	b.WriteString("    case missingInfoPlistDictionary(key: " + typePrefix + "InfoPlistKey, bundleIdentifier: String?)\n")
-	b.WriteString("    case missingInfoPlistValue(key: " + typePrefix + "InfoPlistKey, dictionaryKey: String, bundleIdentifier: String?)\n\n")
-	b.WriteString("    public var errorDescription: String? {\n")
-	b.WriteString("        switch self {\n")
-	b.WriteString("        case let .missingInfoPlistDictionary(key, bundleIdentifier):\n")
-	b.WriteString("            \"Missing Info.plist dictionary \\(key.rawValue) in bundle \\(bundleIdentifier ?? \"<unknown>\")\"\n")
-	b.WriteString("        case let .missingInfoPlistValue(key, dictionaryKey, bundleIdentifier):\n")
-	b.WriteString("            \"Missing Info.plist value \\(key.rawValue).\\(dictionaryKey) in bundle \\(bundleIdentifier ?? \"<unknown>\")\"\n")
-	b.WriteString("        }\n")
-	b.WriteString("    }\n")
-	b.WriteString("}\n\n")
-	b.WriteString("public extension Bundle {\n")
-	b.WriteString("    func " + lowerFirst(typePrefix) + "AppGroupString(for slot: " + typePrefix + "AppGroupSlot) throws -> String {\n")
-	b.WriteString("        let values = try " + lowerFirst(typePrefix) + "Dictionary(for: slot.infoPlistKey)\n")
-	b.WriteString("        guard let value = values[slot.dictionaryKey],\n")
-	b.WriteString("              !value.isEmpty else {\n")
-	b.WriteString("            throw " + typePrefix + "SharedConfigError.missingInfoPlistValue(\n")
-	b.WriteString("                key: slot.infoPlistKey,\n")
-	b.WriteString("                dictionaryKey: slot.dictionaryKey,\n")
-	b.WriteString("                bundleIdentifier: bundleIdentifier\n")
-	b.WriteString("            )\n")
-	b.WriteString("        }\n\n")
-	b.WriteString("        return value\n")
-	b.WriteString("    }\n")
-	b.WriteString("\n")
-	b.WriteString("    func " + lowerFirst(typePrefix) + "Dictionary(for key: " + typePrefix + "InfoPlistKey) throws -> [String: String] {\n")
-	b.WriteString("        if let value = object(forInfoDictionaryKey: key.rawValue) as? [String: String] {\n")
-	b.WriteString("            return value\n")
-	b.WriteString("        }\n\n")
-	b.WriteString("        if let rawValue = object(forInfoDictionaryKey: key.rawValue) as? [String: Any] {\n")
-	b.WriteString("            var value: [String: String] = [:]\n")
-	b.WriteString("            for (dictionaryKey, dictionaryValue) in rawValue {\n")
-	b.WriteString("                if let stringValue = dictionaryValue as? String {\n")
-	b.WriteString("                    value[dictionaryKey] = stringValue\n")
-	b.WriteString("                }\n")
-	b.WriteString("            }\n")
-	b.WriteString("            return value\n")
-	b.WriteString("        }\n\n")
-	b.WriteString("        throw " + typePrefix + "SharedConfigError.missingInfoPlistDictionary(\n")
-	b.WriteString("            key: key,\n")
-	b.WriteString("            bundleIdentifier: bundleIdentifier\n")
-	b.WriteString("        )\n")
-	b.WriteString("    }\n")
-	b.WriteString("}\n")
 
 	return b.String()
 }
@@ -266,10 +303,36 @@ func lowerFirst(identifier string) string {
 }
 
 func syncAppGroupSharedConfigurationPackage(root string, cfg config.ProjectConfig) ([]string, error) {
-	packageSwiftPath := appGroupSharedConfigurationPackageSwiftPath(root, cfg)
 	sourcePath := appGroupSharedConfigurationSourcePath(root, cfg)
+	updated, err := syncSharedConfigurationSupportPackage(root, cfg)
+	if err != nil {
+		return nil, err
+	}
 
-	packageSwift, err := GenerateAppGroupSharedConfigurationPackageSwift(cfg)
+	changed, err := writeFileIfChanged(sourcePath, GenerateAppGroupSharedConfigurationSwift(cfg))
+	if err != nil {
+		return nil, fmt.Errorf("sync app-group shared configuration source: %w", err)
+	}
+	if changed {
+		updated = append(updated, sourcePath)
+	}
+
+	changed, err = removeFileIfExists(legacyAppGroupSharedConfigurationSourcePath(root, cfg))
+	if err != nil {
+		return nil, fmt.Errorf("remove legacy app-group shared configuration source: %w", err)
+	}
+	if changed {
+		updated = append(updated, legacyAppGroupSharedConfigurationSourcePath(root, cfg))
+	}
+
+	return updated, nil
+}
+
+func syncSharedConfigurationSupportPackage(root string, cfg config.ProjectConfig) ([]string, error) {
+	packageSwiftPath := sharedConfigurationPackageSwiftPath(root, cfg)
+	infoPlistReadingPath := sharedConfigurationInfoPlistReadingSourcePath(root, cfg)
+
+	packageSwift, err := GenerateSharedConfigurationPackageSwift(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -277,18 +340,18 @@ func syncAppGroupSharedConfigurationPackage(root string, cfg config.ProjectConfi
 	updated := make([]string, 0, 2)
 	changed, err := writeFileIfChanged(packageSwiftPath, packageSwift)
 	if err != nil {
-		return nil, fmt.Errorf("sync app-group shared configuration Package.swift: %w", err)
+		return nil, fmt.Errorf("sync shared configuration Package.swift: %w", err)
 	}
 	if changed {
 		updated = append(updated, packageSwiftPath)
 	}
 
-	changed, err = writeFileIfChanged(sourcePath, GenerateAppGroupSharedConfigurationSwift(cfg))
+	changed, err = writeFileIfChanged(infoPlistReadingPath, GenerateSharedConfigurationInfoPlistReadingSwift(cfg))
 	if err != nil {
-		return nil, fmt.Errorf("sync app-group shared configuration source: %w", err)
+		return nil, fmt.Errorf("sync shared configuration plist reader: %w", err)
 	}
 	if changed {
-		updated = append(updated, sourcePath)
+		updated = append(updated, infoPlistReadingPath)
 	}
 
 	return updated, nil
@@ -379,27 +442,12 @@ func cleanupRootPackageLegacySharedConfigurationDependency(root string, cfg conf
 
 func syncRootPackageSharedConfigurationDependencyContent(content string, cfg config.ProjectConfig) (string, bool, error) {
 	moduleName := appGroupSharedConfigurationModuleName(cfg)
-	manifest, err := tuistproj.ParseManifest(content)
-	if err != nil {
-		return "", false, fmt.Errorf("parse root Package.swift: %w", err)
-	}
-
-	hasDependency := false
-	for _, dependency := range manifest.Dependencies {
-		if dependency.Name == moduleName {
-			hasDependency = true
-			break
-		}
-	}
-
 	updated := content
-	if !hasDependency {
-		refPath := filepath.ToSlash(filepath.Join(normalizeModulesPath(cfg.ModulesPath), moduleName))
-		updated, err = tuistproj.ApplyManifestEdits(updated, tuistproj.ManifestEdit{
-			Type:    tuistproj.AddDependency,
-			Name:    moduleName,
-			Content: fmt.Sprintf(`.package(path: "%s")`, refPath),
-		})
+	refPath := filepath.ToSlash(filepath.Join(normalizeModulesPath(cfg.ModulesPath), moduleName))
+	dependencyLine := fmt.Sprintf(`.package(path: "%s")`, refPath)
+	var err error
+	if !strings.Contains(updated, dependencyLine) {
+		updated, err = insertRootPackageDependency(updated, dependencyLine)
 		if err != nil {
 			return "", false, fmt.Errorf("add shared configuration package to root Package.swift: %w", err)
 		}
@@ -411,6 +459,52 @@ func syncRootPackageSharedConfigurationDependencyContent(content string, cfg con
 	}
 
 	return updated, updated != content, nil
+}
+
+func insertRootPackageDependency(content string, dependencyLine string) (string, error) {
+	lines := strings.Split(content, "\n")
+	hasTrailingNewline := strings.HasSuffix(content, "\n")
+	if hasTrailingNewline && len(lines) > 0 {
+		lines = lines[:len(lines)-1]
+	}
+
+	for index := 0; index < len(lines); index++ {
+		line := lines[index]
+		if !strings.Contains(line, "dependencies:") || !strings.Contains(line, "[") {
+			continue
+		}
+
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "dependencies: []") {
+			indent := leadingIndent(line)
+			hasComma := strings.HasSuffix(trimmed, ",")
+			closeLine := indent + "]"
+			if hasComma {
+				closeLine += ","
+			}
+			replacement := []string{
+				indent + "dependencies: [",
+				indent + "    " + dependencyLine + ",",
+				closeLine,
+			}
+			lines = append(lines[:index], append(replacement, lines[index+1:]...)...)
+			return joinSyncLines(lines, hasTrailingNewline), nil
+		}
+
+		closeIndex, ok := findArrayCloseLine(lines, index)
+		if !ok {
+			return "", fmt.Errorf("dependencies array opened on line %d has no closing bracket", index+1)
+		}
+		if sectionContains(lines[index:closeIndex+1], dependencyLine) {
+			return content, nil
+		}
+
+		insertIndent := dependencyInsertionIndent(lines, index, closeIndex)
+		lines = append(lines[:closeIndex], append([]string{insertIndent + dependencyLine + ","}, lines[closeIndex:]...)...)
+		return joinSyncLines(lines, hasTrailingNewline), nil
+	}
+
+	return "", fmt.Errorf("dependencies section not found")
 }
 
 func legacySharedConfigurationPackageRefPaths(cfg config.ProjectConfig, legacyModuleName string) []string {

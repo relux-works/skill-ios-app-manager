@@ -48,11 +48,14 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		filepath.Join(outputDir, ".gitignore"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "App.swift"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration.swift"),
+		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+ApplicationConfiguration.swift"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+Keychain.swift"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+AppGroups.swift"),
 		filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Bundle+InfoPlist.swift"),
 		filepath.Join(outputDir, cfg.ModulesPath, "SharedConfig", "Package.swift"),
-		filepath.Join(outputDir, cfg.ModulesPath, "SharedConfig", "Sources", "SharedConfig.swift"),
+		filepath.Join(outputDir, cfg.ModulesPath, "SharedConfig", "Sources", "InfoPlistReading.swift"),
+		filepath.Join(outputDir, cfg.ModulesPath, "SharedConfig", "Sources", "ApplicationConfiguration.swift"),
+		filepath.Join(outputDir, cfg.ModulesPath, "SharedConfig", "Sources", "AppGroups.swift"),
 		filepath.Join(assetsPath, "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "Contents.json"),
 		filepath.Join(assetsPath, "AppIcon.appiconset", "AppIcon.png"),
@@ -77,6 +80,7 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		`Targets/` + cfg.AppName + `/Resources/**`,
 		"EntitlementsFactory.make(",
 		"AppCapabilities.app",
+		`"ApplicationConfiguration": .dictionary([`,
 		`.external(name: "SharedConfig")`,
 	}
 	for _, want := range projectChecks {
@@ -177,14 +181,29 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 
 	keychainConfig := readFile(t, filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+Keychain.swift"))
 	keychainChecks := []string{
+		"import SharedConfig",
 		"Configuration",
 		"Keychain",
-		`serviceName = "` + cfg.BundleID + `"`,
-		`accessGroup = "` + cfg.TeamID + "." + cfg.BundleID + `.shared"`,
+		"ApplicationConfiguration.current",
+		"serviceName = applicationConfiguration.applicationBundleIdentifier",
+		`accessGroup = "\(applicationConfiguration.developmentTeamID).\(applicationConfiguration.applicationBundleIdentifier).shared"`,
 	}
 	for _, want := range keychainChecks {
 		if !strings.Contains(keychainConfig, want) {
 			t.Fatalf("Configuration+Keychain.swift missing %q:\n%s", want, keychainConfig)
+		}
+	}
+
+	applicationConfiguration := readFile(t, filepath.Join(outputDir, "Targets", cfg.AppName, "Sources", "Configuration", "Configuration+ApplicationConfiguration.swift"))
+	for _, want := range []string{
+		"Configuration",
+		"ApplicationConfiguration",
+		"import SharedConfig",
+		cfg.AppName + "ApplicationConfiguration.read(from: .main)",
+		"fatalError",
+	} {
+		if !strings.Contains(applicationConfiguration, want) {
+			t.Fatalf("Configuration+ApplicationConfiguration.swift missing %q:\n%s", want, applicationConfiguration)
 		}
 	}
 
@@ -193,7 +212,7 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		"Configuration",
 		"AppGroups",
 		"import SharedConfig",
-		`serviceName: String = "` + cfg.BundleID + `"`,
+		"serviceName: String = ApplicationConfiguration.current.applicationBundleIdentifier",
 		cfg.AppName + "AppGroups.read(from: .main)",
 		"static let main: String",
 		"resolved.main",
@@ -209,15 +228,27 @@ func TestScaffoldCreatesExpectedLayoutAndFiles(t *testing.T) {
 		t.Fatalf("AppCapabilities.swift missing configured app group:\n%s", appCapabilities)
 	}
 
-	sharedConfiguration := readFile(t, filepath.Join(outputDir, cfg.ModulesPath, "SharedConfig", "Sources", "SharedConfig.swift"))
+	sharedConfiguration := readFile(t, filepath.Join(outputDir, cfg.ModulesPath, "SharedConfig", "Sources", "AppGroups.swift"))
 	for _, want := range []string{
-		`case appGroups = "AppGroups"`,
+		`"AppGroups"`,
 		`case main = "main"`,
 		"public struct " + cfg.AppName + "AppGroups",
 		"public static func read(from bundle: Bundle = .main) throws -> Self",
 	} {
 		if !strings.Contains(sharedConfiguration, want) {
-			t.Fatalf("SharedConfig.swift missing %q:\n%s", want, sharedConfiguration)
+			t.Fatalf("AppGroups.swift missing %q:\n%s", want, sharedConfiguration)
+		}
+	}
+
+	appConfigurationSharedSource := readFile(t, filepath.Join(outputDir, cfg.ModulesPath, "SharedConfig", "Sources", "ApplicationConfiguration.swift"))
+	for _, want := range []string{
+		"public struct " + cfg.AppName + "ApplicationConfiguration",
+		"applicationBundleIdentifier",
+		"developmentTeamID",
+		"urlScheme",
+	} {
+		if !strings.Contains(appConfigurationSharedSource, want) {
+			t.Fatalf("ApplicationConfiguration.swift missing %q:\n%s", want, appConfigurationSharedSource)
 		}
 	}
 

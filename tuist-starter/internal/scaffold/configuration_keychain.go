@@ -7,18 +7,21 @@ import (
 )
 
 // GenerateConfigurationKeychain returns the Configuration+Keychain.swift extension.
-// The accessGroup uses the team ID prefix (e.g. "ABCDE12345.com.example.app.shared"),
-// matching the entitlements plist value where $(AppIdentifierPrefix) resolves to "<teamId>.".
+// Runtime values are resolved from the generated ApplicationConfiguration plist facade.
 func GenerateConfigurationKeychain(cfg config.ProjectConfig) string {
-	bundleID := strings.TrimSpace(cfg.BundleID)
-	teamID := strings.TrimSpace(cfg.TeamID)
-	accessGroup := teamID + "." + bundleID + ".shared"
+	sharedConfigurationModuleName := appGroupSharedConfigurationModuleName(cfg)
 
-	return `extension Configuration {
+	var b strings.Builder
+	b.WriteString("import " + sharedConfigurationModuleName + "\n\n")
+	b.WriteString(`extension Configuration {
     enum Keychain {
-        static let serviceName = "` + bundleID + `"
-        static let accessGroup = "` + accessGroup + `"
+        private static let applicationConfiguration = ApplicationConfiguration.current
+
+        static let serviceName = applicationConfiguration.applicationBundleIdentifier
+        static let accessGroup = "\(applicationConfiguration.developmentTeamID).\(applicationConfiguration.applicationBundleIdentifier).shared"
     }
 }
-`
+`)
+
+	return b.String()
 }

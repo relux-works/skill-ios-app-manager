@@ -24,7 +24,7 @@ func TestGenerateHelpShowsMakefileSubcommand(t *testing.T) {
 		}
 	}
 
-	for _, expected := range []string{"versions", "min-target", "app-capabilities", "build-flags", "project-config"} {
+	for _, expected := range []string{"versions", "min-target", "application-configuration", "app-capabilities", "build-flags", "project-config"} {
 		if !strings.Contains(output, expected) {
 			t.Fatalf("generate --help output missing %q:\n%s", expected, output)
 		}
@@ -74,7 +74,7 @@ let package = Package(
 	if err != nil {
 		t.Fatalf("executeRootCommand(generate app-capabilities) error = %v", err)
 	}
-	if !strings.Contains(output, "regenerated app capabilities via 1 enabled subplugin(s), updated 6 file(s)") {
+	if !strings.Contains(output, "regenerated app capabilities via 1 enabled subplugin(s), updated 7 file(s)") {
 		t.Fatalf("generate app-capabilities output = %q, want regenerate message", output)
 	}
 
@@ -647,7 +647,8 @@ let package = Package(
 		"project config sync summary:",
 		"- versions: regenerated version manifests in 2 file(s)",
 		"- min-target: regenerated min target manifests in 3 file(s)",
-		"- app-capabilities: regenerated app capabilities via 1 enabled subplugin(s), updated 7 file(s)",
+		"- application-configuration: regenerated application configuration in 7 file(s)",
+		"- app-capabilities: regenerated app capabilities via 1 enabled subplugin(s), updated 5 file(s)",
 		"- build-flags: regenerated build flag manifests in 2 file(s)",
 		"- package-strictness: regenerated package strictness manifests in 1 file(s)",
 	} {

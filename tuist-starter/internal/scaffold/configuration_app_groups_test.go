@@ -23,7 +23,7 @@ func TestGenerateConfigurationAppGroupsSingleGroup(t *testing.T) {
 		"extension Configuration",
 		"enum AppGroups",
 		"import SharedConfig",
-		`serviceName: String = "com.example.demo"`,
+		"serviceName: String = ApplicationConfiguration.current.applicationBundleIdentifier",
 		"private static let resolved: DemoAppGroups",
 		"DemoAppGroups.read(from: .main)",
 		"static let main: String",
@@ -70,7 +70,7 @@ func TestGenerateConfigurationAppGroupsMultipleGroups(t *testing.T) {
 	content := GenerateConfigurationAppGroups(cfg)
 
 	checks := []string{
-		`serviceName: String = "com.example.fulldemo"`,
+		"serviceName: String = ApplicationConfiguration.current.applicationBundleIdentifier",
 		"FullDemoAppGroups.read(from: .main)",
 		"static let main: String",
 		"static let comExampleShared: String",

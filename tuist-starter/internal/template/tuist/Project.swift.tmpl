@@ -42,6 +42,14 @@ let project = Project(
                         ])
                     ]),
 {{- end }}
+                    "ApplicationConfiguration": .dictionary([
+                        "appName": .string(appName),
+                        "applicationBundleIdentifier": .string(bundleID),
+                        "developmentTeamID": .string(developmentTeam),
+{{- if .URLScheme }}
+                        "urlScheme": .string({{ swiftLiteral .URLScheme }}),
+{{- end }}
+                    ]),
 {{- if .AppGroups }}
                     "AppGroups": .dictionary([
 {{- range .AppGroups }}

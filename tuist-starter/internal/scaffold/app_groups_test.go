@@ -155,22 +155,26 @@ let project = Project(
 		}
 	}
 
-	sharedConfiguration := readFile(t, filepath.Join(projectRoot, "Packages", "SharedConfig", "Sources", "SharedConfig.swift"))
+	sharedConfiguration := readFile(t, filepath.Join(projectRoot, "Packages", "SharedConfig", "Sources", "AppGroups.swift"))
 	for _, want := range []string{
-		`case appGroups = "AppGroups"`,
+		`"AppGroups"`,
 		`case shared = "shared"`,
 		`case sso = "sso"`,
 		"public struct DemoAppAppGroups",
 		"public static func read(from bundle: Bundle = .main) throws -> Self",
 	} {
 		if !strings.Contains(sharedConfiguration, want) {
-			t.Fatalf("SharedConfig.swift missing %q:\n%s", want, sharedConfiguration)
+			t.Fatalf("AppGroups.swift missing %q:\n%s", want, sharedConfiguration)
 		}
 	}
 	for _, forbidden := range []string{"CaseIterable", "static let all", "var all"} {
 		if strings.Contains(sharedConfiguration, forbidden) {
-			t.Fatalf("SharedConfig.swift contains forbidden all-style API %q:\n%s", forbidden, sharedConfiguration)
+			t.Fatalf("AppGroups.swift contains forbidden all-style API %q:\n%s", forbidden, sharedConfiguration)
 		}
+	}
+	infoPlistReading := readFile(t, filepath.Join(projectRoot, "Packages", "SharedConfig", "Sources", "InfoPlistReading.swift"))
+	if !strings.Contains(infoPlistReading, "public enum DemoAppSharedConfigError") {
+		t.Fatalf("InfoPlistReading.swift missing shared error type:\n%s", infoPlistReading)
 	}
 }
 
@@ -397,7 +401,8 @@ let project = Project(
 	}
 
 	requireFile(t, filepath.Join(projectRoot, "VendorPackages", "AppSharedConfig", "Package.swift"))
-	requireFile(t, filepath.Join(projectRoot, "VendorPackages", "AppSharedConfig", "Sources", "AppSharedConfig.swift"))
+	requireFile(t, filepath.Join(projectRoot, "VendorPackages", "AppSharedConfig", "Sources", "InfoPlistReading.swift"))
+	requireFile(t, filepath.Join(projectRoot, "VendorPackages", "AppSharedConfig", "Sources", "AppGroups.swift"))
 }
 
 func TestSyncAppGroupsValidationReturnsActionableError(t *testing.T) {
