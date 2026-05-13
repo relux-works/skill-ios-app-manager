@@ -208,6 +208,54 @@ let project = Project(
 	}
 }
 
+func TestSyncBuildFlagsCanonicalizesSharedSettingsDictionaryBlocks(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	projectSwiftPath := filepath.Join(projectRoot, "Project.swift")
+	writeVersionManifest(t, projectSwiftPath, `import ProjectDescription
+
+let appBuildSettings: SettingsDictionary = [
+    "SWIFT_VERSION": "6.0",
+]
+
+let testBuildSettings: SettingsDictionary = [
+    "SWIFT_VERSION": "6.0",
+    "SWIFT_STRICT_CONCURRENCY": "minimal",
+]
+
+let project = Project(
+    name: "DemoApp",
+    targets: [
+        .target(
+            name: "DemoApp",
+            settings: .settings(base: appBuildSettings)
+        ),
+        .target(
+            name: "DemoAppTests",
+            settings: .settings(base: testBuildSettings)
+        )
+    ]
+)
+`)
+
+	result, err := SyncBuildFlags(projectRoot, config.ProjectConfig{})
+	if err != nil {
+		t.Fatalf("SyncBuildFlags() error = %v", err)
+	}
+	if len(result.Updated) != 1 {
+		t.Fatalf("updated len = %d, want 1", len(result.Updated))
+	}
+
+	content := readVersionManifest(t, projectSwiftPath)
+	if got := strings.Count(content, `"SWIFT_APPROACHABLE_CONCURRENCY": "NO"`); got != 2 {
+		t.Fatalf("SWIFT_APPROACHABLE_CONCURRENCY count = %d, want 2:\n%s", got, content)
+	}
+	if got := strings.Count(content, `"SWIFT_STRICT_CONCURRENCY": "complete"`); got != 2 {
+		t.Fatalf("SWIFT_STRICT_CONCURRENCY count = %d, want 2:\n%s", got, content)
+	}
+}
+
 func TestSyncBuildFlagsScansNestedAppProjectManifests(t *testing.T) {
 	t.Parallel()
 

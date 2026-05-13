@@ -163,8 +163,38 @@ func (s *Scaffolder) planFiles(cfg config.ProjectConfig, root string, appName st
 	files[filepath.Join(root, ".gitignore")] = GenerateGitignore()
 	files[filepath.Join(root, "Targets", appName, "Sources", "App.swift")] = GenerateAppStub(cfg)
 	files[filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Configuration.swift")] = GenerateConfiguration()
+	files[filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Configuration+ApplicationConfiguration.swift")] = GenerateConfigurationApplicationConfiguration(cfg)
 	files[filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Configuration+Keychain.swift")] = GenerateConfigurationKeychain(cfg)
 	files[filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Bundle+InfoPlist.swift")] = GenerateInfoPlistHelper()
+
+	packageSwift, err := GenerateSharedConfigurationPackageSwift(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("generate shared configuration Package.swift: %w", err)
+	}
+	files[sharedConfigurationPackageSwiftPath(root, cfg)] = packageSwift
+	files[sharedConfigurationInfoPlistReadingSourcePath(root, cfg)] = GenerateSharedConfigurationInfoPlistReadingSwift(cfg)
+	files[applicationConfigurationSharedConfigurationSourcePath(root, cfg)] = GenerateApplicationConfigurationSharedConfigurationSwift(cfg)
+
+	rootPackagePath := filepath.Join(root, "Package.swift")
+	if content, ok := files[rootPackagePath]; ok {
+		updated, _, err := syncRootPackageSharedConfigurationDependencyContent(content, cfg)
+		if err != nil {
+			return nil, err
+		}
+		files[rootPackagePath] = updated
+	}
+
+	projectPath := filepath.Join(root, "Project.swift")
+	if content, ok := files[projectPath]; ok {
+		updated, _, err := syncProjectManifestExternalDependencyContent(
+			content,
+			appGroupSharedConfigurationModuleName(cfg),
+		)
+		if err != nil {
+			return nil, err
+		}
+		files[projectPath] = updated
+	}
 
 	if len(cfg.AppGroups) > 0 {
 		files[filepath.Join(root, "Targets", appName, "Sources", "Configuration", "Configuration+AppGroups.swift")] = GenerateConfigurationAppGroups(cfg)
@@ -175,27 +205,6 @@ func (s *Scaffolder) planFiles(cfg config.ProjectConfig, root string, appName st
 		}
 		files[appGroupSharedConfigurationPackageSwiftPath(root, cfg)] = packageSwift
 		files[appGroupSharedConfigurationSourcePath(root, cfg)] = GenerateAppGroupSharedConfigurationSwift(cfg)
-
-		rootPackagePath := filepath.Join(root, "Package.swift")
-		if content, ok := files[rootPackagePath]; ok {
-			updated, _, err := syncRootPackageSharedConfigurationDependencyContent(content, cfg)
-			if err != nil {
-				return nil, err
-			}
-			files[rootPackagePath] = updated
-		}
-
-		projectPath := filepath.Join(root, "Project.swift")
-		if content, ok := files[projectPath]; ok {
-			updated, _, err := syncProjectManifestExternalDependencyContent(
-				content,
-				appGroupSharedConfigurationModuleName(cfg),
-			)
-			if err != nil {
-				return nil, err
-			}
-			files[projectPath] = updated
-		}
 	}
 
 	assetsPath := filepath.Join(root, "Targets", appName, "Resources", "Assets.xcassets")

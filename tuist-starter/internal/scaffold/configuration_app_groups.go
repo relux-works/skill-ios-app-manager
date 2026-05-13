@@ -22,7 +22,7 @@ func GenerateConfigurationAppGroups(cfg config.ProjectConfig) string {
 	b.WriteString("import " + sharedConfigurationModuleName + "\n\n")
 	b.WriteString("extension Configuration {\n")
 	b.WriteString("    enum AppGroups {\n")
-	b.WriteString(`        static let serviceName: String = "` + bundleID + "\"\n")
+	b.WriteString("        static let serviceName: String = ApplicationConfiguration.current.applicationBundleIdentifier\n")
 	b.WriteString("\n")
 	b.WriteString("        private static let resolved: " + sharedConfigurationTypePrefix + "AppGroups = {\n")
 	b.WriteString("            do {\n")

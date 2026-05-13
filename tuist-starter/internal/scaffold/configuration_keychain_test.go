@@ -18,10 +18,12 @@ func TestGenerateConfigurationKeychainContainsConstants(t *testing.T) {
 	content := GenerateConfigurationKeychain(cfg)
 
 	requiredSnippets := []string{
+		"import SharedConfig",
 		"extension Configuration",
 		"enum Keychain",
-		`serviceName = "com.example.demo"`,
-		`accessGroup = "ABCDE12345.com.example.demo.shared"`,
+		"private static let applicationConfiguration = ApplicationConfiguration.current",
+		"serviceName = applicationConfiguration.applicationBundleIdentifier",
+		`accessGroup = "\(applicationConfiguration.developmentTeamID).\(applicationConfiguration.applicationBundleIdentifier).shared"`,
 	}
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(content, snippet) {

@@ -34,6 +34,7 @@ ios-app-manager [command] [flags]
 | `generate project-config` | Sync manifest config slices across app + extensions | `ios-app-manager generate project-config` |
 | `generate versions` | Generate or update app + extension versions | `ios-app-manager generate versions` |
 | `generate min-target` | Generate or update app + extension deployment target markers | `ios-app-manager generate min-target` |
+| `generate application-configuration` | Generate or update product-level runtime app configuration | `ios-app-manager generate application-configuration` |
 | `generate app-capabilities` | Generate or update host app capabilities from config | `ios-app-manager generate app-capabilities` |
 | `generate build-flags` | Generate or update strict Swift compiler build flags in app + extension manifests | `ios-app-manager generate build-flags` |
 | `clean [--deep] [--kill-xcode]` | Clean local/global build artifacts | `ios-app-manager clean --deep` |
@@ -342,6 +343,31 @@ Example:
 ios-app-manager generate min-target
 ```
 
+### `generate application-configuration`
+
+Syntax:
+```bash
+ios-app-manager generate application-configuration
+```
+
+Description:
+- Syncs product-level runtime app identity from `ios-app-manager.json`.
+- Writes an `ApplicationConfiguration` Info.plist dictionary into scaffold-managed app-like targets.
+- Generates the configured `SharedConfig` package sources:
+  - `InfoPlistReading.swift`
+  - `ApplicationConfiguration.swift`
+- Generates app-target `Configuration+ApplicationConfiguration.swift`.
+- Wires the configured `SharedConfig` dependency into root `Package.swift` and target manifests.
+- Keeps target identity separate: extensions keep their own `CFBundleIdentifier`, while `ApplicationConfiguration.applicationBundleIdentifier` points to the containing application bundle id.
+
+Flags:
+- `--config <path>`: Optional command-level config override.
+
+Example:
+```bash
+ios-app-manager generate application-configuration
+```
+
 ### `generate app-capabilities`
 
 Syntax:
@@ -351,7 +377,8 @@ ios-app-manager generate app-capabilities
 
 Description:
 - Orchestrates host app capability subplugins.
-- `app-groups` is the current capability subplugin. It syncs configured `app_groups` from `ios-app-manager.json` into `Tuist/ProjectDescriptionHelpers/AppCapabilities.swift`, host `Project.swift` Info.plist keys, and `Configuration+AppGroups.swift`.
+- `app-groups` is the current capability subplugin. It syncs configured `app_groups` from `ios-app-manager.json` into `Tuist/ProjectDescriptionHelpers/AppCapabilities.swift`, host `Project.swift` Info.plist keys, generated `SharedConfig`, and `Configuration+AppGroups.swift`.
+- Generated app-group code reads product-level service identity through `Configuration.ApplicationConfiguration`; use `generate project-config` when syncing app groups so the application configuration facade is present.
 - Runs as a scaffold generator plugin with explicit `init` dependency. Concrete capability concerns should be added as subplugins rather than collected into one large capability function.
 
 Flags:
@@ -395,6 +422,7 @@ Description:
 - Runs the current config-sync leaf plugins in order:
   - `generate versions`
   - `generate min-target`
+  - `generate application-configuration`
   - `generate app-capabilities`
   - `generate build-flags`
   - `generate package-strictness`
