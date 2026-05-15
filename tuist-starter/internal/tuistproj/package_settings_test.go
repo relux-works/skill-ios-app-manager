@@ -156,6 +156,95 @@ let packageSettings = PackageSettings(
 	}
 }
 
+func TestEnsureTargetBuildSettingsInsertsTargetSettingsIntoExistingPackageSettings(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "Package.swift")
+	writePackageSettingsTestFile(t, path, `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "DemoDependencies",
+    dependencies: [],
+    targets: []
+)
+
+#if TUIST
+import ProjectDescription
+
+let packageSettings = PackageSettings(
+    productTypes: [
+        "ErrorHandlingModule": .framework,
+    ]
+)
+#endif
+`)
+
+	if err := EnsureTargetBuildSettings(path, TargetBuildSetting{
+		ProductName: "ErrorHandlingModule",
+		Key:         "IPHONEOS_DEPLOYMENT_TARGET",
+		Value:       "16.0",
+	}); err != nil {
+		t.Fatalf("EnsureTargetBuildSettings() error = %v", err)
+	}
+
+	content := readPackageSettingsTestFile(t, path)
+	for _, expected := range []string{
+		"targetSettings: [",
+		`"ErrorHandlingModule": .settings(base: [`,
+		`"IPHONEOS_DEPLOYMENT_TARGET": "16.0"`,
+		`"ErrorHandlingModule": .framework`,
+	} {
+		if !strings.Contains(content, expected) {
+			t.Fatalf("content missing %q:\n%s", expected, content)
+		}
+	}
+}
+
+func TestEnsureTargetBuildSettingsIsIdempotent(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "Package.swift")
+	writePackageSettingsTestFile(t, path, `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "DemoDependencies",
+    dependencies: [],
+    targets: []
+)
+
+#if TUIST
+import ProjectDescription
+
+let packageSettings = PackageSettings(
+    targetSettings: [
+        "ErrorHandlingModule": .settings(base: [
+            "IPHONEOS_DEPLOYMENT_TARGET": "16.0",
+        ]),
+    ]
+)
+#endif
+`)
+
+	setting := TargetBuildSetting{
+		ProductName: "ErrorHandlingModule",
+		Key:         "IPHONEOS_DEPLOYMENT_TARGET",
+		Value:       "16.0",
+	}
+	if err := EnsureTargetBuildSettings(path, setting, setting); err != nil {
+		t.Fatalf("EnsureTargetBuildSettings() error = %v", err)
+	}
+
+	content := readPackageSettingsTestFile(t, path)
+	if strings.Count(content, `"ErrorHandlingModule": .settings`) != 1 {
+		t.Fatalf("target settings entry count = %d, want 1:\n%s", strings.Count(content, `"ErrorHandlingModule": .settings`), content)
+	}
+	if strings.Count(content, `"IPHONEOS_DEPLOYMENT_TARGET": "16.0"`) != 1 {
+		t.Fatalf("build setting count = %d, want 1:\n%s", strings.Count(content, `"IPHONEOS_DEPLOYMENT_TARGET": "16.0"`), content)
+	}
+}
+
 func TestRemoveFrameworkProductTypesRemovesRequestedEntries(t *testing.T) {
 	t.Parallel()
 

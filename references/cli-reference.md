@@ -24,7 +24,7 @@ ios-app-manager [command] [flags]
 | `module list` | List modules and metadata | `ios-app-manager module list` |
 | `module delete <name> [--force]` | Delete module packages and references | `ios-app-manager module delete Auth --force` |
 | `dep add <module> --depends-on <other>` | Add internal module dependency | `ios-app-manager dep add Auth --depends-on CoreKit` |
-| `dep add-external --url <git_url> --version <ver> [--module <target>]` | Add external Swift package dependency | `ios-app-manager dep add-external --url https://github.com/apple/swift-collections.git --version 'branch: "main"' --module Auth` |
+| `dep add-external --url <git_url> --version <ver> [--module <target>] [--product <product>] [--target-setting KEY=VALUE] [--app-target]` | Add external Swift package dependency | `ios-app-manager dep add-external --url https://github.com/apple/swift-collections.git --version 'branch: "main"' --module Auth` |
 | `dep remove <module> --depends-on <other>` | Remove internal module dependency | `ios-app-manager dep remove Auth --depends-on CoreKit` |
 | `dep remove-external --package <name>` | Remove external Swift package dependency | `ios-app-manager dep remove-external --package swift-collections` |
 | `dep list [<module>]` | List internal and external dependencies | `ios-app-manager dep list Auth` |
@@ -165,7 +165,7 @@ ios-app-manager dep add Auth --depends-on CoreKit
 
 Syntax:
 ```bash
-ios-app-manager dep add-external --url <git_url> --version <ver> [--module <target>]
+ios-app-manager dep add-external --url <git_url> --version <ver> [--module <target>] [--product <product>] [--target-setting KEY=VALUE] [--app-target]
 ```
 
 Description:
@@ -176,6 +176,9 @@ Flags:
 - `--url <git_url>`: Required package repository URL.
 - `--version <ver>`: Required version requirement.
 - `--module <target>`: Optional target module scope.
+- `--product <product>`: Optional Swift product name when it differs from the package name. Repeat for multiple products.
+- `--target-setting KEY=VALUE`: Optional Tuist `PackageSettings.targetSettings` build setting applied to the product(s). Repeat for multiple settings.
+- `--app-target`: Optional link of the product(s) into the host app target in `Project.swift`.
 - `--config <path>`: Optional command-level config override.
 
 Example:

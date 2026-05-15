@@ -22,7 +22,7 @@ func TestAddExternalDepAddsProjectAndModuleDependency(t *testing.T) {
 	}
 
 	projectManifest := readStringFile(t, filepath.Join(projectRoot, moduleManifestName))
-	projectSnippet := `.package(name: "RealmSwift", url: "https://github.com/realm/realm-swift.git", from: "1.0.0"),`
+	projectSnippet := `.package(name: "RealmSwift", url: "https://github.com/realm/realm-swift.git", .upToNextMajor(from: "1.0.0")),`
 	if !strings.Contains(projectManifest, projectSnippet) {
 		t.Fatalf("project Package.swift missing external dependency:\n%s", projectManifest)
 	}
@@ -47,11 +47,11 @@ func TestAddExternalDepVersionRequirements(t *testing.T) {
 		version    string
 		wantClause string
 	}{
-		{name: "default from", version: "1.0.0", wantClause: `from: "1.0.0"`},
-		{name: "explicit from", version: `from: "2.0.0"`, wantClause: `from: "2.0.0"`},
-		{name: "exact", version: `exact: "3.1.4"`, wantClause: `exact: "3.1.4"`},
-		{name: "branch", version: `branch: "main"`, wantClause: `branch: "main"`},
-		{name: "revision", version: `revision: "abc123"`, wantClause: `revision: "abc123"`},
+		{name: "default from", version: "1.0.0", wantClause: `.upToNextMajor(from: "1.0.0")`},
+		{name: "explicit from", version: `from: "2.0.0"`, wantClause: `.upToNextMajor(from: "2.0.0")`},
+		{name: "exact", version: `exact: "3.1.4"`, wantClause: `.exact("3.1.4")`},
+		{name: "branch", version: `branch: "main"`, wantClause: `.branch("main")`},
+		{name: "revision", version: `revision: "abc123"`, wantClause: `.revision("abc123")`},
 	}
 
 	for _, tc := range testCases {
@@ -70,12 +70,7 @@ func TestAddExternalDepVersionRequirements(t *testing.T) {
 			}
 
 			projectManifest := readStringFile(t, filepath.Join(projectRoot, moduleManifestName))
-			wantSnippet := fmt.Sprintf(
-				`.package(name: "%s", url: "%s", %s),`,
-				packageName,
-				url,
-				tc.wantClause,
-			)
+			wantSnippet := fmt.Sprintf(`.package(name: "%s", url: "%s", %s),`, packageName, url, tc.wantClause)
 			if !strings.Contains(projectManifest, wantSnippet) {
 				t.Fatalf("project Package.swift missing version clause %q:\n%s", tc.wantClause, projectManifest)
 			}
@@ -96,8 +91,76 @@ func TestAddExternalDepInfersPackageNameFromURL(t *testing.T) {
 	}
 
 	projectManifest := readStringFile(t, filepath.Join(projectRoot, moduleManifestName))
-	if !strings.Contains(projectManifest, `.package(name: "swift-collections", url: "https://github.com/apple/swift-collections.git", from: "1.0.0"),`) {
+	if !strings.Contains(projectManifest, `.package(name: "swift-collections", url: "https://github.com/apple/swift-collections.git", .upToNextMajor(from: "1.0.0")),`) {
 		t.Fatalf("project Package.swift missing inferred package name:\n%s", projectManifest)
+	}
+}
+
+func TestAddExternalDepAcceptsProductNames(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	modulesRoot := filepath.Join(projectRoot, "Packages")
+	writeProjectDependencyManifest(t, projectRoot)
+	writeInterfaceModuleManifest(t, modulesRoot, "Auth", nil)
+
+	url := "https://gitlab.example.com/mobile/mts-errorhandling.git"
+	if err := AddExternalDep(url, `exact: "6.0.0"`, "", "Auth", modulesRoot, "ErrorHandlingModule"); err != nil {
+		t.Fatalf("AddExternalDep(...) error = %v", err)
+	}
+
+	projectManifest := readStringFile(t, filepath.Join(projectRoot, moduleManifestName))
+	if !strings.Contains(projectManifest, `.package(name: "mts-errorhandling", url: "https://gitlab.example.com/mobile/mts-errorhandling.git", .exact("6.0.0")),`) {
+		t.Fatalf("project Package.swift missing external dependency:\n%s", projectManifest)
+	}
+	if !strings.Contains(projectManifest, `"ErrorHandlingModule": .framework`) {
+		t.Fatalf("project Package.swift missing product framework override:\n%s", projectManifest)
+	}
+	if strings.Contains(projectManifest, `"mts-errorhandling": .framework`) {
+		t.Fatalf("project Package.swift should use product name, not package name:\n%s", projectManifest)
+	}
+
+	authManifest := readStringFile(t, filepath.Join(modulesRoot, "Auth", moduleManifestName))
+	if !strings.Contains(authManifest, `.product(name: "ErrorHandlingModule", package: "mts-errorhandling"),`) {
+		t.Fatalf("Auth Package.swift missing target product dependency:\n%s", authManifest)
+	}
+}
+
+func TestAddExternalProductTargetSettings(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	modulesRoot := filepath.Join(projectRoot, "Packages")
+	writeProjectDependencyManifest(t, projectRoot)
+
+	if err := AddExternalDep(
+		"https://gitlab.example.com/mobile/mts-errorhandling.git",
+		`exact: "6.0.0"`,
+		"",
+		"",
+		modulesRoot,
+		"ErrorHandlingModule",
+	); err != nil {
+		t.Fatalf("AddExternalDep(...) error = %v", err)
+	}
+
+	if err := AddExternalProductTargetSettings(
+		modulesRoot,
+		[]string{"ErrorHandlingModule"},
+		map[string]string{"IPHONEOS_DEPLOYMENT_TARGET": "16.0"},
+	); err != nil {
+		t.Fatalf("AddExternalProductTargetSettings(...) error = %v", err)
+	}
+
+	projectManifest := readStringFile(t, filepath.Join(projectRoot, moduleManifestName))
+	for _, expected := range []string{
+		"targetSettings: [",
+		`"ErrorHandlingModule": .settings(base: [`,
+		`"IPHONEOS_DEPLOYMENT_TARGET": "16.0"`,
+	} {
+		if !strings.Contains(projectManifest, expected) {
+			t.Fatalf("project Package.swift missing %q:\n%s", expected, projectManifest)
+		}
 	}
 }
 
@@ -119,7 +182,7 @@ func TestRemoveExternalDepRemovesProjectAndModuleDependency(t *testing.T) {
 	}
 
 	projectManifest := readStringFile(t, filepath.Join(projectRoot, moduleManifestName))
-	if strings.Contains(projectManifest, `.package(name: "RealmSwift", url: "https://github.com/realm/realm-swift.git", from: "1.0.0"),`) {
+	if strings.Contains(projectManifest, `.package(name: "RealmSwift", url: "https://github.com/realm/realm-swift.git", .upToNextMajor(from: "1.0.0")),`) {
 		t.Fatalf("project Package.swift still contains RealmSwift dependency:\n%s", projectManifest)
 	}
 	if strings.Contains(projectManifest, `"RealmSwift": .framework`) {
@@ -127,7 +190,7 @@ func TestRemoveExternalDepRemovesProjectAndModuleDependency(t *testing.T) {
 	}
 
 	authManifest := readStringFile(t, filepath.Join(modulesRoot, "Auth", moduleManifestName))
-	if strings.Contains(authManifest, `.package(name: "RealmSwift", url: "https://github.com/realm/realm-swift.git", from: "1.0.0"),`) {
+	if strings.Contains(authManifest, `.package(name: "RealmSwift", url: "https://github.com/realm/realm-swift.git", .upToNextMajor(from: "1.0.0")),`) {
 		t.Fatalf("Auth Package.swift still contains external package dependency:\n%s", authManifest)
 	}
 	if strings.Contains(authManifest, `.product(name: "RealmSwift", package: "RealmSwift"),`) {

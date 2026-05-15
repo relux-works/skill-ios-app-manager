@@ -202,7 +202,7 @@ Order matters -- each command depends on prerequisites from earlier steps.
 ## Dynamic product policy
 
 - Scaffold-generated local package products are emitted as dynamic libraries by default.
-- External Swift package products added through setup plugins, module blueprints, or `dep add-external` are automatically forced to `.framework` in root `Package.swift` via Tuist `PackageSettings.productTypes`.
+- External Swift package products added through setup plugins, module blueprints, or `dep add-external` are automatically forced to `.framework` in root `Package.swift` via Tuist `PackageSettings.productTypes`. Pass `--product <name>` when the Swift product name differs from the package name, `--app-target` when the product must be linked into the host app target, and `--target-setting KEY=VALUE` when a product needs a Tuist `PackageSettings.targetSettings` override.
 - Removing an external dependency through `dep remove-external` also removes the matching framework override.
 - If a remote package is added by hand outside `ios-app-manager`, this policy does not apply automatically.
 

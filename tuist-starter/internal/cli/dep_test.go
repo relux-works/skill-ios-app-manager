@@ -189,7 +189,7 @@ func TestDepAddExternalRemoveExternalAndList(t *testing.T) {
 	projectManifest := readFileString(t, projectManifestPath)
 	if !strings.Contains(
 		projectManifest,
-		`.package(name: "swift-collections", url: "https://github.com/apple/swift-collections.git", branch: "main"),`,
+		`.package(name: "swift-collections", url: "https://github.com/apple/swift-collections.git", .branch("main")),`,
 	) {
 		t.Fatalf("project manifest missing external dependency:\n%s", projectManifest)
 	}
@@ -198,7 +198,7 @@ func TestDepAddExternalRemoveExternalAndList(t *testing.T) {
 	authManifest := readFileString(t, authManifestPath)
 	if !strings.Contains(
 		authManifest,
-		`.package(name: "swift-collections", url: "https://github.com/apple/swift-collections.git", branch: "main"),`,
+		`.package(name: "swift-collections", url: "https://github.com/apple/swift-collections.git", .branch("main")),`,
 	) {
 		t.Fatalf("Auth manifest missing external dependency:\n%s", authManifest)
 	}
@@ -262,6 +262,55 @@ func TestDepAddExternalRemoveExternalAndList(t *testing.T) {
 	}
 }
 
+func TestDepAddExternalSupportsProductNameAndAppTarget(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	configPath := writeModuleConfig(t, projectRoot, testProjectConfig())
+	writeProjectDependencyManifestForDepTest(t, projectRoot)
+	writeProjectSwiftForDepTest(t, projectRoot)
+
+	_, err := executeRootCommand(
+		"--config",
+		configPath,
+		"dep",
+		"add-external",
+		"--url",
+		"https://gitlab.example.com/mobile/mts-errorhandling.git",
+		"--version",
+		`exact: "6.0.0"`,
+		"--product",
+		"ErrorHandlingModule",
+		"--target-setting",
+		"IPHONEOS_DEPLOYMENT_TARGET=16.0",
+		"--app-target",
+	)
+	if err != nil {
+		t.Fatalf("executeRootCommand(dep add-external with product) error = %v", err)
+	}
+
+	projectManifest := readFileString(t, filepath.Join(projectRoot, "Package.swift"))
+	if !strings.Contains(projectManifest, `.package(name: "mts-errorhandling", url: "https://gitlab.example.com/mobile/mts-errorhandling.git", .exact("6.0.0")),`) {
+		t.Fatalf("project manifest missing external dependency:\n%s", projectManifest)
+	}
+	if !strings.Contains(projectManifest, `"ErrorHandlingModule": .framework`) {
+		t.Fatalf("project manifest missing product framework override:\n%s", projectManifest)
+	}
+	if strings.Contains(projectManifest, `"mts-errorhandling": .framework`) {
+		t.Fatalf("project manifest should not force package name as product:\n%s", projectManifest)
+	}
+	if !strings.Contains(projectManifest, `targetSettings: [`) ||
+		!strings.Contains(projectManifest, `"ErrorHandlingModule": .settings(base: [`) ||
+		!strings.Contains(projectManifest, `"IPHONEOS_DEPLOYMENT_TARGET": "16.0"`) {
+		t.Fatalf("project manifest missing product target setting override:\n%s", projectManifest)
+	}
+
+	projectSwift := readFileString(t, filepath.Join(projectRoot, "Project.swift"))
+	if !strings.Contains(projectSwift, `.external(name: "ErrorHandlingModule"),`) {
+		t.Fatalf("Project.swift missing app target external dependency:\n%s", projectSwift)
+	}
+}
+
 func writeProjectDependencyManifestForDepTest(t *testing.T, projectRoot string) {
 	t.Helper()
 
@@ -274,6 +323,32 @@ let package = Package(
     dependencies: [
     ],
     targets: []
+)
+`
+
+	if err := os.WriteFile(manifestPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", manifestPath, err)
+	}
+}
+
+func writeProjectSwiftForDepTest(t *testing.T, projectRoot string) {
+	t.Helper()
+
+	manifestPath := filepath.Join(projectRoot, "Project.swift")
+	content := `import ProjectDescription
+
+let project = Project(
+    name: "Demo",
+    targets: [
+        .target(
+            name: "Demo",
+            destinations: .iOS,
+            product: .app,
+            bundleId: "com.example.demo",
+            dependencies: [
+            ]
+        )
+    ]
 )
 `
 
