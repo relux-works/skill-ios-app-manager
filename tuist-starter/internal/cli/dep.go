@@ -98,6 +98,9 @@ func newDependencyCommand(opts *RootOptions) *cobra.Command {
 	var addExternalURL string
 	var addExternalVersion string
 	var addExternalModule string
+	var addExternalProducts []string
+	var addExternalTargetSettings []string
+	var addExternalAppTarget bool
 	addExternalCommand := &cobra.Command{
 		Use:   "add-external",
 		Short: "Add an external Swift package dependency",
@@ -119,8 +122,30 @@ func newDependencyCommand(opts *RootOptions) *cobra.Command {
 			}
 
 			targetModule := strings.TrimSpace(addExternalModule)
-			if err := deps.AddExternalDep(url, version, "", targetModule, modulesRoot); err != nil {
+			if err := deps.AddExternalDep(url, version, "", targetModule, modulesRoot, addExternalProducts...); err != nil {
 				return err
+			}
+			productNames := addExternalProducts
+			if len(productNames) == 0 {
+				productName, err := deps.InferExternalPackageName("", url)
+				if err != nil {
+					return err
+				}
+				productNames = []string{productName}
+			}
+			targetSettings, err := parseTargetSettings(addExternalTargetSettings)
+			if err != nil {
+				return err
+			}
+			if len(targetSettings) > 0 {
+				if err := deps.AddExternalProductTargetSettings(modulesRoot, productNames, targetSettings); err != nil {
+					return err
+				}
+			}
+			if addExternalAppTarget {
+				if err := deps.AddExternalProductsToAppTarget(modulesRoot, productNames...); err != nil {
+					return err
+				}
 			}
 
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "added external dependency %q\n", url)
@@ -144,6 +169,24 @@ func newDependencyCommand(opts *RootOptions) *cobra.Command {
 		"module",
 		"",
 		"Optional target module to link with this external package",
+	)
+	addExternalCommand.Flags().StringArrayVar(
+		&addExternalProducts,
+		"product",
+		nil,
+		"Swift product name exposed by the package; repeat for multiple products",
+	)
+	addExternalCommand.Flags().StringArrayVar(
+		&addExternalTargetSettings,
+		"target-setting",
+		nil,
+		"Tuist PackageSettings target build setting KEY=VALUE for product(s); repeat for multiple settings",
+	)
+	addExternalCommand.Flags().BoolVar(
+		&addExternalAppTarget,
+		"app-target",
+		false,
+		"Link product(s) into the host app target in Project.swift",
 	)
 
 	var removeExternalPackage string
@@ -226,6 +269,27 @@ func newDependencyCommand(opts *RootOptions) *cobra.Command {
 	)
 
 	return cmd
+}
+
+func parseTargetSettings(rawSettings []string) (map[string]string, error) {
+	settings := make(map[string]string, len(rawSettings))
+	for _, rawSetting := range rawSettings {
+		trimmed := strings.TrimSpace(rawSetting)
+		if trimmed == "" {
+			continue
+		}
+		key, value, found := strings.Cut(trimmed, "=")
+		if !found {
+			return nil, fmt.Errorf("--target-setting must use KEY=VALUE format")
+		}
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if key == "" || value == "" {
+			return nil, fmt.Errorf("--target-setting must use non-empty KEY=VALUE format")
+		}
+		settings[key] = value
+	}
+	return settings, nil
 }
 
 func resolveDependencyModulesRoot(configPath string, opts *RootOptions) (string, error) {

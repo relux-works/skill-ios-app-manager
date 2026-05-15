@@ -25,6 +25,10 @@ var (
 		{kind: "exact", pattern: regexp.MustCompile(`\bexact\s*:\s*"([^"]+)"`)},
 		{kind: "branch", pattern: regexp.MustCompile(`\bbranch\s*:\s*"([^"]+)"`)},
 		{kind: "revision", pattern: regexp.MustCompile(`\brevision\s*:\s*"([^"]+)"`)},
+		{kind: "from", pattern: regexp.MustCompile(`\.upToNextMajor\s*\(\s*from\s*:\s*"([^"]+)"`)},
+		{kind: "exact", pattern: regexp.MustCompile(`\.exact\s*\(\s*"([^"]+)"`)},
+		{kind: "branch", pattern: regexp.MustCompile(`\.branch\s*\(\s*"([^"]+)"`)},
+		{kind: "revision", pattern: regexp.MustCompile(`\.revision\s*\(\s*"([^"]+)"`)},
 	}
 )
 
@@ -38,9 +42,10 @@ type ExternalDependency struct {
 }
 
 type externalDependencySpec struct {
-	packageName string
-	url         string
-	version     externalVersionRequirement
+	packageName  string
+	url          string
+	version      externalVersionRequirement
+	productNames []string
 }
 
 type externalVersionRequirement struct {
@@ -54,13 +59,13 @@ type externalDependencyManifest struct {
 }
 
 // AddExternalDep adds remote SPM dependency to project Package.swift and optional module Package.swift.
-func AddExternalDep(url string, version string, packageName string, targetModule string, modulesPath string) error {
+func AddExternalDep(url string, version string, packageName string, targetModule string, modulesPath string, productNames ...string) error {
 	trimmedURL := strings.TrimSpace(url)
 	if trimmedURL == "" {
 		return fmt.Errorf("external dependency URL is required")
 	}
 
-	resolvedPackageName, err := resolveExternalPackageName(packageName, trimmedURL)
+	resolvedPackageName, err := InferExternalPackageName(packageName, trimmedURL)
 	if err != nil {
 		return err
 	}
@@ -71,9 +76,10 @@ func AddExternalDep(url string, version string, packageName string, targetModule
 	}
 
 	spec := externalDependencySpec{
-		packageName: resolvedPackageName,
-		url:         trimmedURL,
-		version:     versionRequirement,
+		packageName:  resolvedPackageName,
+		url:          trimmedURL,
+		version:      versionRequirement,
+		productNames: normalizeExternalProductNames(productNames, resolvedPackageName),
 	}
 
 	modulesRoot := normalizeModulesPath(modulesPath)
@@ -91,7 +97,7 @@ func AddExternalDep(url string, version string, packageName string, targetModule
 			err,
 		)
 	}
-	if err := tuistproj.EnsureFrameworkProductTypes(projectManifestPath, spec.packageName); err != nil {
+	if err := tuistproj.EnsureFrameworkProductTypes(projectManifestPath, spec.frameworkProductNames()...); err != nil {
 		return fmt.Errorf(
 			"ensure framework product type for %q in project manifest: %w",
 			spec.packageName,
@@ -106,12 +112,12 @@ func AddExternalDep(url string, version string, packageName string, targetModule
 
 	moduleName, err := normalizeInterfaceModuleName(targetModuleName)
 	if err != nil {
-		return rollbackExternalDependencyAdd(projectManifestPath, spec.packageName, err)
+		return rollbackExternalDependencyAdd(projectManifestPath, spec, err)
 	}
 
 	moduleManifestPath, err := requireModuleManifest(moduleName, modulesRoot)
 	if err != nil {
-		return rollbackExternalDependencyAdd(projectManifestPath, spec.packageName, err)
+		return rollbackExternalDependencyAdd(projectManifestPath, spec, err)
 	}
 
 	if err := addExternalDependencyToModuleManifest(moduleManifestPath, spec); err != nil {
@@ -128,6 +134,38 @@ func AddExternalDep(url string, version string, packageName string, targetModule
 		return fmt.Errorf("add external dependency %q to module %q: %w", spec.packageName, moduleName, err)
 	}
 
+	return nil
+}
+
+// AddExternalProductTargetSettings adds PackageSettings target build settings for external products.
+func AddExternalProductTargetSettings(modulesPath string, productNames []string, settings map[string]string) error {
+	normalizedProducts := normalizeExternalProductNames(productNames, "")
+	if len(normalizedProducts) == 0 || len(settings) == 0 {
+		return nil
+	}
+
+	overrides := make([]tuistproj.TargetBuildSetting, 0, len(normalizedProducts)*len(settings))
+	for _, productName := range normalizedProducts {
+		for key, value := range settings {
+			overrides = append(overrides, tuistproj.TargetBuildSetting{
+				ProductName: productName,
+				Key:         key,
+				Value:       value,
+			})
+		}
+	}
+
+	modulesRoot := normalizeModulesPath(modulesPath)
+	projectManifestPath := rootManifestPathForModules(modulesRoot)
+	if exists, err := pathExists(projectManifestPath); err != nil {
+		return fmt.Errorf("stat project manifest %q: %w", projectManifestPath, err)
+	} else if !exists {
+		return fmt.Errorf("project manifest %q was not found", projectManifestPath)
+	}
+
+	if err := tuistproj.EnsureTargetBuildSettings(projectManifestPath, overrides...); err != nil {
+		return fmt.Errorf("ensure target build settings in project manifest: %w", err)
+	}
 	return nil
 }
 
@@ -207,7 +245,7 @@ func ListExternalDeps(modulesPath string) ([]ExternalDependency, error) {
 
 			resolvedPackageName := strings.TrimSpace(item.Name)
 			if resolvedPackageName == "" {
-				inferredPackageName, inferErr := resolveExternalPackageName("", url)
+				inferredPackageName, inferErr := InferExternalPackageName("", url)
 				if inferErr == nil {
 					resolvedPackageName = inferredPackageName
 				}
@@ -251,6 +289,14 @@ func ListExternalDeps(modulesPath string) ([]ExternalDependency, error) {
 }
 
 func addExternalDependencyToManifest(manifestPath string, spec externalDependencySpec) error {
+	exists, err := externalDependencyExistsInManifest(manifestPath, spec.packageName)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return nil
+	}
+
 	edit := tuistproj.ManifestEdit{
 		Type:    tuistproj.AddDependency,
 		Name:    spec.packageName,
@@ -265,18 +311,27 @@ func addExternalDependencyToModuleManifest(manifestPath string, spec externalDep
 		return fmt.Errorf("read module manifest %q: %w", manifestPath, err)
 	}
 
-	updated, err := tuistproj.ApplyManifestEdits(string(payload), tuistproj.ManifestEdit{
-		Type:    tuistproj.AddDependency,
-		Name:    spec.packageName,
-		Content: spec.manifestEntry(),
-	})
+	updated := string(payload)
+	exists, err := externalDependencyExistsInContent(updated, spec.packageName)
 	if err != nil {
 		return err
 	}
+	if !exists {
+		updated, err = tuistproj.ApplyManifestEdits(updated, tuistproj.ManifestEdit{
+			Type:    tuistproj.AddDependency,
+			Name:    spec.packageName,
+			Content: spec.manifestEntry(),
+		})
+		if err != nil {
+			return err
+		}
+	}
 
-	updated, err = addTargetProductDependency(updated, spec.packageName)
-	if err != nil {
-		return err
+	for _, productName := range spec.frameworkProductNames() {
+		updated, err = addTargetProductDependencyFromPackage(updated, productName, spec.packageName)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := os.WriteFile(manifestPath, []byte(updated), 0o644); err != nil {
@@ -295,10 +350,7 @@ func removeExternalDependencyFromManifest(manifestPath string, packageName strin
 	modified := false
 
 	updated, removedDependency, err := removeDependencyItemIf(updated, func(item tuistproj.ManifestItem) bool {
-		if strings.TrimSpace(item.Name) != packageName {
-			return false
-		}
-		return isExternalDependencyContent(item.Content)
+		return externalDependencyItemPackageName(item) == packageName
 	})
 	if err != nil {
 		return err
@@ -465,7 +517,8 @@ func listModuleManifestPaths(modulesRoot string) ([]string, error) {
 	return moduleManifestPaths, nil
 }
 
-func resolveExternalPackageName(packageName string, url string) (string, error) {
+// InferExternalPackageName resolves the explicit package name or derives one from a Git URL.
+func InferExternalPackageName(packageName string, url string) (string, error) {
 	trimmedPackageName := strings.TrimSpace(packageName)
 	if trimmedPackageName != "" {
 		return trimmedPackageName, nil
@@ -574,12 +627,88 @@ func isExternalDependencyContent(content string) bool {
 	return externalURLArgumentPattern.MatchString(content)
 }
 
-func rollbackExternalDependencyAdd(projectManifestPath string, packageName string, reason error) error {
-	rollbackErr := removeExternalDependencyFromManifest(projectManifestPath, packageName, true)
+func externalDependencyExistsInManifest(manifestPath string, packageName string) (bool, error) {
+	payload, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return false, fmt.Errorf("read manifest %q: %w", manifestPath, err)
+	}
+	return externalDependencyExistsInContent(string(payload), packageName)
+}
+
+func externalDependencyExistsInContent(content string, packageName string) (bool, error) {
+	manifest, err := tuistproj.ParseManifest(content)
+	if err != nil {
+		return false, err
+	}
+
+	for _, item := range manifest.Dependencies {
+		if externalDependencyItemPackageName(item) == packageName {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func externalDependencyItemPackageName(item tuistproj.ManifestItem) string {
+	if !isExternalDependencyContent(item.Content) {
+		return ""
+	}
+
+	if packageName := strings.TrimSpace(item.Name); packageName != "" {
+		return packageName
+	}
+
+	url := extractExternalDependencyURL(item.Content)
+	if url == "" {
+		return ""
+	}
+
+	packageName, err := InferExternalPackageName("", url)
+	if err != nil {
+		return ""
+	}
+	return packageName
+}
+
+// AddExternalProductsToAppTarget links external package products into the host app target Project.swift.
+func AddExternalProductsToAppTarget(modulesPath string, productNames ...string) error {
+	normalizedProducts := normalizeExternalProductNames(productNames, "")
+	if len(normalizedProducts) == 0 {
+		return fmt.Errorf("external product name is required")
+	}
+
+	modulesRoot := normalizeModulesPath(modulesPath)
+	projectManifestPath := filepath.Join(filepath.Dir(modulesRoot), "Project.swift")
+	if exists, err := pathExists(projectManifestPath); err != nil {
+		return fmt.Errorf("stat project manifest %q: %w", projectManifestPath, err)
+	} else if !exists {
+		return fmt.Errorf("project manifest %q was not found", projectManifestPath)
+	}
+
+	for _, productName := range normalizedProducts {
+		err := tuistproj.ApplyManifestEditsToFile(projectManifestPath, tuistproj.ManifestEdit{
+			Type:    tuistproj.AddDependency,
+			Name:    productName,
+			Content: fmt.Sprintf(`.external(name: "%s")`, productName),
+		})
+		if err != nil && strings.Contains(err.Error(), "already contains") {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("add external product %q to app target: %w", productName, err)
+		}
+	}
+
+	return nil
+}
+
+func rollbackExternalDependencyAdd(projectManifestPath string, spec externalDependencySpec, reason error) error {
+	rollbackErr := removeExternalDependencyFromManifest(projectManifestPath, spec.packageName, true)
 	if rollbackErr != nil {
 		return fmt.Errorf("%w (rollback failed: %v)", reason, rollbackErr)
 	}
-	if cleanupErr := tuistproj.RemoveFrameworkProductTypes(projectManifestPath, packageName); cleanupErr != nil {
+	if cleanupErr := tuistproj.RemoveFrameworkProductTypes(projectManifestPath, spec.frameworkProductNames()...); cleanupErr != nil {
 		return fmt.Errorf("%w (framework cleanup failed: %v)", reason, cleanupErr)
 	}
 	return reason
@@ -601,12 +730,58 @@ func (s externalDependencySpec) manifestEntry() string {
 		`.package(name: "%s", url: "%s", %s)`,
 		escapeSwiftString(s.packageName),
 		escapeSwiftString(s.url),
-		s.version.clause(),
+		s.version.namedClause(),
 	)
+}
+
+func (s externalDependencySpec) frameworkProductNames() []string {
+	return normalizeExternalProductNames(s.productNames, s.packageName)
+}
+
+func normalizeExternalProductNames(productNames []string, fallback string) []string {
+	seen := make(map[string]struct{}, len(productNames)+1)
+	normalized := make([]string, 0, len(productNames)+1)
+
+	for _, productName := range productNames {
+		trimmed := strings.TrimSpace(productName)
+		if trimmed == "" {
+			continue
+		}
+		if _, exists := seen[trimmed]; exists {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		normalized = append(normalized, trimmed)
+	}
+
+	if len(normalized) == 0 {
+		trimmedFallback := strings.TrimSpace(fallback)
+		if trimmedFallback != "" {
+			normalized = append(normalized, trimmedFallback)
+		}
+	}
+
+	sort.Strings(normalized)
+	return normalized
 }
 
 func (r externalVersionRequirement) clause() string {
 	return fmt.Sprintf(`%s: "%s"`, r.kind, escapeSwiftString(r.value))
+}
+
+func (r externalVersionRequirement) namedClause() string {
+	switch r.kind {
+	case "from":
+		return fmt.Sprintf(`.upToNextMajor(from: "%s")`, escapeSwiftString(r.value))
+	case "exact":
+		return fmt.Sprintf(`.exact("%s")`, escapeSwiftString(r.value))
+	case "branch":
+		return fmt.Sprintf(`.branch("%s")`, escapeSwiftString(r.value))
+	case "revision":
+		return fmt.Sprintf(`.revision("%s")`, escapeSwiftString(r.value))
+	default:
+		return r.clause()
+	}
 }
 
 func escapeSwiftString(value string) string {

@@ -196,21 +196,25 @@ func applyInternalDependencyEdit(manifestPath string, dependsOn string, add bool
 }
 
 func addTargetProductDependency(content string, dependsOn string) (string, error) {
+	return addTargetProductDependencyFromPackage(content, dependsOn, dependsOn)
+}
+
+func addTargetProductDependencyFromPackage(content string, productName string, packageName string) (string, error) {
 	lines, hasTrailingNewline := splitEditableLines(content)
 	arraySection, err := findTargetDependencyArray(lines)
 	if err != nil {
 		return "", err
 	}
 
-	pattern := productDependencyPattern(dependsOn)
+	pattern := productDependencyPattern(productName)
 	for lineIndex := arraySection.openLine + 1; lineIndex < arraySection.closeLine; lineIndex++ {
 		if pattern.MatchString(lines[lineIndex]) {
-			return "", fmt.Errorf("target dependencies already contain %q", dependsOn)
+			return "", fmt.Errorf("target dependencies already contain %q", productName)
 		}
 	}
 
 	indent := targetDependencyInsertionIndent(lines, arraySection)
-	newLine := indent + fmt.Sprintf(`.product(name: "%s", package: "%s"),`, dependsOn, dependsOn)
+	newLine := indent + fmt.Sprintf(`.product(name: "%s", package: "%s"),`, productName, packageName)
 
 	updatedLines := make([]string, 0, len(lines)+1)
 	updatedLines = append(updatedLines, lines[:arraySection.closeLine]...)

@@ -65,6 +65,15 @@ ios-app-manager dep add-external \
   --version 'branch: "main"' \
   --module Feed
 
+# Add a package whose Swift product name differs from the package name,
+# link that product into the host app target, and apply a product build setting
+ios-app-manager dep add-external \
+  --url https://gitlab.example.com/mobile/example-errorhandling.git \
+  --version 'exact: "1.0.0"' \
+  --product ExampleErrorHandlingModule \
+  --target-setting IPHONEOS_DEPLOYMENT_TARGET=16.0 \
+  --app-target
+
 # Inspect dependency graph
 ios-app-manager dep list Feed
 ios-app-manager dep list
