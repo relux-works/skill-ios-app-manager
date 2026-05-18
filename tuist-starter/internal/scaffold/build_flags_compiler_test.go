@@ -53,13 +53,11 @@ func bad(box: Box) {
 		t.Fatal("runSwiftTypecheck(non-sendable capture) error = nil, want strict concurrency failure")
 	}
 
-	for _, want := range []string{
-		"non-Sendable type 'Box'",
-		"@Sendable",
-	} {
-		if !strings.Contains(output, want) {
-			t.Fatalf("swiftc output missing %q:\n%s", want, output)
-		}
+	if !strings.Contains(strings.ToLower(output), "non-sendable type 'box'") {
+		t.Fatalf("swiftc output missing non-Sendable Box diagnostic:\n%s", output)
+	}
+	if !strings.Contains(output, "@Sendable") {
+		t.Fatalf("swiftc output missing @Sendable diagnostic:\n%s", output)
 	}
 }
 
