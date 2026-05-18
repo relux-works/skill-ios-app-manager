@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [main]
 
+defaults:
+  run:
+    working-directory: tuist-starter
+
 jobs:
   lint:
     runs-on: macos-latest
