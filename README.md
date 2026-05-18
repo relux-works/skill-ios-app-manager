@@ -52,6 +52,7 @@ Current generators:
 - `generate swiftlint`
 - `generate versions`
 - `generate min-target`
+- `generate team-id`
 - `generate app-capabilities`
 - `generate build-flags`
 - `generate package-strictness`
@@ -59,11 +60,12 @@ Current generators:
 `generate project-config` is the orchestration entrypoint for manifest config sync. Today it runs:
 - `generate versions` — syncs `marketing_version` and `project_version`
 - `generate min-target` — syncs `min_target` into `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET`
+- `generate team-id` — syncs `team_id` into `developmentTeam` constants and `DEVELOPMENT_TEAM` build settings
 - `generate app-capabilities` — syncs host app capabilities from config
-- `generate build-flags` — syncs app/extension Swift language and concurrency settings from `project_settings.swift`
+- `generate build-flags` — syncs app/extension Swift language, strict memory safety, and concurrency settings from `project_settings.swift`
 - `generate package-strictness` — syncs root/module `Package.swift` strictness from the same `project_settings.swift`
 
-These generators depend on the `init` scaffold shape. `versions`, `min-target`, and `build-flags` update the host app `Project.swift` plus every `Extensions/*/Project.swift`. `app-capabilities` syncs capability-owned manifest slices. `package-strictness` updates root `Package.swift` plus every module `Packages/*/Package.swift`.
+These generators depend on the `init` scaffold shape. `versions`, `min-target`, `team-id`, and `build-flags` update the host app `Project.swift` plus every `Extensions/*/Project.swift`. `app-capabilities` syncs capability-owned manifest slices. `package-strictness` updates root `Package.swift` plus every module `Packages/*/Package.swift`.
 
 Swift strictness is config-driven. Declare it in `ios-app-manager.json` under `project_settings.swift`; if you omit that block, defaults are derived from `swift_version` and the scaffold's current strict baseline.
 
@@ -74,6 +76,7 @@ Example:
   "project_settings": {
     "swift": {
       "language_mode": "v6",
+      "strict_memory_safety": "yes",
       "concurrency": {
         "approachable": false,
         "default_actor_isolation": "nonisolated",
@@ -117,6 +120,7 @@ If you only want one slice, the leaf plugins still work directly:
 ```bash
 ./ios-app-manager generate versions
 ./ios-app-manager generate min-target
+./ios-app-manager generate team-id
 ./ios-app-manager generate app-capabilities
 ./ios-app-manager generate build-flags
 ./ios-app-manager generate package-strictness

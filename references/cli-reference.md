@@ -34,6 +34,7 @@ ios-app-manager [command] [flags]
 | `generate project-config` | Sync manifest config slices across app + extensions | `ios-app-manager generate project-config` |
 | `generate versions` | Generate or update app + extension versions | `ios-app-manager generate versions` |
 | `generate min-target` | Generate or update app + extension deployment target markers | `ios-app-manager generate min-target` |
+| `generate team-id` | Generate or update app + extension signing team settings | `ios-app-manager generate team-id` |
 | `generate application-configuration` | Generate or update product-level runtime app configuration | `ios-app-manager generate application-configuration` |
 | `generate app-capabilities` | Generate or update host app capabilities from config | `ios-app-manager generate app-capabilities` |
 | `generate build-flags` | Generate or update strict Swift compiler build flags in app + extension manifests | `ios-app-manager generate build-flags` |
@@ -346,6 +347,26 @@ Example:
 ios-app-manager generate min-target
 ```
 
+### `generate team-id`
+
+Syntax:
+```bash
+ios-app-manager generate team-id
+```
+
+Description:
+- Syncs `team_id` from config into scaffold-managed `Project.swift` manifests.
+- Updates the host app manifest and every `Extensions/*/Project.swift` generated from scaffold templates.
+- Canonicalizes `let developmentTeam = "<team_id>"` and `"DEVELOPMENT_TEAM": .string(developmentTeam)` across app, test, app-like, and extension build settings.
+
+Flags:
+- `--config <path>`: Optional command-level config override.
+
+Example:
+```bash
+ios-app-manager generate team-id
+```
+
 ### `generate application-configuration`
 
 Syntax:
@@ -402,8 +423,8 @@ ios-app-manager generate build-flags
 Description:
 - Syncs a strict Swift compiler baseline into scaffold-managed `Project.swift` manifests.
 - Updates the host app manifest and every `Extensions/*/Project.swift` generated from scaffold templates.
-- Canonicalizes concurrency-related build settings such as strict concurrency checking, default actor isolation, and selected upcoming feature toggles.
-- Current values are fixed by the scaffold plugin rather than loaded from `ios-app-manager.json`.
+- Canonicalizes Swift strictness build settings such as strict memory safety, strict concurrency checking, default actor isolation, and selected upcoming feature toggles.
+- Values are loaded from `project_settings.swift` in `ios-app-manager.json`; omitted values use the scaffold strict baseline.
 
 Flags:
 - `--config <path>`: Optional command-level config override.
@@ -425,6 +446,7 @@ Description:
 - Runs the current config-sync leaf plugins in order:
   - `generate versions`
   - `generate min-target`
+  - `generate team-id`
   - `generate application-configuration`
   - `generate app-capabilities`
   - `generate build-flags`

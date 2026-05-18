@@ -127,6 +127,9 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 	if cfg.ProjectSettings.Swift.LanguageMode != "v6" {
 		t.Fatalf("ProjectSettings.Swift.LanguageMode = %q, want %q", cfg.ProjectSettings.Swift.LanguageMode, "v6")
 	}
+	if cfg.ProjectSettings.Swift.StrictMemorySafety != "yes" {
+		t.Fatalf("ProjectSettings.Swift.StrictMemorySafety = %q, want %q", cfg.ProjectSettings.Swift.StrictMemorySafety, "yes")
+	}
 	if cfg.ProjectSettings.Swift.Concurrency.Approachable == nil || *cfg.ProjectSettings.Swift.Concurrency.Approachable {
 		t.Fatalf("Approachable = %#v, want false", cfg.ProjectSettings.Swift.Concurrency.Approachable)
 	}
@@ -204,7 +207,8 @@ func validProjectConfig() ProjectConfig {
 		PushKeyID:        "ABC123DEF4",
 		ProjectSettings: ProjectSettings{
 			Swift: SwiftProjectSettings{
-				LanguageMode: "v6",
+				LanguageMode:       "v6",
+				StrictMemorySafety: "yes",
 				Concurrency: SwiftConcurrencySettings{
 					Approachable:                      boolPtr(false),
 					DefaultActorIsolation:             "nonisolated",

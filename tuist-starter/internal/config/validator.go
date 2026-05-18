@@ -46,6 +46,9 @@ func (c ProjectConfig) Validate() error {
 	if value := strings.TrimSpace(c.ProjectSettings.Swift.LanguageMode); value != "" && !languageModePattern.MatchString(value) {
 		issues = append(issues, "ProjectSettings.Swift.LanguageMode must use SwiftPM format (e.g. v6)")
 	}
+	if !isValidUpcomingFeatureMode(c.ProjectSettings.Swift.StrictMemorySafety) {
+		issues = append(issues, "ProjectSettings.Swift.StrictMemorySafety must be yes, migrate, or no")
+	}
 	if value := strings.TrimSpace(c.SharedConfig.ModuleName); value != "" && !swiftModulePattern.MatchString(value) {
 		issues = append(issues, "SharedConfig.ModuleName must be a valid Swift module identifier (e.g. SharedConfig)")
 	}

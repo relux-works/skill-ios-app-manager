@@ -50,6 +50,7 @@ type extensionProjectTemplateData struct {
 	HostBundleID             string
 	BundleIDSuffix           string
 	ExtensionPointIdentifier string
+	DevelopmentTeam          string
 	MarketingVersion         string
 	ProjectVersion           string
 	MinTarget                string
@@ -142,6 +143,7 @@ func makeAppExtensionProject(input ExtensionProjectInput) error {
 		HostBundleID:             hostBundleID,
 		BundleIDSuffix:           bundleIDSuffix,
 		ExtensionPointIdentifier: strings.TrimSpace(input.ExtensionPointIdentifier),
+		DevelopmentTeam:          strings.TrimSpace(cfg.TeamID),
 		MarketingVersion:         strings.TrimSpace(cfg.MarketingVersion),
 		ProjectVersion:           strings.TrimSpace(cfg.ProjectVersion),
 		MinTarget:                strings.TrimSpace(cfg.MinTarget),

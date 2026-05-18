@@ -12,7 +12,8 @@ func TestEffectiveSwiftSettingsMapsUpcomingFeatureModes(t *testing.T) {
 		SwiftVersion: "6.2",
 		ProjectSettings: ProjectSettings{
 			Swift: SwiftProjectSettings{
-				LanguageMode: "v6",
+				LanguageMode:       "v6",
+				StrictMemorySafety: "migrate",
 				Concurrency: SwiftConcurrencySettings{
 					MemberImportVisibility:    "migrate",
 					ExistentialAny:            "no",
@@ -34,8 +35,17 @@ func TestEffectiveSwiftSettingsMapsUpcomingFeatureModes(t *testing.T) {
 	if got := settings["SWIFT_UPCOMING_FEATURE_NONFROZEN_ENUM_EXHAUSTIVITY"]; got != "YES" {
 		t.Fatalf("SWIFT_UPCOMING_FEATURE_NONFROZEN_ENUM_EXHAUSTIVITY = %q, want %q", got, "YES")
 	}
+	if got := settings["SWIFT_STRICT_MEMORY_SAFETY"]; got != "MIGRATE" {
+		t.Fatalf("SWIFT_STRICT_MEMORY_SAFETY = %q, want %q", got, "MIGRATE")
+	}
+	if got := settings["SWIFT_STRICT_CONCURRENCY_DEFAULT"]; got != "complete" {
+		t.Fatalf("SWIFT_STRICT_CONCURRENCY_DEFAULT = %q, want %q", got, "complete")
+	}
 
 	packageSettings := effective.PackageSwiftSettings()
+	if !containsSetting(packageSettings, `.enableUpcomingFeature("StrictConcurrency")`) {
+		t.Fatalf("PackageSwiftSettings() missing StrictConcurrency: %#v", packageSettings)
+	}
 	if !containsSetting(packageSettings, `.enableUpcomingFeature("MemberImportVisibility:migrate")`) {
 		t.Fatalf("PackageSwiftSettings() missing MemberImportVisibility migrate: %#v", packageSettings)
 	}

@@ -70,9 +70,11 @@ func TestSetupCreatesWidgetExtensionAndPatchesHost(t *testing.T) {
 
 	extensionProject := readFile(t, filepath.Join(extensionRoot, "Project.swift"))
 	for _, want := range []string{
+		`let developmentTeam = "TEAM123456"`,
 		`bundleId: "\(hostBundleId).widget"`,
 		`let marketingVersion = "1.0.0"`,
 		`"CFBundleShortVersionString": .string(marketingVersion)`,
+		`"DEVELOPMENT_TEAM": .string(developmentTeam)`,
 		`"MARKETING_VERSION": .string(marketingVersion)`,
 		`"NSExtensionPointIdentifier": .string("com.apple.widgetkit-extension")`,
 		`.sdk(name: "WidgetKit", type: .framework)`,

@@ -65,6 +65,7 @@ func TestProjectConfigValidateInvalidFormatsAllReturned(t *testing.T) {
 	cfg.SwiftVersion = "6"
 	cfg.MinTarget = "17"
 	cfg.ProjectSettings.Swift.LanguageMode = "6"
+	cfg.ProjectSettings.Swift.StrictMemorySafety = "later"
 	cfg.ProjectSettings.Swift.Concurrency.StrictChecking = "hard"
 	cfg.ProjectSettings.Swift.Concurrency.MemberImportVisibility = "later"
 	cfg.ProjectSettings.Swift.Concurrency.ExistentialAny = "never"
@@ -83,6 +84,7 @@ func TestProjectConfigValidateInvalidFormatsAllReturned(t *testing.T) {
 		"SwiftVersion must use major.minor format",
 		"MinTarget must use major.minor format",
 		"ProjectSettings.Swift.LanguageMode must use SwiftPM format",
+		"ProjectSettings.Swift.StrictMemorySafety must be yes, migrate, or no",
 		"ProjectSettings.Swift.Concurrency.StrictChecking must be minimal, targeted, or complete",
 		"ProjectSettings.Swift.Concurrency.MemberImportVisibility must be yes, migrate, or no",
 		"ProjectSettings.Swift.Concurrency.ExistentialAny must be yes, migrate, or no",

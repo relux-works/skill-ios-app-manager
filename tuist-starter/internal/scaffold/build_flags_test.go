@@ -73,8 +73,10 @@ let project = Project(
 	for _, manifestPath := range result.Updated {
 		content := readVersionManifest(t, manifestPath)
 		for _, want := range []string{
+			`"SWIFT_STRICT_MEMORY_SAFETY": "YES"`,
 			`"SWIFT_APPROACHABLE_CONCURRENCY": "NO"`,
 			`"SWIFT_DEFAULT_ACTOR_ISOLATION": "nonisolated"`,
+			`"SWIFT_STRICT_CONCURRENCY_DEFAULT": "complete"`,
 			`"SWIFT_STRICT_CONCURRENCY": "complete"`,
 			`"SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE": "YES"`,
 			`"SWIFT_UPCOMING_FEATURE_DISABLE_OUTWARD_ACTOR_ISOLATION": "YES"`,
@@ -114,8 +116,10 @@ let project = Project(
             settings: .settings(
                 base: [
                     "SWIFT_VERSION": "6.0",
+                    "SWIFT_STRICT_MEMORY_SAFETY": "YES",
                     "SWIFT_APPROACHABLE_CONCURRENCY": "NO",
                     "SWIFT_DEFAULT_ACTOR_ISOLATION": "nonisolated",
+                    "SWIFT_STRICT_CONCURRENCY_DEFAULT": "complete",
                     "SWIFT_STRICT_CONCURRENCY": "complete",
                     "SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE": "YES",
                     "SWIFT_UPCOMING_FEATURE_DISABLE_OUTWARD_ACTOR_ISOLATION": "YES",
@@ -200,6 +204,12 @@ let project = Project(
 	if got := strings.Count(content, `"SWIFT_STRICT_CONCURRENCY": "complete"`); got != 4 {
 		t.Fatalf("SWIFT_STRICT_CONCURRENCY count = %d, want 4:\n%s", got, content)
 	}
+	if got := strings.Count(content, `"SWIFT_STRICT_CONCURRENCY_DEFAULT": "complete"`); got != 4 {
+		t.Fatalf("SWIFT_STRICT_CONCURRENCY_DEFAULT count = %d, want 4:\n%s", got, content)
+	}
+	if got := strings.Count(content, `"SWIFT_STRICT_MEMORY_SAFETY": "YES"`); got != 4 {
+		t.Fatalf("SWIFT_STRICT_MEMORY_SAFETY count = %d, want 4:\n%s", got, content)
+	}
 	if got := strings.Count(content, `"SWIFT_APPROACHABLE_CONCURRENCY": "NO"`); got != 4 {
 		t.Fatalf("SWIFT_APPROACHABLE_CONCURRENCY count = %d, want 4:\n%s", got, content)
 	}
@@ -253,6 +263,12 @@ let project = Project(
 	}
 	if got := strings.Count(content, `"SWIFT_STRICT_CONCURRENCY": "complete"`); got != 2 {
 		t.Fatalf("SWIFT_STRICT_CONCURRENCY count = %d, want 2:\n%s", got, content)
+	}
+	if got := strings.Count(content, `"SWIFT_STRICT_CONCURRENCY_DEFAULT": "complete"`); got != 2 {
+		t.Fatalf("SWIFT_STRICT_CONCURRENCY_DEFAULT count = %d, want 2:\n%s", got, content)
+	}
+	if got := strings.Count(content, `"SWIFT_STRICT_MEMORY_SAFETY": "YES"`); got != 2 {
+		t.Fatalf("SWIFT_STRICT_MEMORY_SAFETY count = %d, want 2:\n%s", got, content)
 	}
 }
 
@@ -308,5 +324,11 @@ let project = Project(
 	nestedContent := readVersionManifest(t, nestedAppPath)
 	if !strings.Contains(nestedContent, `"SWIFT_STRICT_CONCURRENCY": "complete"`) {
 		t.Fatalf("nested app manifest missing strict concurrency:\n%s", nestedContent)
+	}
+	if !strings.Contains(nestedContent, `"SWIFT_STRICT_CONCURRENCY_DEFAULT": "complete"`) {
+		t.Fatalf("nested app manifest missing strict concurrency default:\n%s", nestedContent)
+	}
+	if !strings.Contains(nestedContent, `"SWIFT_STRICT_MEMORY_SAFETY": "YES"`) {
+		t.Fatalf("nested app manifest missing strict memory safety:\n%s", nestedContent)
 	}
 }

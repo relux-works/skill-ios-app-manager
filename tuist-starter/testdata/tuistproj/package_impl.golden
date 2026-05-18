@@ -26,6 +26,7 @@ let package = Package(
             path: "Sources",
             swiftSettings: [
                 .swiftLanguageMode(.v6),
+                .enableUpcomingFeature("StrictConcurrency"),
                 .enableUpcomingFeature("ConciseMagicFile"),
                 .enableUpcomingFeature("DisableOutwardActorInference"),
                 .enableUpcomingFeature("GlobalActorIsolatedTypesUsability"),
