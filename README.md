@@ -46,6 +46,8 @@ make lint     # go vet
 
 `generate` is plugin-based. Each `generate <artifact>` entrypoint is a separate scaffold generator with its own responsibility and dependency contract.
 
+Proposed generated Makefile hook contract: [`references/makefile-hooks-spec.md`](references/makefile-hooks-spec.md).
+
 Current generators:
 - `generate project-config`
 - `generate makefile`
