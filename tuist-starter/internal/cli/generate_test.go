@@ -24,7 +24,7 @@ func TestGenerateHelpShowsMakefileSubcommand(t *testing.T) {
 		}
 	}
 
-	for _, expected := range []string{"versions", "min-target", "application-configuration", "app-capabilities", "build-flags", "project-config"} {
+	for _, expected := range []string{"versions", "min-target", "team-id", "application-configuration", "app-capabilities", "build-flags", "project-config"} {
 		if !strings.Contains(output, expected) {
 			t.Fatalf("generate --help output missing %q:\n%s", expected, output)
 		}
@@ -325,6 +325,85 @@ let project = Project(
 	}
 }
 
+func TestGenerateTeamIDUpdatesHostAndExtensionManifests(t *testing.T) {
+	t.Parallel()
+
+	cfg := testProjectConfig()
+	configPath := writeTestConfig(t, cfg)
+	projectRoot := filepath.Dir(configPath)
+
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Project.swift"), `import ProjectDescription
+
+let appName = "DemoApp"
+let bundleID = "com.demo.app"
+let developmentTeam = "OLDTEAM123"
+
+let project = Project(
+    name: appName,
+    targets: [
+        .target(
+            name: appName,
+            bundleId: bundleID,
+            settings: .settings(
+                base: [
+                    "DEVELOPMENT_TEAM": .string("OLDTEAM123"),
+                ]
+            )
+        )
+    ]
+)
+`)
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"), `import ProjectDescription
+
+let hostBundleId = "com.demo.app"
+
+let project = Project(
+    name: "DemoWidget",
+    targets: [
+        .target(
+            name: "DemoWidget",
+            product: .appExtension,
+            bundleId: "\(hostBundleId).widget",
+            settings: .settings(
+                base: [
+                    "SWIFT_VERSION": "6.0",
+                ]
+            )
+        )
+    ]
+)
+`)
+
+	output, err := executeRootCommand("generate", "--config", configPath, "team-id")
+	if err != nil {
+		t.Fatalf("executeRootCommand(generate team-id) error = %v", err)
+	}
+	if !strings.Contains(output, "regenerated team id manifests in 2 file(s)") {
+		t.Fatalf("generate team-id output = %q, want regenerate message", output)
+	}
+
+	for _, manifestPath := range []string{
+		filepath.Join(projectRoot, "Project.swift"),
+		filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"),
+	} {
+		content, err := os.ReadFile(manifestPath)
+		if err != nil {
+			t.Fatalf("ReadFile(%q) error = %v", manifestPath, err)
+		}
+		for _, want := range []string{
+			`let developmentTeam = "ABCDE12345"`,
+			`"DEVELOPMENT_TEAM": .string(developmentTeam)`,
+		} {
+			if !strings.Contains(string(content), want) {
+				t.Fatalf("%s missing %q:\n%s", manifestPath, want, string(content))
+			}
+		}
+		if strings.Contains(string(content), "OLDTEAM123") {
+			t.Fatalf("%s kept stale team id:\n%s", manifestPath, string(content))
+		}
+	}
+}
+
 func TestGenerateBuildFlagsUpdatesHostAndExtensionManifests(t *testing.T) {
 	t.Parallel()
 
@@ -393,8 +472,10 @@ let project = Project(
 			t.Fatalf("ReadFile(%q) error = %v", manifestPath, err)
 		}
 		for _, want := range []string{
+			`"SWIFT_STRICT_MEMORY_SAFETY": "YES"`,
 			`"SWIFT_APPROACHABLE_CONCURRENCY": "NO"`,
 			`"SWIFT_DEFAULT_ACTOR_ISOLATION": "nonisolated"`,
+			`"SWIFT_STRICT_CONCURRENCY_DEFAULT": "complete"`,
 			`"SWIFT_STRICT_CONCURRENCY": "complete"`,
 			`"SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE": "YES"`,
 			`"SWIFT_UPCOMING_FEATURE_DISABLE_OUTWARD_ACTOR_ISOLATION": "YES"`,
@@ -436,8 +517,10 @@ let project = Project(
             settings: .settings(
                 base: [
                     "SWIFT_VERSION": "6.0",
+                    "SWIFT_STRICT_MEMORY_SAFETY": "YES",
                     "SWIFT_APPROACHABLE_CONCURRENCY": "NO",
                     "SWIFT_DEFAULT_ACTOR_ISOLATION": "nonisolated",
+                    "SWIFT_STRICT_CONCURRENCY_DEFAULT": "complete",
                     "SWIFT_STRICT_CONCURRENCY": "complete",
                     "SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE": "YES",
                     "SWIFT_UPCOMING_FEATURE_DISABLE_OUTWARD_ACTOR_ISOLATION": "YES",
@@ -647,6 +730,7 @@ let package = Package(
 		"project config sync summary:",
 		"- versions: regenerated version manifests in 2 file(s)",
 		"- min-target: regenerated min target manifests in 3 file(s)",
+		"- team-id: regenerated team id manifests in 2 file(s)",
 		"- application-configuration: regenerated application configuration in 7 file(s)",
 		"- app-capabilities: regenerated app capabilities via 1 enabled subplugin(s), updated 5 file(s)",
 		"- build-flags: regenerated build flag manifests in 2 file(s)",
@@ -669,10 +753,14 @@ let package = Package(
 			`let marketingVersion = "2.0.0"`,
 			`let currentProjectVersion = "55"`,
 			`let minTarget = "18.0"`,
+			`let developmentTeam = "ABCDE12345"`,
 			`deploymentTargets: .iOS(minTarget)`,
 			`"IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget)`,
+			`"DEVELOPMENT_TEAM": .string(developmentTeam)`,
+			`"SWIFT_STRICT_MEMORY_SAFETY": "YES"`,
 			`"SWIFT_APPROACHABLE_CONCURRENCY": "NO"`,
 			`"SWIFT_DEFAULT_ACTOR_ISOLATION": "nonisolated"`,
+			`"SWIFT_STRICT_CONCURRENCY_DEFAULT": "complete"`,
 			`"SWIFT_STRICT_CONCURRENCY": "complete"`,
 			`"SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE": "YES"`,
 			`"SWIFT_UPCOMING_FEATURE_DISABLE_OUTWARD_ACTOR_ISOLATION": "YES"`,
@@ -698,6 +786,12 @@ let package = Package(
 	}
 	if !strings.Contains(string(packageManifest), `.iOS(.v18)`) {
 		t.Fatalf("Package.swift missing synced iOS minimum:\n%s", string(packageManifest))
+	}
+	if !strings.Contains(string(packageManifest), `.swiftLanguageMode(.v6)`) {
+		t.Fatalf("Package.swift missing Swift 6 language mode strictness:\n%s", string(packageManifest))
+	}
+	if !strings.Contains(string(packageManifest), `.enableUpcomingFeature("StrictConcurrency")`) {
+		t.Fatalf("Package.swift missing explicit strict concurrency:\n%s", string(packageManifest))
 	}
 
 	appCapabilities, err := os.ReadFile(filepath.Join(projectRoot, "Tuist", "ProjectDescriptionHelpers", "AppCapabilities.swift"))

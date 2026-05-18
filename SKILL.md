@@ -87,6 +87,7 @@ Scaffold plugins and subplugins must be idempotent. Re-running the same command 
 - Sync host app capabilities from config: `ios-app-manager generate app-capabilities`
 - Generate app/extension versions: `ios-app-manager generate versions`
 - Generate app/extension min target: `ios-app-manager generate min-target`
+- Generate app/extension signing team id: `ios-app-manager generate team-id`
 - Generate app/extension Swift strictness: `ios-app-manager generate build-flags`
 - Generate root/module package strictness: `ios-app-manager generate package-strictness`
 - Clean artifacts: `ios-app-manager clean [--deep] [--kill-xcode]`
@@ -96,13 +97,14 @@ Scaffold plugins and subplugins must be idempotent. Re-running the same command 
 Generate commands are scaffold generator plugins:
 - Each `generate <artifact>` entrypoint is a separate scaffold plugin with its own responsibility and dependency contract.
 - Use this pattern for scaffold-only sync tasks instead of overloading `init`.
-- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate versions`, `generate min-target`, `generate application-configuration`, `generate app-capabilities`, `generate build-flags`, and `generate package-strictness`.
+- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate versions`, `generate min-target`, `generate team-id`, `generate application-configuration`, `generate app-capabilities`, `generate build-flags`, and `generate package-strictness`.
 - `generate versions` depends on the `init` scaffold shape and syncs both `marketing_version` and `project_version` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`.
 - `generate min-target` depends on the same scaffold shape and syncs `min_target` into both `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET` for the host app and extensions.
+- `generate team-id` depends on the same scaffold shape and syncs `team_id` into `developmentTeam` constants and `DEVELOPMENT_TEAM` build settings for the host app, app-like targets, test targets, and extensions.
 - `generate application-configuration` depends on the same scaffold shape and syncs product-level runtime identity from `ios-app-manager.json` into an `ApplicationConfiguration` Info.plist dictionary for the host app, app-like targets, and extensions. It also generates the `SharedConfig` reader source and app-target `Configuration+ApplicationConfiguration.swift` facade. This dictionary is distinct from target identity keys such as `CFBundleIdentifier`.
 - `generate app-capabilities` depends on the same scaffold shape and orchestrates host app capability subplugins.
 - `app-groups` is an app capability subplugin with `init` dependency; it syncs configured `app_groups` into `Tuist/ProjectDescriptionHelpers/AppCapabilities.swift`, host/test target `Project.swift` Info.plist `AppGroups` dictionaries, generated `SharedConfig`, and `Configuration+AppGroups.swift`. Generated app-group code reads product-level service identity through `Configuration.ApplicationConfiguration`, so prefer `generate project-config` when syncing app groups.
-- `generate build-flags` depends on the same scaffold shape and syncs Swift language/concurrency build settings from `project_settings.swift` into the host app and extensions.
+- `generate build-flags` depends on the same scaffold shape and syncs Swift language, strict memory safety, and concurrency build settings from `project_settings.swift` into the host app and extensions.
 - `generate package-strictness` syncs the same `project_settings.swift` Swift language/concurrency settings into root `Package.swift` and every module `Packages/*/Package.swift`.
 - When `project_settings.swift` is omitted, Swift strictness defaults are derived from `swift_version` and the scaffold's current strict baseline.
 - Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
@@ -136,6 +138,7 @@ Swift strictness lives in `ios-app-manager.json` under `project_settings.swift`,
   "project_settings": {
     "swift": {
       "language_mode": "v6",
+      "strict_memory_safety": "yes",
       "concurrency": {
         "approachable": false,
         "default_actor_isolation": "nonisolated",
@@ -152,6 +155,7 @@ Leaf workflows remain available:
 ```bash
 ios-app-manager generate versions
 ios-app-manager generate min-target
+ios-app-manager generate team-id
 ios-app-manager generate application-configuration
 ios-app-manager generate app-capabilities
 ios-app-manager generate build-flags

@@ -195,6 +195,7 @@ func TestMakeAppExtensionProjectCreatesScaffold(t *testing.T) {
 	projectSwift := readFile(t, filepath.Join(extensionRoot, "Project.swift"))
 	for _, want := range []string{
 		`name: "WidgetExtension"`,
+		`let developmentTeam = "TEAM123456"`,
 		`let marketingVersion = "2.3.4"`,
 		`let currentProjectVersion = "42"`,
 		`let minTarget = "17.0"`,
@@ -204,8 +205,11 @@ func TestMakeAppExtensionProjectCreatesScaffold(t *testing.T) {
 		`"CFBundleVersion": .string(currentProjectVersion)`,
 		`"NSExtensionPointIdentifier": .string("com.apple.widgetkit-extension")`,
 		`"IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget)`,
+		`"DEVELOPMENT_TEAM": .string(developmentTeam)`,
+		`"SWIFT_STRICT_MEMORY_SAFETY": "YES"`,
 		`"SWIFT_APPROACHABLE_CONCURRENCY": "NO"`,
 		`"SWIFT_DEFAULT_ACTOR_ISOLATION": "nonisolated"`,
+		`"SWIFT_STRICT_CONCURRENCY_DEFAULT": "complete"`,
 		`"SWIFT_STRICT_CONCURRENCY": "complete"`,
 		`"SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE": "YES"`,
 		`"SWIFT_UPCOMING_FEATURE_DISABLE_OUTWARD_ACTOR_ISOLATION": "YES"`,

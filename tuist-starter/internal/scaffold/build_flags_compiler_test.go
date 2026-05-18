@@ -83,6 +83,16 @@ func strictBuildFlagSwiftcArgs(t *testing.T) []string {
 		switch setting.Key {
 		case "SWIFT_VERSION":
 			args = append(args, "-swift-version", strings.TrimSuffix(setting.Value, ".0"))
+		case "SWIFT_STRICT_MEMORY_SAFETY":
+			switch setting.Value {
+			case "YES":
+				args = append(args, "-strict-memory-safety")
+			case "MIGRATE":
+				args = append(args, "-strict-memory-safety:migrate")
+			case "NO":
+			default:
+				t.Fatalf("unexpected %s value %q", setting.Key, setting.Value)
+			}
 		case "SWIFT_APPROACHABLE_CONCURRENCY":
 			if setting.Value != "NO" {
 				t.Fatalf("unexpected %s value %q", setting.Key, setting.Value)
@@ -100,6 +110,10 @@ func strictBuildFlagSwiftcArgs(t *testing.T) []string {
 				t.Fatalf("unexpected %s value %q", setting.Key, setting.Value)
 			}
 			args = append(args, "-strict-concurrency=complete")
+		case "SWIFT_STRICT_CONCURRENCY_DEFAULT":
+			if setting.Value != "complete" {
+				t.Fatalf("unexpected %s value %q", setting.Key, setting.Value)
+			}
 		case "SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE":
 			args = appendUpcomingFeatureArg(t, args, setting, "ConciseMagicFile")
 		case "SWIFT_UPCOMING_FEATURE_DISABLE_OUTWARD_ACTOR_ISOLATION":

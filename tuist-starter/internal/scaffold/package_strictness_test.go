@@ -99,6 +99,7 @@ let package = Package(
 		`// swift-tools-version: 6.2`,
 		`swiftSettings: [`,
 		`.swiftLanguageMode(.v6),`,
+		`.enableUpcomingFeature("StrictConcurrency"),`,
 		`.enableUpcomingFeature("InferSendableFromCaptures"),`,
 	} {
 		if !strings.Contains(modulePackage, want) {

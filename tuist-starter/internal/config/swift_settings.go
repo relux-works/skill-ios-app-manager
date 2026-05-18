@@ -10,6 +10,7 @@ const (
 	defaultSwiftLanguageMode          = "v6"
 	defaultSwiftDefaultActorIsolation = "nonisolated"
 	defaultSwiftStrictChecking        = "complete"
+	defaultSwiftStrictMemorySafety    = swiftUpcomingFeatureModeYes
 	defaultSwiftUpcomingFeatureMode   = swiftUpcomingFeatureModeYes
 	swiftDefaultActorIsolationMain    = "MainActor"
 	swiftLanguageModeV5               = "v5"
@@ -26,8 +27,9 @@ type ProjectSettings struct {
 
 // SwiftProjectSettings defines the source of truth for Swift-related generation.
 type SwiftProjectSettings struct {
-	LanguageMode string                   `json:"language_mode,omitempty"` // e.g. "v6"
-	Concurrency  SwiftConcurrencySettings `json:"concurrency,omitempty"`
+	LanguageMode       string                   `json:"language_mode,omitempty"`        // e.g. "v6"
+	StrictMemorySafety string                   `json:"strict_memory_safety,omitempty"` // yes | migrate | no
+	Concurrency        SwiftConcurrencySettings `json:"concurrency,omitempty"`
 }
 
 // SwiftConcurrencySettings stores explicit concurrency-related config knobs.
@@ -53,6 +55,7 @@ type EffectiveSwiftSettings struct {
 	ToolsVersion         string
 	LanguageMode         string
 	XcodeLanguageVersion string
+	StrictMemorySafety   string
 	Concurrency          EffectiveSwiftConcurrencySettings
 }
 
@@ -87,6 +90,9 @@ func (c *ProjectConfig) applySwiftDefaults() {
 
 	if strings.TrimSpace(c.ProjectSettings.Swift.LanguageMode) == "" {
 		c.ProjectSettings.Swift.LanguageMode = deriveSwiftLanguageMode(c.SwiftVersion)
+	}
+	if strings.TrimSpace(c.ProjectSettings.Swift.StrictMemorySafety) == "" {
+		c.ProjectSettings.Swift.StrictMemorySafety = defaultSwiftStrictMemorySafety
 	}
 
 	c.ProjectSettings.Swift.Concurrency.applyDefaults()
@@ -152,6 +158,10 @@ func (c ProjectConfig) EffectiveSwiftSettings() EffectiveSwiftSettings {
 	if languageMode == "" {
 		languageMode = deriveSwiftLanguageMode(toolsVersion)
 	}
+	strictMemorySafety := normalizeUpcomingFeatureMode(
+		c.ProjectSettings.Swift.StrictMemorySafety,
+		defaultSwiftStrictMemorySafety,
+	)
 
 	concurrency := c.ProjectSettings.Swift.Concurrency
 	concurrency.applyDefaults()
@@ -160,16 +170,21 @@ func (c ProjectConfig) EffectiveSwiftSettings() EffectiveSwiftSettings {
 		ToolsVersion:         toolsVersion,
 		LanguageMode:         languageMode,
 		XcodeLanguageVersion: languageModeToXcodeSwiftVersion(languageMode),
+		StrictMemorySafety:   strictMemorySafety,
 		Concurrency:          concurrency.effective(),
 	}
 }
 
 // XcodeBuildSettings returns Swift-related target build settings for Project.swift and PackageSettings.
 func (s EffectiveSwiftSettings) XcodeBuildSettings() []SwiftBuildSetting {
-	settings := make([]SwiftBuildSetting, 0, 12)
+	settings := make([]SwiftBuildSetting, 0, 16)
 	settings = append(settings, SwiftBuildSetting{
 		Key:   "SWIFT_VERSION",
 		Value: s.XcodeLanguageVersion,
+	})
+	settings = append(settings, SwiftBuildSetting{
+		Key:   "SWIFT_STRICT_MEMORY_SAFETY",
+		Value: upcomingFeatureModeBuildValue(s.StrictMemorySafety),
 	})
 	settings = append(settings, s.Concurrency.BuildSettings()...)
 	return settings
@@ -184,7 +199,7 @@ func (s EffectiveSwiftSettings) PackageSwiftSettings() []string {
 	if strings.EqualFold(s.Concurrency.DefaultActorIsolation, swiftDefaultActorIsolationMain) {
 		settings = append(settings, ".defaultIsolation(MainActor.self)")
 	}
-	if s.LanguageMode != swiftLanguageModeV6 && strings.EqualFold(s.Concurrency.StrictChecking, defaultSwiftStrictChecking) {
+	if strings.EqualFold(s.Concurrency.StrictChecking, defaultSwiftStrictChecking) {
 		settings = append(settings, `.enableUpcomingFeature("StrictConcurrency")`)
 	}
 
@@ -200,6 +215,7 @@ func (s EffectiveSwiftConcurrencySettings) BuildSettings() []SwiftBuildSetting {
 	return []SwiftBuildSetting{
 		{Key: "SWIFT_APPROACHABLE_CONCURRENCY", Value: yesNo(s.Approachable)},
 		{Key: "SWIFT_DEFAULT_ACTOR_ISOLATION", Value: s.DefaultActorIsolation},
+		{Key: "SWIFT_STRICT_CONCURRENCY_DEFAULT", Value: s.StrictChecking},
 		{Key: "SWIFT_STRICT_CONCURRENCY", Value: s.StrictChecking},
 		{Key: "SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE", Value: yesNo(s.ConciseMagicFile)},
 		{Key: "SWIFT_UPCOMING_FEATURE_DISABLE_OUTWARD_ACTOR_ISOLATION", Value: yesNo(s.DisableOutwardActorIsolation)},
