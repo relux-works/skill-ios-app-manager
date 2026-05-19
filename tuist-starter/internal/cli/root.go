@@ -94,6 +94,7 @@ func NewRootCommandWithAppManager(appManager components.AppManager) *cobra.Comma
 		newPushCommand(opts),
 		newGenerateCommand(opts),
 		newDiagramCommand(opts),
+		newProfileCommand(opts),
 		newCleanCommand(opts),
 		newQueryCommand(opts),
 		newMutationCommand(opts),
