@@ -108,7 +108,34 @@ ios-app-manager clean --deep
 ios-app-manager clean --kill-xcode
 ```
 
-## 5) Bump app + extension manifest config
+## 5) Profile build and runtime performance
+
+Build timing and parallelism:
+
+```bash
+ios-app-manager profile build
+ios-app-manager profile build --jobs 8 --format json > .temp/build-profile/report.json
+```
+
+Runtime view/function instrumentation:
+
+```bash
+ios-app-manager profile runtime scaffold
+
+# After wrapping suspicious code with .profiled(...) or PerformanceProbe.measure(...)
+ios-app-manager profile runtime analyze --input .temp/runtime-profile.log
+
+# Runtime errors/faults/crash hints
+ios-app-manager profile runtime errors --input .temp/runtime-errors.log
+
+# Rendered accessibility hierarchy for agents
+ios-app-manager profile layout scaffold
+ios-app-manager profile layout analyze --input .temp/layout/feed.xml
+```
+
+Use the build report to find slow commands, target work, and critical path blockers. Use the runtime report to find repeated SwiftUI body evaluations, slow main-thread function calls, app-start-to-first-render latency, and grouped runtime errors/faults. Use the layout report when an agent needs to understand the actual rendered accessibility hierarchy, frames, duplicate identities, missing labels/IDs, and offscreen or too-small controls.
+
+## 6) Bump app + extension manifest config
 
 ```bash
 # 1) Edit the source-of-truth config
@@ -136,7 +163,7 @@ Each leaf sync is a scaffold generator plugin. Do not patch generated scaffold-o
 For broad domains, keep the leaf plugin as an orchestrator and add concrete subplugins. App groups, for example, are handled by the `app-groups` subplugin under `generate app-capabilities`, not by hardcoding every capability into one function.
 All scaffold plugins and subplugins must be idempotent: repeated runs with the same config should report no changes and must not duplicate generated declarations, manifest entries, files, dependencies, entitlements, or package settings.
 
-## 6) Common troubleshooting
+## 7) Common troubleshooting
 
 ### Invalid or missing config
 

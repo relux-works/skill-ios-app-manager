@@ -39,6 +39,12 @@ ios-app-manager [command] [flags]
 | `generate app-capabilities` | Generate or update host app capabilities from config | `ios-app-manager generate app-capabilities` |
 | `generate build-flags` | Generate or update strict Swift compiler build flags in app + extension manifests | `ios-app-manager generate build-flags` |
 | `clean [--deep] [--kill-xcode]` | Clean local/global build artifacts | `ios-app-manager clean --deep` |
+| `profile build` | Profile build timing and target critical path | `ios-app-manager profile build --jobs 8` |
+| `profile layout scaffold` | Generate XCTest rendered layout hierarchy XML helper | `ios-app-manager profile layout scaffold` |
+| `profile layout analyze --input <xml-or-log>` | Analyze rendered hierarchy XML for agent-readable layout diagnostics | `ios-app-manager profile layout analyze --input layout.xml` |
+| `profile runtime scaffold` | Generate debug-only Swift runtime profiling helper | `ios-app-manager profile runtime scaffold` |
+| `profile runtime analyze --input <log>` | Analyze `IAM_PROFILE` runtime log lines | `ios-app-manager profile runtime analyze --input runtime.log` |
+| `profile runtime errors [--input <log>]` | Analyze unified-log runtime errors/faults and `IAM_ERROR` lines | `ios-app-manager profile runtime errors --input errors.log` |
 | `push send --token <token> [--env dev\|prod] [--payload <file>]` | Send APNs push using project credentials | `ios-app-manager push send --token "$TOKEN" --env dev` |
 | `push token` | Print latest device token from logs/fallback file | `ios-app-manager push token` |
 | `ioc setup` | Set up SwiftIoC container and Registry.swift | `ios-app-manager ioc setup` |
@@ -482,6 +488,166 @@ Examples:
 ios-app-manager clean
 ios-app-manager clean --deep
 ios-app-manager clean --kill-xcode
+```
+
+### `profile build`
+
+Syntax:
+```bash
+ios-app-manager profile build [flags]
+```
+
+Description:
+- Runs or analyzes an Xcode build with `-showBuildTimingSummary`.
+- Uses Tuist graph JSON to estimate target dependency critical path when graph analysis is enabled.
+- Writes run artifacts under `.temp/build-profile/<timestamp>/` by default.
+- Supports text and JSON reports.
+
+Flags:
+- `--workspace <name>`: Workspace to build. Defaults to `<app_name>.xcworkspace`.
+- `--scheme <name>`: Scheme to build. Defaults to `product_name` or `app_name`.
+- `--configuration <name>`: Build configuration. Default `Debug`.
+- `--destination <specifier>`: xcodebuild destination. Default `generic/platform=iOS Simulator`.
+- `--derived-data-path <path>`: DerivedData path.
+- `--result-bundle-path <path>`: `.xcresult` path.
+- `--log <path>`: Analyze an existing xcodebuild log instead of running a build.
+- `--graph-json <path>`: Analyze an existing `tuist graph --format legacyJSON` file.
+- `--output-root <path>`: Artifact directory.
+- `--skip-generate`: Skip `tuist generate --no-open` before build.
+- `--skip-graph`: Skip target graph analysis.
+- `--parallelize-targets`: Pass `-parallelizeTargets` to xcodebuild. Default true.
+- `--jobs <n>`: Pass `-jobs`.
+- `--xcodebuild-arg <arg>`: Extra xcodebuild argument; repeat for multiple arguments.
+- `--format <text|json>`: Report format.
+
+Examples:
+```bash
+ios-app-manager profile build
+ios-app-manager profile build --jobs 8 --configuration Debug
+ios-app-manager profile build --log .temp/build-profile/xcodebuild.log --skip-graph
+ios-app-manager profile build --format json > .temp/build-profile/report.json
+```
+
+### `profile layout scaffold`
+
+Syntax:
+```bash
+ios-app-manager profile layout scaffold [--output <path>] [--force]
+```
+
+Description:
+- Writes `LayoutHierarchyProbe.swift` under `Targets/<AppName>UITests/Sources/Diagnostics/` by default.
+- The helper is intended for UI test targets and imports XCTest.
+- Provides `LayoutHierarchyProbe.xml(for:)` and `XCTestCase.attachLayoutHierarchyXML(...)`.
+- Serializes the rendered XCTest/accessibility hierarchy into XML with element type, path, identifier, label, value, state, and screen-coordinate frame attributes.
+- Attaches the XML to the `.xcresult` and prints it between `IAM_LAYOUT_XML_START` / `IAM_LAYOUT_XML_END` markers.
+
+Example:
+```bash
+ios-app-manager profile layout scaffold
+```
+
+### `profile layout analyze`
+
+Syntax:
+```bash
+ios-app-manager profile layout analyze --input <xml-or-log> [flags]
+```
+
+Description:
+- Parses `LayoutHierarchyProbe` XML, Appium/WebDriverAgent page source XML, or UI-test logs containing `IAM_LAYOUT_XML_*` markers.
+- Prints an agent-readable rendered hierarchy tree.
+- Reports element type counts, max depth, duplicate accessibility identities, missing interactive identity, tiny tap targets, and offscreen frames.
+- Supports text and JSON reports.
+
+Flags:
+- `--input <path>`: Required XML/log path.
+- `--min-tap-size <points>`: Minimum interactive frame width/height. Default `44`.
+- `--max-elements <n>`: Maximum hierarchy elements included in the report. Default `200`.
+- `--include-hidden`: Include explicitly hidden elements in issue detection.
+- `--format <text|json>`: Report format.
+
+Examples:
+```bash
+ios-app-manager profile layout analyze --input .temp/layout/feed.xml
+ios-app-manager profile layout analyze --input .temp/layout/ui-test.log --format json
+```
+
+### `profile runtime scaffold`
+
+Syntax:
+```bash
+ios-app-manager profile runtime scaffold [--output <path>] [--force]
+```
+
+Description:
+- Writes `PerformanceProbe.swift` under `Targets/<AppName>/Sources/Diagnostics/` by default.
+- The helper is wrapped in `#if DEBUG`.
+- Provides SwiftUI `.profiled("ViewName")`, `PerformanceProbe.measure`, `PerformanceProbe.measureAsync`, and `PerformanceProbe.event`.
+- Provides `PerformanceProbe.markAppStart()` and `.firstRenderProfiled("RootView")` to measure app launch to first meaningful render.
+- Provides `PerformanceProbe.error(...)` for deterministic app-level error events.
+- Emits both signposts and structured `IAM_PROFILE {json}` lines.
+
+Example:
+```bash
+ios-app-manager profile runtime scaffold
+```
+
+### `profile runtime analyze`
+
+Syntax:
+```bash
+ios-app-manager profile runtime analyze --input <log> [flags]
+```
+
+Description:
+- Parses `IAM_PROFILE` JSON lines from a captured app log.
+- Groups events by kind/name and reports count, total duration, average, max, main-thread count, slow count, repeated-call warnings, and main-thread slow-call warnings.
+- Reports app startup-to-first-render timing when `app_start` and `first_render` markers are present.
+
+Flags:
+- `--input <path>`: Required log path.
+- `--slow-ms <n>`: Main-thread duration threshold. Default `16`.
+- `--repeat-threshold <n>`: Repeated-call warning threshold. Default `50`.
+- `--format <text|json>`: Report format.
+
+Example:
+```bash
+ios-app-manager profile runtime analyze --input .temp/runtime-profile.log --slow-ms 16 --repeat-threshold 50
+```
+
+### `profile runtime errors`
+
+Syntax:
+```bash
+ios-app-manager profile runtime errors [--input <log>] [flags]
+```
+
+Description:
+- Parses runtime error signals from unified-log NDJSON/plain output and `IAM_ERROR` structured lines.
+- Without `--input`, collects recent host logs with `log show --style ndjson --last <duration> --predicate '(logType == "error" OR logType == "fault")'`.
+- With `--simulator`, collects logs through `xcrun simctl spawn <device> log show`.
+- Groups by severity, process, subsystem, category, and normalized message signature.
+- Adds hints for crash, exception, hang, thread-checker, and SwiftUI background-publish messages.
+
+Flags:
+- `--input <path>`: Optional log file path.
+- `--last <duration>`: Time window for collection when `--input` is omitted. Default `10m`.
+- `--predicate <predicate>`: Custom unified-log predicate.
+- `--process <name>`: Filter collected logs by process.
+- `--subsystem <id>`: Filter collected logs by subsystem.
+- `--category <name>`: Filter collected logs by category.
+- `--simulator`: Collect from simulator.
+- `--device <udid|booted>`: Simulator device for `--simulator`.
+- `--include-default`: Include non-error unified-log entries from NDJSON input.
+- `--max-examples <n>`: Example messages per group. Default `3`.
+- `--format <text|json>`: Report format.
+
+Examples:
+```bash
+ios-app-manager profile runtime errors --process DemoApp --last 15m
+ios-app-manager profile runtime errors --simulator --device booted --subsystem com.example.demo
+ios-app-manager profile runtime errors --input .temp/runtime-errors.log --format json
 ```
 
 ### `push send`
