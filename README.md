@@ -25,6 +25,20 @@ cd skill-ios-app-manager
 ./scripts/setup.sh
 ```
 
+If iOS simulator/build/profile workflows need full Xcode and the active developer directory is still CommandLineTools, run the explicit sudo bootstrap:
+
+```bash
+./scripts/setup.sh --print-privileged-commands
+./scripts/setup.sh --select-xcode
+```
+
+`--select-xcode` only runs this hardcoded privileged command list:
+
+```bash
+sudo -v
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+```
+
 Setup behavior:
 - Builds the CLI in `tuist-starter/`
 - Copies the skill runtime into `~/.agents/skills/ios-app-manager`
@@ -125,6 +139,132 @@ If you only want one slice, the leaf plugins still work directly:
 ./ios-app-manager generate build-flags
 ./ios-app-manager generate package-strictness
 ```
+
+## Profile diagnostics
+
+`profile` is local-first diagnostics tooling for build time, runtime performance, startup latency, runtime errors, and rendered UI hierarchy inspection.
+
+### Commands
+
+| Need | Command |
+|------|---------|
+| Run a build and explain slow targets/commands | `./ios-app-manager profile build` |
+| Analyze an existing build log | `./ios-app-manager profile build --log .temp/build-profile/xcodebuild.log --skip-graph` |
+| Add runtime view/function/startup probes | `./ios-app-manager profile runtime scaffold` |
+| Analyze `IAM_PROFILE` runtime logs | `./ios-app-manager profile runtime analyze --input .temp/runtime-profile.log` |
+| Analyze runtime errors/faults/crash hints | `./ios-app-manager profile runtime errors --input .temp/runtime-errors.log` |
+| Add rendered hierarchy XML dumping to UI tests | `./ios-app-manager profile layout scaffold` |
+| Analyze rendered hierarchy XML/logs | `./ios-app-manager profile layout analyze --input .temp/layout/feed.xml` |
+
+### Build Profiling
+
+```bash
+./ios-app-manager profile build
+./ios-app-manager profile build --jobs 8 --configuration Debug
+./ios-app-manager profile build --log .temp/build-profile/xcodebuild.log --skip-graph
+./ios-app-manager profile build --format json > .temp/build-profile/report.json
+```
+
+The build profiler runs `xcodebuild -showBuildTimingSummary` with `-parallelizeTargets` and a result bundle path by default. It combines parsed timing entries with the Tuist target graph to estimate:
+
+- slow commands;
+- target work;
+- ideal parallelism ceiling;
+- target dependency critical path.
+
+### Runtime Profiling
+
+```bash
+./ios-app-manager profile runtime scaffold
+./ios-app-manager profile runtime analyze --input .temp/runtime-profile.log
+```
+
+`runtime scaffold` writes a debug-only `PerformanceProbe.swift` helper under `Targets/<AppName>/Sources/Diagnostics/`.
+
+The helper emits signposts and structured `IAM_PROFILE` lines from:
+
+- SwiftUI `.profiled("ViewName")`;
+- SwiftUI `.firstRenderProfiled("RootView")`;
+- `PerformanceProbe.markAppStart()`;
+- `PerformanceProbe.measure(...)`;
+- `PerformanceProbe.measureAsync(...)`;
+- `PerformanceProbe.event(...)`.
+
+Startup timing uses explicit markers:
+
+```swift
+@main
+struct DemoApp: App {
+    init() {
+        PerformanceProbe.markAppStart()
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            RootView()
+                .profiled("RootView")
+                .firstRenderProfiled("RootView")
+        }
+    }
+}
+```
+
+`profile runtime analyze` reports app-start-to-first-render duration when both markers are present.
+
+### Runtime Errors
+
+```bash
+./ios-app-manager profile runtime errors --input .temp/runtime-errors.log
+./ios-app-manager profile runtime errors --simulator --device booted --process DemoApp --last 15m
+```
+
+The error analyzer accepts:
+
+- `IAM_ERROR` lines from `PerformanceProbe.error(...)`;
+- unified-log NDJSON from `log show --style ndjson`;
+- plain crash/error/fault/exception/hang log lines.
+
+It groups errors by severity, process, subsystem, category, and normalized message signature. It also adds hints for crash, exception, hang, thread checker, and SwiftUI background-publish messages.
+
+### Rendered Layout XML
+
+```bash
+./ios-app-manager profile layout scaffold
+./ios-app-manager profile layout analyze --input .temp/layout/feed.xml
+./ios-app-manager profile layout analyze --input .temp/layout/ui-test.log --format json
+```
+
+`layout scaffold` writes an XCTest `LayoutHierarchyProbe.swift` helper under `Targets/<AppName>UITests/Sources/Diagnostics/`. UI tests call:
+
+```swift
+final class FeedUITests: XCTestCase {
+    @MainActor
+    func testFeedLayoutDump() {
+        let app = XCUIApplication()
+        app.launch()
+        attachLayoutHierarchyXML(app, name: "feed", screenName: "Feed")
+    }
+}
+```
+
+The layout analyzer reads:
+
+- generated `LayoutHierarchyProbe` XML;
+- Appium/WebDriverAgent page source XML;
+- UI test logs with `IAM_LAYOUT_XML_START` / `IAM_LAYOUT_XML_END` markers.
+
+It prints an agent-readable rendered accessibility hierarchy and reports duplicate identities, missing interactive identity, tiny tap targets, and offscreen frames.
+
+### Research Artifacts
+
+| Topic | File |
+|------|------|
+| Build profiling | `references/build-profiling-research.md` |
+| Runtime profiling | `references/runtime-profiling-research.md` |
+| Runtime errors | `references/runtime-error-diagnostics-research.md` |
+| Rendered layout XML | `references/layout-hierarchy-diagnostics-research.md` |
+| Architecture | `references/profile-diagnostics-architecture.md` |
+| Diagram | `diagrams/profile-diagnostics-architecture.puml` |
 
 ### App Groups capability
 
@@ -241,6 +381,14 @@ Current examples come from the XFlow iOS migration surface:
 | `make test-update` | Rebuild golden files + run tests | `cd tuist-starter && go test ./internal/testutil -update && go test ./...` |
 | `make lint` | Lint Go code | `cd tuist-starter && go vet ./...` |
 | `plantuml` | Render dependency diagrams | `plantuml -tpng diagrams/*.puml -o diagrams/` |
+| `tuist graph` | Build target dependency graph for profile analysis | `tuist graph --format legacyJSON --no-open --path . --output-path .temp/build-profile/graph` |
+| `xcodebuild` | Build and emit timing/result bundle artifacts | `xcodebuild -showBuildTimingSummary -resultBundlePath .temp/build-profile/Build.xcresult ...` |
+| `xcrun simctl` | Collect simulator logs for profile diagnostics | `xcrun simctl spawn booted log show --style ndjson --last 10m ...` |
+| `log` | Collect host unified logs for runtime error diagnostics | `log show --style ndjson --last 10m --predicate 'logType == "error" OR logType == "fault"'` |
+| `xctrace` | Optional Instruments trace collection for runtime follow-up work | `xcrun xctrace record --template SwiftUI --time-limit 30s ...` |
+| `XCTest` | Dump rendered UI accessibility hierarchy XML from UI tests | `attachLayoutHierarchyXML(app, name: "feed")` |
+
+`scripts/setup.sh` verifies Go and Tuist, then reports Xcode/profile-tool readiness for `xcodebuild`, `xcrun/simctl`, `log`, and optional `xctrace`. Missing Xcode tools are warnings so the CLI can still be installed; iOS build/simulator/profile workflows require selecting a full Xcode developer directory. Use `./scripts/setup.sh --select-xcode` for the one-time hardcoded `sudo xcode-select` bootstrap.
 
 ## CI/CD (STUB)
 

@@ -22,6 +22,10 @@ Agent-facing workflow for managing Tuist-based iOS projects that follow Relux mo
 git clone git@github.com:relux-works/skill-ios-app-manager.git
 cd skill-ios-app-manager
 ./scripts/setup.sh
+
+# Optional one-time full Xcode selection for iOS simulator/build/profile workflows
+./scripts/setup.sh --print-privileged-commands
+./scripts/setup.sh --select-xcode
 ```
 
 Setup does:
@@ -30,6 +34,7 @@ Setup does:
 - Degitizes the installed copy after sync (`.git`, `.gitignore`, `.gitattributes`, `.gitmodules` are removed)
 - Symlinks `~/.claude/skills/ios-app-manager` and `~/.codex/skills/ios-app-manager` to the installed copy in `~/.agents/skills/ios-app-manager`
 - Symlinks binary to `~/.local/bin/ios-app-manager`
+- `--select-xcode` runs only a hardcoded privileged list: `sudo -v` and `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`
 
 ## Repository structure
 
@@ -93,6 +98,12 @@ Scaffold plugins and subplugins must be idempotent. Re-running the same command 
 - Clean artifacts: `ios-app-manager clean [--deep] [--kill-xcode]`
 - Status: `ios-app-manager status`
 - Diagram: `ios-app-manager diagram` — generates PlantUML module dependency diagram
+- Build profile: `ios-app-manager profile build`
+- Rendered layout helper: `ios-app-manager profile layout scaffold`
+- Rendered layout XML analysis: `ios-app-manager profile layout analyze --input <xml-or-log>`
+- Runtime profile helper: `ios-app-manager profile runtime scaffold`
+- Runtime profile log analysis: `ios-app-manager profile runtime analyze --input <log>`
+- Runtime error log analysis: `ios-app-manager profile runtime errors [--input <log>]`
 
 Generate commands are scaffold generator plugins:
 - Each `generate <artifact>` entrypoint is a separate scaffold plugin with its own responsibility and dependency contract.
@@ -161,6 +172,109 @@ ios-app-manager generate app-capabilities
 ios-app-manager generate build-flags
 ios-app-manager generate package-strictness
 ```
+
+### Profile diagnostics
+
+Use `profile` when an agent needs evidence about build time, runtime slowness, startup latency, runtime failures, or the UI hierarchy that actually rendered on simulator/device.
+
+Decision table:
+
+| Question | Command | Primary output |
+| --- | --- | --- |
+| Why is the build slow? | `ios-app-manager profile build` | slow commands, target work, critical path estimate |
+| What did an existing build log spend time on? | `ios-app-manager profile build --log <xcodebuild.log> --skip-graph` | parsed timing summary without rebuilding |
+| Which SwiftUI/function calls are slow or repeated? | `ios-app-manager profile runtime scaffold` then `profile runtime analyze --input <log>` | `IAM_PROFILE` aggregation |
+| How long until first meaningful render? | `PerformanceProbe.markAppStart()` + `.firstRenderProfiled("RootView")` then `profile runtime analyze` | app-start-to-first-render duration |
+| What runtime errors/faults happened? | `ios-app-manager profile runtime errors [--input <log>]` | grouped errors, crash/exception/hang hints |
+| What UI hierarchy actually rendered? | `ios-app-manager profile layout scaffold` then `profile layout analyze --input <xml-or-log>` | rendered accessibility XML tree and layout issues |
+
+Command map:
+
+```bash
+# Build timing + target graph critical path
+ios-app-manager profile build
+ios-app-manager profile build --jobs 8 --configuration Debug
+ios-app-manager profile build --log .temp/build-profile/xcodebuild.log --skip-graph
+
+# Runtime view/function/startup instrumentation
+ios-app-manager profile runtime scaffold
+ios-app-manager profile runtime analyze --input .temp/runtime-profile.log
+
+# Runtime errors/faults/crash hints
+ios-app-manager profile runtime errors --input .temp/runtime-errors.log
+ios-app-manager profile runtime errors --simulator --device booted --process DemoApp
+
+# Rendered UI hierarchy for agents
+ios-app-manager profile layout scaffold
+ios-app-manager profile layout analyze --input .temp/layout/feed.xml
+ios-app-manager profile layout analyze --input .temp/layout/ui-test.log --format json
+```
+
+Feature contracts:
+
+| Feature | Instrumentation | Input | Diagnostics |
+| --- | --- | --- | --- |
+| Build profiling | none required | `xcodebuild -showBuildTimingSummary`, Tuist `legacyJSON` graph | top commands, target work, ideal parallelism ceiling, critical path estimate |
+| Runtime profiling | generated `PerformanceProbe.swift` in app target | app logs containing `IAM_PROFILE` JSON lines | counts, total/average/max duration, main-thread slow calls, repeated-call warnings |
+| Startup timing | `PerformanceProbe.markAppStart()` and `.firstRenderProfiled(...)` | same `IAM_PROFILE` log | app-start-to-first-render duration |
+| Runtime errors | optional `PerformanceProbe.error(...)`; unified logs also supported | `IAM_ERROR`, unified-log NDJSON/plain text | grouped signatures and hints for crash, exception, hang, thread checker, SwiftUI background publish |
+| Rendered layout XML | generated `LayoutHierarchyProbe.swift` in UI test target | XCTest XML, Appium/WDA page source, or `IAM_LAYOUT_XML_*` log block | agent-readable tree, duplicate identities, missing interactive identity, tiny tap targets, offscreen frames |
+
+Runtime instrumentation usage:
+
+```swift
+@main
+struct DemoApp: App {
+    init() {
+        PerformanceProbe.markAppStart()
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            RootView()
+                .profiled("RootView")
+                .firstRenderProfiled("RootView")
+        }
+    }
+}
+
+let items = PerformanceProbe.measure("Feed.filter") {
+    allItems.filter(\.isVisible)
+}
+```
+
+Rendered layout usage:
+
+```swift
+final class FeedUITests: XCTestCase {
+    @MainActor
+    func testFeedLayoutDump() {
+        let app = XCUIApplication()
+        app.launch()
+        attachLayoutHierarchyXML(app, name: "feed", screenName: "Feed")
+    }
+}
+```
+
+Artifacts and references:
+
+| Artifact | Location |
+| --- | --- |
+| Build profiling research | `references/build-profiling-research.md` |
+| Runtime profiling research | `references/runtime-profiling-research.md` |
+| Runtime error diagnostics research | `references/runtime-error-diagnostics-research.md` |
+| Rendered layout hierarchy research | `references/layout-hierarchy-diagnostics-research.md` |
+| Architecture overview | `references/profile-diagnostics-architecture.md` |
+| Architecture diagram | `diagrams/profile-diagnostics-architecture.puml` |
+
+Implementation notes:
+
+- `scripts/setup.sh` verifies Go and Tuist, then reports Xcode/profile-tool readiness for `xcodebuild`, `xcrun/simctl`, macOS `log`, and optional `xctrace`; missing Xcode tools are warnings so the CLI can still be installed.
+- `./scripts/setup.sh --select-xcode` is the only setup path that uses sudo; it prints the exact hardcoded command list first and does not evaluate user-provided shell strings.
+- Build profiling is local-first and works without Tuist Cloud.
+- Runtime helpers are debug-only and use public APIs/signposts plus structured log lines.
+- Rendered layout diagnostics use XCTest/accessibility hierarchy, not private UIKit/SwiftUI view graph scraping.
+- Prefer JSON output when another agent or CI step will consume a report.
 
 ### Infrastructure setup (run in order)
 

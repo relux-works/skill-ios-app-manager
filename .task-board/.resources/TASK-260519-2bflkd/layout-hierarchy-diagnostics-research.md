@@ -1,0 +1,1 @@
+Research artifact: references/layout-hierarchy-diagnostics-research.md. Architecture updated in references/profile-diagnostics-architecture.md and diagrams/profile-diagnostics-architecture.puml.

@@ -1,0 +1,71 @@
+@startuml Profile Diagnostics Architecture
+!theme plain
+
+title Profile Diagnostics Architecture
+
+package "ios-app-manager CLI" {
+  [profile build] as BuildCommand
+  [profile layout scaffold] as LayoutScaffoldCommand
+  [profile layout analyze] as LayoutAnalyzeCommand
+  [profile runtime scaffold] as RuntimeScaffoldCommand
+  [profile runtime analyze] as RuntimeAnalyzeCommand
+  [profile runtime errors] as RuntimeErrorsCommand
+}
+
+package "Build Inputs" {
+  [ios-app-manager.json] as Config
+  [tuist graph legacyJSON] as TuistGraph
+  [xcodebuild timing log] as BuildLog
+  [xcresult bundle] as XCResult
+}
+
+package "Runtime Inputs" {
+  [PerformanceProbe.swift] as Probe
+  [IAM_PROFILE log lines] as RuntimeLog
+  [IAM_ERROR/unified logs] as ErrorLog
+  [Instruments signposts] as Signposts
+}
+
+package "Layout Inputs" {
+  [LayoutHierarchyProbe.swift] as LayoutProbe
+  [XCTest hierarchy XML] as LayoutXML
+  [Appium/WDA page source] as AppiumXML
+}
+
+package "Analysis Core" {
+  [Timing Parser] as TimingParser
+  [Target Graph Analyzer] as GraphAnalyzer
+  [Runtime Event Parser] as RuntimeParser
+  [Runtime Error Parser] as ErrorParser
+  [Layout XML Parser] as LayoutParser
+  [Report Renderer] as ReportRenderer
+}
+
+BuildCommand --> Config
+BuildCommand --> TuistGraph
+BuildCommand --> BuildLog
+BuildCommand --> XCResult
+BuildLog --> TimingParser
+TuistGraph --> GraphAnalyzer
+TimingParser --> ReportRenderer
+GraphAnalyzer --> ReportRenderer
+
+RuntimeScaffoldCommand --> Probe
+Probe --> RuntimeLog
+Probe --> Signposts
+RuntimeAnalyzeCommand --> RuntimeLog
+RuntimeLog --> RuntimeParser
+RuntimeParser --> ReportRenderer
+RuntimeErrorsCommand --> ErrorLog
+ErrorLog --> ErrorParser
+ErrorParser --> ReportRenderer
+
+LayoutScaffoldCommand --> LayoutProbe
+LayoutProbe --> LayoutXML
+LayoutAnalyzeCommand --> LayoutXML
+LayoutAnalyzeCommand --> AppiumXML
+LayoutXML --> LayoutParser
+AppiumXML --> LayoutParser
+LayoutParser --> ReportRenderer
+
+@enduml
