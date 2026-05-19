@@ -11,6 +11,8 @@ SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 GO_DIR="$SKILL_DIR/tuist-starter"
 BINARY_NAME="ios-app-manager"
 BIN_DIR="$HOME/.local/bin"
+FULL_XCODE_DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+SELECT_XCODE=0
 
 AGENTS_SKILLS="$HOME/.agents/skills"
 CLAUDE_SKILLS="$HOME/.claude/skills"
@@ -39,6 +41,71 @@ scrub_git_metadata() {
   local target_dir="$1"
   rm -rf "$target_dir/.git"
   rm -f "$target_dir/.gitignore" "$target_dir/.gitattributes" "$target_dir/.gitmodules"
+}
+
+usage() {
+  cat <<EOF
+Usage: ./scripts/setup.sh [options]
+
+Options:
+  --select-xcode                 Select /Applications/Xcode.app as the active developer directory.
+  --print-privileged-commands    Print the exact sudo commands used by --select-xcode and exit.
+  -h, --help                     Show this help.
+
+Default setup does not run sudo. Use --select-xcode when iOS simulator/build/profile
+workflows need full Xcode instead of CommandLineTools.
+EOF
+}
+
+parse_args() {
+  while (($# > 0)); do
+    case "$1" in
+      --select-xcode)
+        SELECT_XCODE=1
+        ;;
+      --print-privileged-commands)
+        print_privileged_commands
+        exit 0
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        red "Unknown argument: $1"
+        usage
+        exit 1
+        ;;
+    esac
+    shift
+  done
+}
+
+print_privileged_commands() {
+  print "Privileged commands for --select-xcode:"
+  print "  sudo -v"
+  print "  sudo xcode-select -s $FULL_XCODE_DEVELOPER_DIR"
+}
+
+select_full_xcode() {
+  if [[ ! -d "$FULL_XCODE_DEVELOPER_DIR" ]]; then
+    red "Full Xcode developer directory not found: $FULL_XCODE_DEVELOPER_DIR"
+    red "Install Xcode.app first or select it manually with xcode-select."
+    exit 1
+  fi
+
+  local current_dir=""
+  current_dir="$(xcode-select -p 2>/dev/null || true)"
+  if [[ "$current_dir" == "$FULL_XCODE_DEVELOPER_DIR" ]]; then
+    green "Full Xcode already selected: $FULL_XCODE_DEVELOPER_DIR"
+    return
+  fi
+
+  yellow "Full Xcode selection requested."
+  print_privileged_commands
+  sudo -v
+  sudo xcode-select -s "$FULL_XCODE_DEVELOPER_DIR"
+  green "Selected full Xcode: $FULL_XCODE_DEVELOPER_DIR"
 }
 
 # --- 1. Check / install Go ---
@@ -75,7 +142,54 @@ check_tuist() {
   green "Tuist installed: $(tuist version)"
 }
 
-# --- 3. Build CLI ---
+# --- 3. Check Xcode / profile diagnostics tools ---
+check_xcode_tools() {
+  if ! command -v xcode-select &>/dev/null; then
+    yellow "WARNING: xcode-select not found. iOS build/profile diagnostics require Xcode tools."
+    return
+  fi
+
+  local developer_dir
+  if ! developer_dir="$(xcode-select -p 2>/dev/null)"; then
+    yellow "WARNING: Xcode developer directory is not selected. Run: xcode-select --install"
+    return
+  fi
+  green "Xcode: $developer_dir"
+
+  if ! command -v xcodebuild &>/dev/null; then
+    yellow "WARNING: xcodebuild not found. Build profiling requires Xcode."
+  else
+    local xcodebuild_version
+    if xcodebuild_version="$(xcodebuild -version 2>/dev/null | head -n 1)"; then
+      green "xcodebuild: $xcodebuild_version"
+    else
+      yellow "WARNING: xcodebuild is present but not usable with active developer directory."
+      yellow "         Select full Xcode for iOS workflows: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
+    fi
+  fi
+
+  if ! command -v xcrun &>/dev/null; then
+    yellow "WARNING: xcrun not found. Simulator/runtime diagnostics require Xcode tools."
+  elif xcrun --find simctl &>/dev/null; then
+    green "xcrun/simctl: $(xcrun --find simctl)"
+  else
+    yellow "WARNING: simctl not found via xcrun. Simulator runtime/layout diagnostics require full Xcode."
+  fi
+
+  if ! command -v log &>/dev/null; then
+    yellow "WARNING: macOS unified log tool not found; runtime error diagnostics require /usr/bin/log."
+  else
+    green "log: $(command -v log)"
+  fi
+
+  if command -v xcrun &>/dev/null && xcrun --find xctrace &>/dev/null; then
+    green "xctrace: $(xcrun --find xctrace)"
+  else
+    yellow "WARNING: xctrace not found. Optional Instruments trace workflows will be unavailable."
+  fi
+}
+
+# --- 4. Build CLI ---
 build_cli() {
   green "Building $BINARY_NAME..."
   cd "$GO_DIR"
@@ -84,7 +198,7 @@ build_cli() {
   green "Built: $GO_DIR/$BINARY_NAME"
 }
 
-# --- 3. Sync installed skill copy + symlinks ---
+# --- 5. Sync installed skill copy + symlinks ---
 register_skill() {
   mkdir -p "$AGENTS_SKILLS" "$CLAUDE_SKILLS" "$CODEX_SKILLS"
 
@@ -101,13 +215,13 @@ register_skill() {
   _symlink "$CODEX_SKILLS/$SKILL_NAME" "$INSTALLED_SKILL_DIR"
 }
 
-# --- 4. Symlink binary to PATH ---
+# --- 6. Symlink binary to PATH ---
 install_binary() {
   local target="$GO_DIR/$BINARY_NAME"
   _symlink "$BIN_DIR/$BINARY_NAME" "$target"
 }
 
-# --- 5. Verify PATH ---
+# --- 7. Verify PATH ---
 check_path() {
   if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
     yellow "WARNING: $BIN_DIR is not in PATH."
@@ -115,7 +229,7 @@ check_path() {
   fi
 }
 
-# --- 6. Verify ---
+# --- 8. Verify ---
 verify() {
   if command -v $BINARY_NAME &>/dev/null; then
     green "Verified: $($BINARY_NAME --version 2>&1 || echo "$BINARY_NAME available")"
@@ -156,11 +270,17 @@ _symlink() {
 }
 
 # --- Run ---
+parse_args "$@"
+
 print ""
 green "=== $SKILL_NAME skill setup ==="
 print ""
+if (( SELECT_XCODE )); then
+  select_full_xcode
+fi
 check_go
 check_tuist
+check_xcode_tools
 build_cli
 print ""
 green "Registering skill globally..."
