@@ -124,6 +124,12 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 	if cfg.SharedConfig.ModuleName != "SharedConfig" {
 		t.Fatalf("SharedConfig.ModuleName = %q, want %q", cfg.SharedConfig.ModuleName, "SharedConfig")
 	}
+	if cfg.Theme != ThemeAutomatic {
+		t.Fatalf("Theme = %q, want %q", cfg.Theme, ThemeAutomatic)
+	}
+	if cfg.Orientation != OrientationAutomatic {
+		t.Fatalf("Orientation = %q, want %q", cfg.Orientation, OrientationAutomatic)
+	}
 	if cfg.ProjectSettings.Swift.LanguageMode != "v6" {
 		t.Fatalf("ProjectSettings.Swift.LanguageMode = %q, want %q", cfg.ProjectSettings.Swift.LanguageMode, "v6")
 	}
@@ -138,6 +144,73 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 	}
 	if cfg.ProjectSettings.Swift.Concurrency.ExistentialAny != "yes" {
 		t.Fatalf("ExistentialAny = %q, want %q", cfg.ProjectSettings.Swift.Concurrency.ExistentialAny, "yes")
+	}
+}
+
+func TestLoadConfigParsesExplicitExportComplianceFalse(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config-export-compliance.json")
+	content := `{
+  "app_name": "DemoApp",
+  "bundle_id": "com.example.demo",
+  "team_id": "ABCDE12345",
+  "marketing_version": "1.0.0",
+  "project_version": "1",
+  "swift_version": "6.2",
+  "min_target": "17.0",
+  "uses_non_exempt_encryption": false
+}`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if cfg.UsesNonExemptEncryption == nil {
+		t.Fatal("UsesNonExemptEncryption = nil, want explicit false pointer")
+	}
+	if *cfg.UsesNonExemptEncryption {
+		t.Fatal("UsesNonExemptEncryption = true, want false")
+	}
+}
+
+func TestLoadConfigParsesPrivacyUsageDescriptions(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config-privacy.json")
+	content := `{
+  "app_name": "DemoApp",
+  "bundle_id": "com.example.demo",
+  "team_id": "ABCDE12345",
+  "marketing_version": "1.0.0",
+  "project_version": "1",
+  "swift_version": "6.2",
+  "min_target": "17.0",
+  "privacy_usage_descriptions": {
+    "bluetooth_always": "Find nearby transfer receivers.",
+    "bluetooth_peripheral": "Advertise nearby transfer availability."
+  }
+}`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if cfg.PrivacyUsageDescriptions.BluetoothAlways != "Find nearby transfer receivers." {
+		t.Fatalf("BluetoothAlways = %q", cfg.PrivacyUsageDescriptions.BluetoothAlways)
+	}
+	if cfg.PrivacyUsageDescriptions.BluetoothPeripheral != "Advertise nearby transfer availability." {
+		t.Fatalf("BluetoothPeripheral = %q", cfg.PrivacyUsageDescriptions.BluetoothPeripheral)
 	}
 }
 
@@ -199,6 +272,8 @@ func validProjectConfig() ProjectConfig {
 		MinTarget:        "17.0",
 		URLScheme:        "demoapp",
 		AppGroups:        []string{"group.com.example.demo"},
+		Theme:            ThemeLight,
+		Orientation:      OrientationPortrait,
 		ProductName:      "Demo Product",
 		Configurations:   []string{"Debug", "Release"},
 		ModulesPath:      "Packages",

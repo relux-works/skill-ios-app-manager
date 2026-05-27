@@ -64,6 +64,8 @@ func TestProjectConfigValidateInvalidFormatsAllReturned(t *testing.T) {
 	cfg.BundleID = "invalid_bundle_id"
 	cfg.SwiftVersion = "6"
 	cfg.MinTarget = "17"
+	cfg.Theme = "sepia"
+	cfg.Orientation = "upside-down"
 	cfg.ProjectSettings.Swift.LanguageMode = "6"
 	cfg.ProjectSettings.Swift.StrictMemorySafety = "later"
 	cfg.ProjectSettings.Swift.Concurrency.StrictChecking = "hard"
@@ -83,6 +85,8 @@ func TestProjectConfigValidateInvalidFormatsAllReturned(t *testing.T) {
 		"BundleID must use reverse-domain format",
 		"SwiftVersion must use major.minor format",
 		"MinTarget must use major.minor format",
+		"Theme must be automatic, light, or dark",
+		"Orientation must be automatic, portrait, or landscape",
 		"ProjectSettings.Swift.LanguageMode must use SwiftPM format",
 		"ProjectSettings.Swift.StrictMemorySafety must be yes, migrate, or no",
 		"ProjectSettings.Swift.Concurrency.StrictChecking must be minimal, targeted, or complete",

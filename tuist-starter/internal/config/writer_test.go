@@ -91,6 +91,8 @@ func TestWriteProjectConfigAppliesDefaults(t *testing.T) {
 
 	cfg := validProjectConfig()
 	cfg.ProductName = ""
+	cfg.Theme = ""
+	cfg.Orientation = ""
 	cfg.ModulesPath = ""
 	cfg.SharedConfig.ModuleName = ""
 
@@ -111,5 +113,11 @@ func TestWriteProjectConfigAppliesDefaults(t *testing.T) {
 	}
 	if got.SharedConfig.ModuleName != "SharedConfig" {
 		t.Fatalf("SharedConfig.ModuleName = %q, want %q", got.SharedConfig.ModuleName, "SharedConfig")
+	}
+	if got.Theme != ThemeAutomatic {
+		t.Fatalf("Theme = %q, want %q", got.Theme, ThemeAutomatic)
+	}
+	if got.Orientation != OrientationAutomatic {
+		t.Fatalf("Orientation = %q, want %q", got.Orientation, OrientationAutomatic)
 	}
 }

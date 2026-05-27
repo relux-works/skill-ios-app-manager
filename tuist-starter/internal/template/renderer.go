@@ -118,14 +118,17 @@ func (r *Renderer) renderTemplate(templateName string, data rendererTemplateData
 	tpl, err := template.New(templateName).
 		Option("missingkey=error").
 		Funcs(template.FuncMap{
-			"appGroupDictionaryKey": AppGroupSwiftIdentifier,
-			"appGroupInfoPlistKey":  AppGroupInfoPlistKey,
-			"configKind":            configKind,
-			"infoPlistKey":          InfoPlistKey,
-			"packageBuildSetting":   packageBuildSetting,
-			"packagePath":           packagePath,
-			"projectBuildSetting":   projectBuildSetting,
-			"swiftLiteral":          swiftLiteral,
+			"appGroupDictionaryKey":                 AppGroupSwiftIdentifier,
+			"appGroupInfoPlistKey":                  AppGroupInfoPlistKey,
+			"configKind":                            configKind,
+			"exportComplianceInfoPlistLines":        exportComplianceInfoPlistLines,
+			"infoPlistKey":                          InfoPlistKey,
+			"packageBuildSetting":                   packageBuildSetting,
+			"packagePath":                           packagePath,
+			"privacyUsageDescriptionInfoPlistLines": privacyUsageDescriptionInfoPlistLines,
+			"presentationInfoPlistLines":            presentationInfoPlistLines,
+			"projectBuildSetting":                   projectBuildSetting,
+			"swiftLiteral":                          swiftLiteral,
 		}).
 		ParseFS(templatesFS, templatePath)
 	if err != nil {
@@ -193,6 +196,8 @@ func normalizeProjectConfig(cfg config.ProjectConfig) config.ProjectConfig {
 	out.MinTarget = strings.TrimSpace(out.MinTarget)
 	out.URLScheme = strings.TrimSpace(out.URLScheme)
 	out.AppGroups = normalizeStringSlice(out.AppGroups)
+	out.PrivacyUsageDescriptions.BluetoothAlways = strings.TrimSpace(out.PrivacyUsageDescriptions.BluetoothAlways)
+	out.PrivacyUsageDescriptions.BluetoothPeripheral = strings.TrimSpace(out.PrivacyUsageDescriptions.BluetoothPeripheral)
 	out.Configurations = normalizeConfigurations(out.Configurations)
 	out.ModulesPath = normalizeModulesPath(out.ModulesPath)
 	out.ProjectSettings.Swift.LanguageMode = strings.TrimSpace(out.ProjectSettings.Swift.LanguageMode)
