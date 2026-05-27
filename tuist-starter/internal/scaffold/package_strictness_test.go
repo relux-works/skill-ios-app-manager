@@ -272,6 +272,83 @@ let package = Package(
 	}
 }
 
+func TestSyncPackageStrictnessRemovesDuplicateSwiftSettingsForms(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	writeVersionManifest(t, filepath.Join(projectRoot, "Package.swift"), `// swift-tools-version: 6.2
+import PackageDescription
+
+let modulesPath = "Packages"
+
+let package = Package(
+    name: "DemoDependencies",
+    dependencies: [
+        .package(path: "./Packages/Utilities"),
+    ],
+    targets: []
+)
+`)
+	modulePath := filepath.Join(projectRoot, "Packages", "Utilities", "Package.swift")
+	writeVersionManifest(t, modulePath, `// swift-tools-version: 6.2
+import PackageDescription
+
+let package = Package(
+    name: "Utilities",
+    targets: [
+        .target(
+            name: "Utilities",
+            dependencies: [],
+            path: "Sources",
+            swiftSettings: strictSwiftSettings,
+            swiftSettings: [
+                .swiftLanguageMode(.v6),
+            ]
+        ),
+        .testTarget(
+            name: "UtilitiesTests",
+            dependencies: ["Utilities"],
+            path: "Tests",
+            swiftSettings: strictSwiftSettings
+        ),
+    ]
+)
+
+let strictSwiftSettings: [SwiftSetting] = [
+    .swiftLanguageMode(.v6),
+]
+`)
+
+	result, err := SyncPackageStrictness(projectRoot, config.ProjectConfig{
+		SwiftVersion: "6.2",
+		ModulesPath:  "Packages",
+	})
+	if err != nil {
+		t.Fatalf("SyncPackageStrictness() error = %v", err)
+	}
+	if len(result.Updated) != 1 {
+		t.Fatalf("updated len = %d, want 1", len(result.Updated))
+	}
+
+	modulePackage := readVersionManifest(t, modulePath)
+	targetStart := strings.Index(modulePackage, `.target(
+            name: "Utilities"`)
+	testTargetStart := strings.Index(modulePackage, `.testTarget(`)
+	if targetStart < 0 || testTargetStart < 0 {
+		t.Fatalf("module Package.swift missing target/testTarget:\n%s", modulePackage)
+	}
+	targetBlock := modulePackage[targetStart:testTargetStart]
+	if strings.Contains(targetBlock, `swiftSettings: strictSwiftSettings`) {
+		t.Fatalf("regular target kept strictSwiftSettings reference:\n%s", modulePackage)
+	}
+	if got := strings.Count(targetBlock, `swiftSettings:`); got != 1 {
+		t.Fatalf("regular target swiftSettings count = %d, want 1:\n%s", got, modulePackage)
+	}
+	if !strings.Contains(modulePackage[testTargetStart:], `swiftSettings: strictSwiftSettings`) {
+		t.Fatalf("test target should keep existing swiftSettings reference:\n%s", modulePackage)
+	}
+}
+
 func TestSyncPackageStrictnessSkipsSwift5Modules(t *testing.T) {
 	t.Parallel()
 

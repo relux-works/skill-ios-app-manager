@@ -152,7 +152,8 @@ func syncExistingInfoPlistDictionaryLines(
 	insertIndex := closeLine
 	insertIndent := leadingIndent(lines[closeLine]) + "    "
 	for index := withLine + 1; index < closeLine; index++ {
-		if strings.Contains(lines[index], `"UILaunchScreen":`) {
+		if strings.Contains(lines[index], `"AppGroups":`) ||
+			strings.Contains(lines[index], `"UILaunchScreen":`) {
 			insertIndex = index
 			insertIndent = leadingIndent(lines[index])
 			break
