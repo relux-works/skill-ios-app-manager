@@ -67,6 +67,10 @@ Current generators:
 - `generate versions`
 - `generate min-target`
 - `generate team-id`
+- `generate presentation-config`
+- `generate export-compliance-config`
+- `generate privacy-usage-descriptions-config`
+- `generate application-configuration`
 - `generate app-capabilities`
 - `generate build-flags`
 - `generate package-strictness`
@@ -75,11 +79,23 @@ Current generators:
 - `generate versions` — syncs `marketing_version` and `project_version`
 - `generate min-target` — syncs `min_target` into `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET`
 - `generate team-id` — syncs `team_id` into `developmentTeam` constants and `DEVELOPMENT_TEAM` build settings
+- `generate presentation-config` — syncs host app `theme` and `orientation` into Info.plist presentation keys
+- `generate export-compliance-config` — syncs host app `uses_non_exempt_encryption` into `ITSAppUsesNonExemptEncryption`
+- `generate privacy-usage-descriptions-config` — syncs host app `privacy_usage_descriptions` into Info.plist usage description keys
+- `generate application-configuration` — syncs product-level runtime identity into app manifests and generated shared config
 - `generate app-capabilities` — syncs host app capabilities from config
 - `generate build-flags` — syncs app/extension Swift language, strict memory safety, and concurrency settings from `project_settings.swift`
 - `generate package-strictness` — syncs root/module `Package.swift` strictness from the same `project_settings.swift`
 
-These generators depend on the `init` scaffold shape. `versions`, `min-target`, `team-id`, and `build-flags` update the host app `Project.swift` plus every `Extensions/*/Project.swift`. `app-capabilities` syncs capability-owned manifest slices. `package-strictness` updates root `Package.swift` plus every module `Packages/*/Package.swift`.
+These generators depend on the `init` scaffold shape. `versions`, `min-target`, `team-id`, and `build-flags` update the host app `Project.swift` plus every `Extensions/*/Project.swift`. `presentation-config`, `export-compliance-config`, and `privacy-usage-descriptions-config` update host app Info.plist keys only. `app-capabilities` syncs capability-owned manifest slices. `package-strictness` updates root `Package.swift` plus every module `Packages/*/Package.swift`.
+
+Presentation config is optional. Supported values are:
+- `theme`: `automatic`, `light`, `dark`. `automatic` omits `UIUserInterfaceStyle`.
+- `orientation`: `automatic`, `portrait`, `landscape`. `automatic` omits `UISupportedInterfaceOrientations`; `portrait` emits `UIInterfaceOrientationPortrait`; `landscape` emits both landscape orientations.
+
+Export compliance config is optional. Set `uses_non_exempt_encryption` to `false` to emit `"ITSAppUsesNonExemptEncryption": .boolean(false)` in the host app Info.plist dictionary; omit the field to remove the scaffold-owned key.
+
+Privacy usage descriptions are optional. Configure `privacy_usage_descriptions.bluetooth_always` to emit `NSBluetoothAlwaysUsageDescription`, and `privacy_usage_descriptions.bluetooth_peripheral` to emit `NSBluetoothPeripheralUsageDescription`; omit or empty a value to remove the scaffold-owned key.
 
 Swift strictness is config-driven. Declare it in `ios-app-manager.json` under `project_settings.swift`; if you omit that block, defaults are derived from `swift_version` and the scaffold's current strict baseline.
 
@@ -135,6 +151,10 @@ If you only want one slice, the leaf plugins still work directly:
 ./ios-app-manager generate versions
 ./ios-app-manager generate min-target
 ./ios-app-manager generate team-id
+./ios-app-manager generate presentation-config
+./ios-app-manager generate export-compliance-config
+./ios-app-manager generate privacy-usage-descriptions-config
+./ios-app-manager generate application-configuration
 ./ios-app-manager generate app-capabilities
 ./ios-app-manager generate build-flags
 ./ios-app-manager generate package-strictness

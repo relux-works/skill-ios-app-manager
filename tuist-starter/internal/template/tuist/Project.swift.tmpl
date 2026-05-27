@@ -42,6 +42,15 @@ let project = Project(
                         ])
                     ]),
 {{- end }}
+{{- range privacyUsageDescriptionInfoPlistLines .PrivacyUsageDescriptions }}
+                    {{ . }}
+{{- end }}
+{{- range presentationInfoPlistLines .Theme .Orientation }}
+                    {{ . }}
+{{- end }}
+{{- range exportComplianceInfoPlistLines .UsesNonExemptEncryption }}
+                    {{ . }}
+{{- end }}
                     "ApplicationConfiguration": .dictionary([
                         "appName": .string(appName),
                         "applicationBundleIdentifier": .string(bundleID),

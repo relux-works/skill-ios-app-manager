@@ -5,7 +5,21 @@ import "strings"
 const (
 	DefaultConfigPath             = "ios-app-manager.json"
 	DefaultSharedConfigModuleName = "SharedConfig"
+	DefaultTheme                  = "automatic"
+	DefaultOrientation            = "automatic"
 	defaultModulesPath            = "Packages"
+)
+
+const (
+	ThemeAutomatic = "automatic"
+	ThemeLight     = "light"
+	ThemeDark      = "dark"
+)
+
+const (
+	OrientationAutomatic = "automatic"
+	OrientationPortrait  = "portrait"
+	OrientationLandscape = "landscape"
 )
 
 // ProjectConfig defines project-init schema for ios-app-manager.
@@ -26,6 +40,16 @@ type ProjectConfig struct {
 	URLScheme string   `json:"url_scheme,omitempty"`
 	AppGroups []string `json:"app_groups,omitempty"`
 
+	// Presentation
+	Theme       string `json:"theme,omitempty"`       // automatic, light, dark
+	Orientation string `json:"orientation,omitempty"` // automatic, portrait, landscape
+
+	// Export compliance
+	UsesNonExemptEncryption *bool `json:"uses_non_exempt_encryption,omitempty"`
+
+	// Privacy usage descriptions
+	PrivacyUsageDescriptions PrivacyUsageDescriptionsConfig `json:"privacy_usage_descriptions,omitempty"`
+
 	// Build
 	ProductName     string          `json:"product_name,omitempty"`   // defaults to AppName
 	Configurations  []string        `json:"configurations,omitempty"` // e.g. ["Debug", "Release"]
@@ -45,10 +69,18 @@ type SharedConfigConfig struct {
 	ModuleName string `json:"module_name,omitempty"` // default: SharedConfig
 }
 
+type PrivacyUsageDescriptionsConfig struct {
+	BluetoothAlways     string `json:"bluetooth_always,omitempty"`
+	BluetoothPeripheral string `json:"bluetooth_peripheral,omitempty"`
+}
+
 func (c *ProjectConfig) applyDefaults() {
 	if strings.TrimSpace(c.ProductName) == "" {
 		c.ProductName = strings.TrimSpace(c.AppName)
 	}
+
+	c.Theme = normalizeEnumDefault(c.Theme, DefaultTheme)
+	c.Orientation = normalizeEnumDefault(c.Orientation, DefaultOrientation)
 
 	if strings.TrimSpace(c.ModulesPath) == "" {
 		c.ModulesPath = defaultModulesPath
@@ -61,4 +93,12 @@ func (c *ProjectConfig) applyDefaults() {
 	}
 
 	c.applySwiftDefaults()
+}
+
+func normalizeEnumDefault(value string, defaultValue string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return defaultValue
+	}
+	return strings.ToLower(trimmed)
 }

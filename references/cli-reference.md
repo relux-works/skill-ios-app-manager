@@ -37,6 +37,9 @@ ios-app-manager [command] [flags]
 | `generate team-id` | Generate or update app + extension signing team settings | `ios-app-manager generate team-id` |
 | `generate application-configuration` | Generate or update product-level runtime app configuration | `ios-app-manager generate application-configuration` |
 | `generate app-capabilities` | Generate or update host app capabilities from config | `ios-app-manager generate app-capabilities` |
+| `generate presentation-config` | Generate or update host app theme/orientation Info.plist keys | `ios-app-manager generate presentation-config` |
+| `generate export-compliance-config` | Generate or update host app export compliance Info.plist key | `ios-app-manager generate export-compliance-config` |
+| `generate privacy-usage-descriptions-config` | Generate or update host app privacy usage description Info.plist keys | `ios-app-manager generate privacy-usage-descriptions-config` |
 | `generate build-flags` | Generate or update strict Swift compiler build flags in app + extension manifests | `ios-app-manager generate build-flags` |
 | `clean [--deep] [--kill-xcode]` | Clean local/global build artifacts | `ios-app-manager clean --deep` |
 | `profile build` | Profile build timing and target critical path | `ios-app-manager profile build --jobs 8` |
@@ -373,6 +376,71 @@ Example:
 ios-app-manager generate team-id
 ```
 
+### `generate presentation-config`
+
+Syntax:
+```bash
+ios-app-manager generate presentation-config
+```
+
+Description:
+- Syncs host app presentation values from `ios-app-manager.json`.
+- `theme` supports `automatic`, `light`, and `dark`.
+- `orientation` supports `automatic`, `portrait`, and `landscape`.
+- `automatic` removes the owned Info.plist key and lets iOS use its default behavior.
+- `light`/`dark` write `UIUserInterfaceStyle` for the host app target only.
+- `portrait`/`landscape` write `UISupportedInterfaceOrientations` for the host app target only.
+
+Flags:
+- `--config <path>`: Optional command-level config override.
+
+Example:
+```bash
+ios-app-manager generate presentation-config
+```
+
+### `generate export-compliance-config`
+
+Syntax:
+```bash
+ios-app-manager generate export-compliance-config
+```
+
+Description:
+- Syncs host app export compliance values from `ios-app-manager.json`.
+- `uses_non_exempt_encryption` is optional and must be explicit when the key should exist.
+- `false` writes `ITSAppUsesNonExemptEncryption` as `.boolean(false)` for the host app target only.
+- Omitting the field removes the scaffold-owned Info.plist key.
+
+Flags:
+- `--config <path>`: Optional command-level config override.
+
+Example:
+```bash
+ios-app-manager generate export-compliance-config
+```
+
+### `generate privacy-usage-descriptions-config`
+
+Syntax:
+```bash
+ios-app-manager generate privacy-usage-descriptions-config
+```
+
+Description:
+- Syncs host app privacy usage description values from `ios-app-manager.json`.
+- `privacy_usage_descriptions.bluetooth_always` writes `NSBluetoothAlwaysUsageDescription` for the host app target only.
+- `privacy_usage_descriptions.bluetooth_peripheral` writes `NSBluetoothPeripheralUsageDescription` for the host app target only.
+- Omitting or emptying a field removes the scaffold-owned Info.plist key.
+
+Flags:
+- `--config <path>`: Optional command-level config override.
+
+Example:
+```bash
+ios-app-manager generate privacy-usage-descriptions-config
+```
+
 ### `generate application-configuration`
 
 Syntax:
@@ -453,6 +521,9 @@ Description:
   - `generate versions`
   - `generate min-target`
   - `generate team-id`
+  - `generate presentation-config`
+  - `generate export-compliance-config`
+  - `generate privacy-usage-descriptions-config`
   - `generate application-configuration`
   - `generate app-capabilities`
   - `generate build-flags`

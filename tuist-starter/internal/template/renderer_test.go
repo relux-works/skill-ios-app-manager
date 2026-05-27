@@ -110,6 +110,11 @@ func TestRendererRenderWithMinimalConfig(t *testing.T) {
 	if !strings.Contains(projectSwift, `.debug(name: "Debug")`) || !strings.Contains(projectSwift, `.release(name: "Release")`) {
 		t.Fatalf("Project.swift missing default configurations:\n%s", projectSwift)
 	}
+	for _, omitted := range []string{"UIUserInterfaceStyle", "UISupportedInterfaceOrientations"} {
+		if strings.Contains(projectSwift, omitted) {
+			t.Fatalf("Project.swift should omit automatic presentation key %q:\n%s", omitted, projectSwift)
+		}
+	}
 
 	packageSwift := rendered["Package.swift"]
 	if strings.Contains(packageSwift, ".package(path:") {
@@ -126,6 +131,73 @@ func TestRendererRenderWithMinimalConfig(t *testing.T) {
 
 	for name, content := range rendered {
 		assertNoTemplateArtifacts(t, name, content)
+	}
+}
+
+func TestRendererRenderPresentationConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := loadConfigFixture(t, "minimal-config.json")
+	cfg.Theme = config.ThemeLight
+	cfg.Orientation = config.OrientationPortrait
+
+	rendered, err := NewRenderer(WithRootDir(t.TempDir())).Render(cfg)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	projectSwift := rendered["Project.swift"]
+	for _, want := range []string{
+		`"UIUserInterfaceStyle": .string("Light")`,
+		`"UISupportedInterfaceOrientations": .array([`,
+		`.string("UIInterfaceOrientationPortrait")`,
+	} {
+		if !strings.Contains(projectSwift, want) {
+			t.Fatalf("Project.swift missing %q:\n%s", want, projectSwift)
+		}
+	}
+}
+
+func TestRendererRenderExportComplianceConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := loadConfigFixture(t, "minimal-config.json")
+	usesNonExemptEncryption := false
+	cfg.UsesNonExemptEncryption = &usesNonExemptEncryption
+
+	rendered, err := NewRenderer(WithRootDir(t.TempDir())).Render(cfg)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	projectSwift := rendered["Project.swift"]
+	if !strings.Contains(projectSwift, `"ITSAppUsesNonExemptEncryption": .boolean(false)`) {
+		t.Fatalf("Project.swift missing export compliance false entry:\n%s", projectSwift)
+	}
+}
+
+func TestRendererRenderPrivacyUsageDescriptionsConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := loadConfigFixture(t, "minimal-config.json")
+	cfg.PrivacyUsageDescriptions = config.PrivacyUsageDescriptionsConfig{
+		BluetoothAlways:     "Find nearby transfer receivers.",
+		BluetoothPeripheral: "Advertise nearby transfer availability.",
+	}
+
+	rendered, err := NewRenderer(WithRootDir(t.TempDir())).Render(cfg)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	projectSwift := rendered["Project.swift"]
+	for _, want := range []string{
+		`"NSBluetoothAlwaysUsageDescription": .string("Find nearby transfer receivers.")`,
+		`"NSBluetoothPeripheralUsageDescription": .string("Advertise nearby transfer availability.")`,
+	} {
+		if !strings.Contains(projectSwift, want) {
+			t.Fatalf("Project.swift missing privacy usage description %q:\n%s", want, projectSwift)
+		}
 	}
 }
 

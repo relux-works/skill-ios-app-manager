@@ -43,6 +43,16 @@ func (c ProjectConfig) Validate() error {
 	if value := strings.TrimSpace(c.MinTarget); value != "" && !versionPattern.MatchString(value) {
 		issues = append(issues, "MinTarget must use major.minor format (e.g. 17.0)")
 	}
+	switch value := strings.ToLower(strings.TrimSpace(c.Theme)); value {
+	case "", ThemeAutomatic, ThemeLight, ThemeDark:
+	default:
+		issues = append(issues, "Theme must be automatic, light, or dark")
+	}
+	switch value := strings.ToLower(strings.TrimSpace(c.Orientation)); value {
+	case "", OrientationAutomatic, OrientationPortrait, OrientationLandscape:
+	default:
+		issues = append(issues, "Orientation must be automatic, portrait, or landscape")
+	}
 	if value := strings.TrimSpace(c.ProjectSettings.Swift.LanguageMode); value != "" && !languageModePattern.MatchString(value) {
 		issues = append(issues, "ProjectSettings.Swift.LanguageMode must use SwiftPM format (e.g. v6)")
 	}
