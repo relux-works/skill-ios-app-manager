@@ -334,7 +334,10 @@ func findProjectTargetBlocks(lines []string) []projectTargetBlock {
 			}
 			depth += parenDeltaOutsideStrings(lines[end], startColumn)
 			if depth <= 0 {
-				blocks = append(blocks, projectTargetBlock{start: index, end: end})
+				candidate := projectTargetBlock{start: index, end: end}
+				if projectTargetBlockLooksLikeDeclaration(lines[candidate.start : candidate.end+1]) {
+					blocks = append(blocks, candidate)
+				}
 				index = end
 				break
 			}
@@ -342,6 +345,15 @@ func findProjectTargetBlocks(lines []string) []projectTargetBlock {
 	}
 
 	return blocks
+}
+
+func projectTargetBlockLooksLikeDeclaration(lines []string) bool {
+	for _, line := range lines {
+		if strings.Contains(line, "name:") || strings.Contains(line, "product:") {
+			return true
+		}
+	}
+	return false
 }
 
 func parenDeltaOutsideStrings(line string, start int) int {

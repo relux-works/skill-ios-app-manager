@@ -292,8 +292,7 @@ func ensureModuleTargetSwiftSettings(lines []string, startIndex, endIndex int, s
 	originalLines := lines
 	originalEndIndex := endIndex
 	propertyIndent := leadingIndent(lines[startIndex]) + "    "
-	swiftSettingsStart := -1
-	swiftSettingsEnd := -1
+	swiftSettingsRanges := make([]lineRange, 0, 1)
 	insertIndex := endIndex
 
 	for index := startIndex + 1; index < endIndex; index++ {
@@ -304,13 +303,16 @@ func ensureModuleTargetSwiftSettings(lines []string, startIndex, endIndex int, s
 		if strings.Contains(trimmed, ":") {
 			propertyIndent = leadingIndent(lines[index])
 		}
-		if strings.HasPrefix(trimmed, "swiftSettings: [") {
-			blockEnd, err := findDelimitedBlockEnd(lines, index, "[", "]")
-			if err != nil {
-				return nil, false, fmt.Errorf("unterminated swiftSettings block")
+		if strings.HasPrefix(trimmed, "swiftSettings:") {
+			blockEnd := index
+			if strings.Contains(trimmed, "[") {
+				var err error
+				blockEnd, err = findDelimitedBlockEnd(lines, index, "[", "]")
+				if err != nil {
+					return nil, false, fmt.Errorf("unterminated swiftSettings block")
+				}
 			}
-			swiftSettingsStart = index
-			swiftSettingsEnd = blockEnd
+			swiftSettingsRanges = append(swiftSettingsRanges, lineRange{start: index, end: blockEnd})
 			propertyIndent = leadingIndent(lines[index])
 			index = blockEnd
 			continue
@@ -321,10 +323,11 @@ func ensureModuleTargetSwiftSettings(lines []string, startIndex, endIndex int, s
 	}
 
 	lines = append([]string{}, lines...)
-	if swiftSettingsStart >= 0 {
-		lines = append(lines[:swiftSettingsStart], lines[swiftSettingsEnd+1:]...)
-		endIndex -= swiftSettingsEnd - swiftSettingsStart + 1
-		insertIndex = adjustInsertionIndexAfterRemoval(insertIndex, swiftSettingsStart, swiftSettingsEnd)
+	for index := len(swiftSettingsRanges) - 1; index >= 0; index-- {
+		removal := swiftSettingsRanges[index]
+		lines = append(lines[:removal.start], lines[removal.end+1:]...)
+		endIndex -= removal.end - removal.start + 1
+		insertIndex = adjustInsertionIndexAfterRemoval(insertIndex, removal.start, removal.end)
 	}
 
 	if insertIndex > endIndex {
@@ -359,6 +362,11 @@ func ensureModuleTargetSwiftSettings(lines []string, startIndex, endIndex int, s
 	}
 
 	return lines, true, nil
+}
+
+type lineRange struct {
+	start int
+	end   int
 }
 
 func renderModuleSwiftSettingsLines(indent string, settings []string, trailingComma bool) []string {
