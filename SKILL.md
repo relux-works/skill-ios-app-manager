@@ -285,6 +285,17 @@ Implementation notes:
 - Rendered layout diagnostics use XCTest/accessibility hierarchy, not private UIKit/SwiftUI view graph scraping.
 - Prefer JSON output when another agent or CI step will consume a report.
 
+### Physical iOS launch with logs
+
+When a user asks to start the app on all connected physical iPhones/iPads, with or without rebuild, and keep runtime logs attached, use the workflow in [`references/physical-ios-launch-log-workflow.md`](references/physical-ios-launch-log-workflow.md).
+
+Key rules:
+- Keep the workflow generic: discover USB devices or accept explicit UDIDs; never bake local device names or identifiers into reusable scripts.
+- Put project-specific app defaults, bundle id, environment, and launch flags in the generated Makefile's preserved custom section.
+- Start log capture before launching the app so startup, Bluetooth, and permission/runtime events are not missed.
+- Keep the capture command in the foreground until the user says to stop, then terminate child log streams and leave raw plus filtered artifacts under `.temp/`.
+- Use `devicectl device process launch` for CoreDevice-compatible devices and `ios-deploy --bundle <app> --noinstall --justlaunch` as a legacy fallback when CoreDevice cannot launch a connected device.
+
 ### Infrastructure setup (run in order)
 
 - IoC container: `ios-app-manager ioc setup`
