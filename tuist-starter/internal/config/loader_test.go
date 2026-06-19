@@ -214,6 +214,53 @@ func TestLoadConfigParsesPrivacyUsageDescriptions(t *testing.T) {
 	}
 }
 
+func TestLoadConfigParsesScripts(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config-scripts.json")
+	content := `{
+  "app_name": "DemoApp",
+  "bundle_id": "com.example.demo",
+  "team_id": "ABCDE12345",
+  "marketing_version": "1.0.0",
+  "project_version": "1",
+  "swift_version": "6.2",
+  "min_target": "17.0",
+  "scripts": {
+    "pre_generate": [
+      {
+        "path": "scripts/patch-package.sh",
+        "language": "bash",
+        "description": "Patch remote package resources"
+      }
+    ]
+  }
+}`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if len(cfg.Scripts.PreGenerate) != 1 {
+		t.Fatalf("Scripts.PreGenerate count = %d, want 1", len(cfg.Scripts.PreGenerate))
+	}
+	script := cfg.Scripts.PreGenerate[0]
+	if script.Path != "scripts/patch-package.sh" {
+		t.Fatalf("Path = %q", script.Path)
+	}
+	if script.Language != "bash" {
+		t.Fatalf("Language = %q", script.Language)
+	}
+	if script.Description != "Patch remote package resources" {
+		t.Fatalf("Description = %q", script.Description)
+	}
+}
+
 func TestSampleConfigIsValid(t *testing.T) {
 	t.Parallel()
 

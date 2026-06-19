@@ -54,6 +54,7 @@ type ProjectConfig struct {
 	ProductName     string          `json:"product_name,omitempty"`   // defaults to AppName
 	Configurations  []string        `json:"configurations,omitempty"` // e.g. ["Debug", "Release"]
 	ProjectSettings ProjectSettings `json:"project_settings,omitempty"`
+	Scripts         ScriptsConfig   `json:"scripts,omitempty"`
 
 	// Modules
 	ModulesPath  string             `json:"modules_path,omitempty"` // default: "Packages"
@@ -72,6 +73,16 @@ type SharedConfigConfig struct {
 type PrivacyUsageDescriptionsConfig struct {
 	BluetoothAlways     string `json:"bluetooth_always,omitempty"`
 	BluetoothPeripheral string `json:"bluetooth_peripheral,omitempty"`
+}
+
+type ScriptsConfig struct {
+	PreGenerate []ScriptConfig `json:"pre_generate,omitempty"`
+}
+
+type ScriptConfig struct {
+	Path        string `json:"path"`
+	Language    string `json:"language"`
+	Description string `json:"description,omitempty"`
 }
 
 func (c *ProjectConfig) applyDefaults() {

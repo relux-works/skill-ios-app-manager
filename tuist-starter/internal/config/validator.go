@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -92,6 +93,9 @@ func (c ProjectConfig) Validate() error {
 			issues = append(issues, fmt.Sprintf("Configurations[%d] must not be empty", i))
 		}
 	}
+	for i, script := range c.Scripts.PreGenerate {
+		validateScriptConfig(script, fmt.Sprintf("Scripts.PreGenerate[%d]", i), &issues)
+	}
 
 	if len(issues) == 0 {
 		return nil
@@ -103,5 +107,29 @@ func (c ProjectConfig) Validate() error {
 func requiredString(value string, fieldName string, issues *[]string) {
 	if strings.TrimSpace(value) == "" {
 		*issues = append(*issues, fmt.Sprintf("%s is required", fieldName))
+	}
+}
+
+func validateScriptConfig(script ScriptConfig, fieldName string, issues *[]string) {
+	path := strings.TrimSpace(script.Path)
+	if path == "" {
+		*issues = append(*issues, fmt.Sprintf("%s.Path is required", fieldName))
+	} else {
+		if filepath.IsAbs(path) {
+			*issues = append(*issues, fmt.Sprintf("%s.Path must be relative to the project root", fieldName))
+		}
+		clean := filepath.Clean(path)
+		if clean == "." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) || clean == ".." {
+			*issues = append(*issues, fmt.Sprintf("%s.Path must not escape the project root", fieldName))
+		}
+		if strings.Contains(path, "\x00") || strings.ContainsAny(path, "\r\n") {
+			*issues = append(*issues, fmt.Sprintf("%s.Path must be a single-line path", fieldName))
+		}
+	}
+
+	switch strings.ToLower(strings.TrimSpace(script.Language)) {
+	case "bash", "swift", "go", "executable":
+	default:
+		*issues = append(*issues, fmt.Sprintf("%s.Language must be bash, swift, go, or executable", fieldName))
 	}
 }

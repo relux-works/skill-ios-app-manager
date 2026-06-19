@@ -19,10 +19,11 @@ PUSH_ENV ?= development
 PUSH_DEVICE_TOKEN ?=
 
 .DEFAULT_GOAL := help
-.PHONY: setup resetup generate build test clean-package-artifacts clean deep-clean lint format validate install-tools periphery help push-token push-send
+.PHONY: setup resetup generate run-pre-generate-scripts build test clean-package-artifacts clean deep-clean lint format validate install-tools periphery help push-token push-send
 
 setup: ## Install Tuist dependencies and generate project files
 	@tuist install
+	@$(MAKE) run-pre-generate-scripts
 	@tuist generate $(TUIST_GENERATE_FLAGS)
 
 resetup: ## Clean and run setup again
@@ -31,6 +32,9 @@ resetup: ## Clean and run setup again
 
 generate: ## Generate the Xcode project with Tuist
 	@tuist generate $(TUIST_GENERATE_FLAGS)
+
+run-pre-generate-scripts: ## Run configured scripts before Tuist project generation
+	@:
 
 build: ## Build the app with xcodebuild
 	@set -e; \

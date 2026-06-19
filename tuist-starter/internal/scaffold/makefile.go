@@ -37,11 +37,13 @@ func renderGeneratedMakefile(cfg config.ProjectConfig) string {
 	hasPushConfig := strings.TrimSpace(cfg.PushKeyPath) != "" && strings.TrimSpace(cfg.PushKeyID) != ""
 	pushKeyPath := sanitizeMakeValue(cfg.PushKeyPath, "")
 	pushKeyID := sanitizeMakeValue(cfg.PushKeyID, "")
+	hasPreGenerateScripts := len(cfg.Scripts.PreGenerate) > 0
 
 	phonyTargets := []string{
 		"setup",
 		"resetup",
 		"generate",
+		"run-pre-generate-scripts",
 		"build",
 		"test",
 		"clean-package-artifacts",
@@ -86,6 +88,7 @@ func renderGeneratedMakefile(cfg config.ProjectConfig) string {
 	b.WriteString("\n")
 	b.WriteString("setup: ## Install Tuist dependencies and generate project files\n")
 	b.WriteString("\t@tuist install\n")
+	b.WriteString("\t@$(MAKE) run-pre-generate-scripts\n")
 	b.WriteString("\t@tuist generate $(TUIST_GENERATE_FLAGS)\n")
 	b.WriteString("\n")
 	b.WriteString("resetup: ## Clean and run setup again\n")
@@ -93,17 +96,32 @@ func renderGeneratedMakefile(cfg config.ProjectConfig) string {
 	b.WriteString("\t@$(MAKE) setup\n")
 	b.WriteString("\n")
 	b.WriteString("generate: ## Generate the Xcode project with Tuist\n")
+	if hasPreGenerateScripts {
+		b.WriteString("\t@tuist install\n")
+		b.WriteString("\t@$(MAKE) run-pre-generate-scripts\n")
+	}
 	b.WriteString("\t@tuist generate $(TUIST_GENERATE_FLAGS)\n")
+	b.WriteString("\n")
+	b.WriteString("run-pre-generate-scripts: ## Run configured scripts before Tuist project generation\n")
+	b.WriteString(renderPreGenerateScripts(cfg.Scripts.PreGenerate))
 	b.WriteString("\n")
 	b.WriteString("build: ## Build the app with xcodebuild\n")
 	b.WriteString("\t@set -e; \\\n")
 	b.WriteString("\ttrap '$(MAKE) clean-package-artifacts >/dev/null' EXIT; \\\n")
+	if hasPreGenerateScripts {
+		b.WriteString("\ttuist install; \\\n")
+		b.WriteString("\t$(MAKE) run-pre-generate-scripts; \\\n")
+	}
 	b.WriteString("\ttuist generate $(TUIST_GENERATE_FLAGS); \\\n")
 	b.WriteString("\txcodebuild -workspace \"$(WORKSPACE)\" -scheme \"$(SCHEME)\" -destination \"$(BUILD_DESTINATION)\" -derivedDataPath \"$(DERIVED_DATA_PATH)\" build\n")
 	b.WriteString("\n")
 	b.WriteString("test: ## Run tests with xcodebuild\n")
 	b.WriteString("\t@set -e; \\\n")
 	b.WriteString("\ttrap '$(MAKE) clean-package-artifacts >/dev/null' EXIT; \\\n")
+	if hasPreGenerateScripts {
+		b.WriteString("\ttuist install; \\\n")
+		b.WriteString("\t$(MAKE) run-pre-generate-scripts; \\\n")
+	}
 	b.WriteString("\ttuist generate $(TUIST_GENERATE_FLAGS); \\\n")
 	b.WriteString("\txcodebuild -workspace \"$(WORKSPACE)\" -scheme \"$(SCHEME)\" -destination \"$(TEST_DESTINATION)\" -derivedDataPath \"$(DERIVED_DATA_PATH)\" test\n")
 	b.WriteString("\n")
@@ -230,6 +248,48 @@ func normalizeCustomSection(section string) string {
 	return customTargetsMarker + "\n" + custom
 }
 
+func renderPreGenerateScripts(scripts []config.ScriptConfig) string {
+	if len(scripts) == 0 {
+		return "\t@:\n"
+	}
+
+	var b strings.Builder
+	b.WriteString("\t@set -e; \\\n")
+	for index, script := range scripts {
+		path := strings.TrimSpace(script.Path)
+		description := strings.TrimSpace(script.Description)
+		if description == "" {
+			description = path
+		}
+		b.WriteString("\techo \"==> pre-generate: " + escapeMakeDoubleQuoted(description) + "\"; \\\n")
+		b.WriteString("\tif [ ! -e " + shellQuote(path) + " ]; then echo \"Missing pre-generate script: " + escapeMakeDoubleQuoted(path) + "\" >&2; exit 1; fi; \\\n")
+		b.WriteString("\t" + scriptExecutionCommand(script))
+		if index == len(scripts)-1 {
+			b.WriteString("\n")
+		} else {
+			b.WriteString("; \\\n")
+		}
+	}
+
+	return b.String()
+}
+
+func scriptExecutionCommand(script config.ScriptConfig) string {
+	path := strings.TrimSpace(script.Path)
+	switch strings.ToLower(strings.TrimSpace(script.Language)) {
+	case "bash":
+		return "bash " + shellQuote(path)
+	case "swift":
+		return "swift " + shellQuote(path)
+	case "go":
+		return "go run " + shellQuote(path)
+	case "executable":
+		return shellQuote("./" + strings.TrimPrefix(path, "./"))
+	default:
+		return "sh " + shellQuote(path)
+	}
+}
+
 func sanitizeMakeValue(raw string, fallback string) string {
 	value := strings.TrimSpace(raw)
 	if value == "" {
@@ -239,4 +299,17 @@ func sanitizeMakeValue(raw string, fallback string) string {
 	value = strings.ReplaceAll(value, "\n", " ")
 	value = strings.ReplaceAll(value, "\r", " ")
 	return value
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
+}
+
+func escapeMakeDoubleQuoted(value string) string {
+	value = strings.ReplaceAll(value, "\\", "\\\\")
+	value = strings.ReplaceAll(value, "\"", "\\\"")
+	value = strings.ReplaceAll(value, "$", "$$")
+	value = strings.ReplaceAll(value, "`", "\\`")
+	value = strings.ReplaceAll(value, "\r", " ")
+	return strings.ReplaceAll(value, "\n", " ")
 }
