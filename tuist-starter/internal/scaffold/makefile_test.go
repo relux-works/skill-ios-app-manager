@@ -36,7 +36,7 @@ func TestGenerateMakefileContainsRequiredVariablesAndTargets(t *testing.T) {
 		"setup: ##",
 		"resetup: ##",
 		"generate: ##",
-		"run-pre-generate-scripts: ##",
+		"run-pre-tuist-generate-scripts: ##",
 		"build: ##",
 		"test: ##",
 		"clean-package-artifacts: ##",
@@ -54,7 +54,7 @@ func TestGenerateMakefileContainsRequiredVariablesAndTargets(t *testing.T) {
 		generatedTargetsMarker,
 		customTargetsMarker,
 		"@tuist generate $(TUIST_GENERATE_FLAGS)",
-		"@$(MAKE) run-pre-generate-scripts",
+		"@$(MAKE) run-pre-tuist-generate-scripts",
 		"trap '$(MAKE) clean-package-artifacts >/dev/null' EXIT",
 		"-destination \"$(BUILD_DESTINATION)\"",
 		"-destination \"$(TEST_DESTINATION)\"",
@@ -66,7 +66,7 @@ func TestGenerateMakefileContainsRequiredVariablesAndTargets(t *testing.T) {
 	}
 }
 
-func TestGenerateMakefileRunsConfiguredPreGenerateScripts(t *testing.T) {
+func TestGenerateMakefileRunsConfiguredPreTuistGenerateScripts(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.ProjectConfig{
@@ -76,7 +76,7 @@ func TestGenerateMakefileRunsConfiguredPreGenerateScripts(t *testing.T) {
 		ModulesPath: "Packages",
 		MinTarget:   "17.0",
 		Scripts: config.ScriptsConfig{
-			PreGenerate: []config.ScriptConfig{
+			PreTuistGenerate: []config.ScriptConfig{
 				{
 					Path:        "scripts/patch-package.sh",
 					Language:    "bash",
@@ -93,13 +93,13 @@ func TestGenerateMakefileRunsConfiguredPreGenerateScripts(t *testing.T) {
 	makefile := GenerateMakefile(cfg)
 
 	requiredSnippets := []string{
-		"run-pre-generate-scripts: ## Run configured scripts before Tuist project generation",
-		"echo \"==> pre-generate: Patch package resources\"",
-		"if [ ! -e 'scripts/patch-package.sh' ]; then echo \"Missing pre-generate script: scripts/patch-package.sh\" >&2; exit 1; fi",
+		"run-pre-tuist-generate-scripts: ## Run configured scripts before Tuist project generation",
+		"echo \"==> pre-tuist-generate: Patch package resources\"",
+		"if [ ! -e 'scripts/patch-package.sh' ]; then echo \"Missing pre-tuist-generate script: scripts/patch-package.sh\" >&2; exit 1; fi",
 		"bash 'scripts/patch-package.sh'",
-		"echo \"==> pre-generate: tools/check.swift\"",
+		"echo \"==> pre-tuist-generate: tools/check.swift\"",
 		"swift 'tools/check.swift'",
-		"tuist install; \\\n\t$(MAKE) run-pre-generate-scripts; \\\n\ttuist generate $(TUIST_GENERATE_FLAGS);",
+		"tuist install; \\\n\t$(MAKE) run-pre-tuist-generate-scripts; \\\n\ttuist generate $(TUIST_GENERATE_FLAGS);",
 	}
 	for _, snippet := range requiredSnippets {
 		if !strings.Contains(makefile, snippet) {

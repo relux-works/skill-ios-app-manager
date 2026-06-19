@@ -93,8 +93,8 @@ func (c ProjectConfig) Validate() error {
 			issues = append(issues, fmt.Sprintf("Configurations[%d] must not be empty", i))
 		}
 	}
-	for i, script := range c.Scripts.PreGenerate {
-		validateScriptConfig(script, fmt.Sprintf("Scripts.PreGenerate[%d]", i), &issues)
+	for i, script := range c.Scripts.PreTuistGenerate {
+		validateScriptConfig(script, fmt.Sprintf("Scripts.PreTuistGenerate[%d]", i), &issues)
 	}
 
 	if len(issues) == 0 {

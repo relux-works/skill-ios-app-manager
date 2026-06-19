@@ -74,7 +74,7 @@ func TestProjectConfigValidateInvalidFormatsAllReturned(t *testing.T) {
 	cfg.SharedConfig.ModuleName = "Shared-Config"
 	cfg.AppGroups = []string{"", "group.com.example.demo"}
 	cfg.Configurations = []string{"Debug", ""}
-	cfg.Scripts.PreGenerate = []ScriptConfig{
+	cfg.Scripts.PreTuistGenerate = []ScriptConfig{
 		{Path: "/tmp/patch.sh", Language: "ruby"},
 		{Path: "../outside.sh", Language: "bash"},
 		{Path: "scripts/\npatch.sh", Language: "swift"},
@@ -101,11 +101,11 @@ func TestProjectConfigValidateInvalidFormatsAllReturned(t *testing.T) {
 		"SharedConfig.ModuleName must be a valid Swift module identifier",
 		"AppGroups[0] must not be empty",
 		"Configurations[1] must not be empty",
-		"Scripts.PreGenerate[0].Path must be relative to the project root",
-		"Scripts.PreGenerate[0].Language must be bash, swift, go, or executable",
-		"Scripts.PreGenerate[1].Path must not escape the project root",
-		"Scripts.PreGenerate[2].Path must be a single-line path",
-		"Scripts.PreGenerate[3].Path is required",
+		"Scripts.PreTuistGenerate[0].Path must be relative to the project root",
+		"Scripts.PreTuistGenerate[0].Language must be bash, swift, go, or executable",
+		"Scripts.PreTuistGenerate[1].Path must not escape the project root",
+		"Scripts.PreTuistGenerate[2].Path must be a single-line path",
+		"Scripts.PreTuistGenerate[3].Path is required",
 	}
 	for _, want := range wantIssues {
 		if !strings.Contains(msg, want) {

@@ -132,12 +132,12 @@ Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcod
 
 Generated `make build` and `make test` run `tuist generate` before `xcodebuild` and reuse `make clean-package-artifacts` on exit. The cleanup hook is a no-op by default (`PACKAGE_ARTIFACT_CLEANUP_CMD ?= :`); projects that need checkout-specific cleanup should override that variable in the Makefile custom section. Build uses a generic iOS Simulator destination by default, while test keeps the configured concrete simulator destination unless overridden.
 
-Projects can configure lifecycle scripts in `ios-app-manager.json`. `scripts.pre_generate` runs after `tuist install` and before `tuist generate`, which is the safe point for patching SwiftPM checkouts before Tuist converts them into Xcode projects:
+Projects can configure lifecycle scripts in `ios-app-manager.json`. `scripts.pre_tuist_generate` runs after `tuist install` and before `tuist generate`, which is the safe point for patching SwiftPM checkouts before Tuist converts them into Xcode projects:
 
 ```json
 {
   "scripts": {
-    "pre_generate": [
+    "pre_tuist_generate": [
       {
         "path": "scripts/patch-package-resources.sh",
         "language": "bash",

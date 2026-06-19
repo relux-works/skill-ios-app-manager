@@ -37,13 +37,13 @@ func renderGeneratedMakefile(cfg config.ProjectConfig) string {
 	hasPushConfig := strings.TrimSpace(cfg.PushKeyPath) != "" && strings.TrimSpace(cfg.PushKeyID) != ""
 	pushKeyPath := sanitizeMakeValue(cfg.PushKeyPath, "")
 	pushKeyID := sanitizeMakeValue(cfg.PushKeyID, "")
-	hasPreGenerateScripts := len(cfg.Scripts.PreGenerate) > 0
+	hasPreTuistGenerateScripts := len(cfg.Scripts.PreTuistGenerate) > 0
 
 	phonyTargets := []string{
 		"setup",
 		"resetup",
 		"generate",
-		"run-pre-generate-scripts",
+		"run-pre-tuist-generate-scripts",
 		"build",
 		"test",
 		"clean-package-artifacts",
@@ -88,7 +88,7 @@ func renderGeneratedMakefile(cfg config.ProjectConfig) string {
 	b.WriteString("\n")
 	b.WriteString("setup: ## Install Tuist dependencies and generate project files\n")
 	b.WriteString("\t@tuist install\n")
-	b.WriteString("\t@$(MAKE) run-pre-generate-scripts\n")
+	b.WriteString("\t@$(MAKE) run-pre-tuist-generate-scripts\n")
 	b.WriteString("\t@tuist generate $(TUIST_GENERATE_FLAGS)\n")
 	b.WriteString("\n")
 	b.WriteString("resetup: ## Clean and run setup again\n")
@@ -96,21 +96,21 @@ func renderGeneratedMakefile(cfg config.ProjectConfig) string {
 	b.WriteString("\t@$(MAKE) setup\n")
 	b.WriteString("\n")
 	b.WriteString("generate: ## Generate the Xcode project with Tuist\n")
-	if hasPreGenerateScripts {
+	if hasPreTuistGenerateScripts {
 		b.WriteString("\t@tuist install\n")
-		b.WriteString("\t@$(MAKE) run-pre-generate-scripts\n")
+		b.WriteString("\t@$(MAKE) run-pre-tuist-generate-scripts\n")
 	}
 	b.WriteString("\t@tuist generate $(TUIST_GENERATE_FLAGS)\n")
 	b.WriteString("\n")
-	b.WriteString("run-pre-generate-scripts: ## Run configured scripts before Tuist project generation\n")
-	b.WriteString(renderPreGenerateScripts(cfg.Scripts.PreGenerate))
+	b.WriteString("run-pre-tuist-generate-scripts: ## Run configured scripts before Tuist project generation\n")
+	b.WriteString(renderPreTuistGenerateScripts(cfg.Scripts.PreTuistGenerate))
 	b.WriteString("\n")
 	b.WriteString("build: ## Build the app with xcodebuild\n")
 	b.WriteString("\t@set -e; \\\n")
 	b.WriteString("\ttrap '$(MAKE) clean-package-artifacts >/dev/null' EXIT; \\\n")
-	if hasPreGenerateScripts {
+	if hasPreTuistGenerateScripts {
 		b.WriteString("\ttuist install; \\\n")
-		b.WriteString("\t$(MAKE) run-pre-generate-scripts; \\\n")
+		b.WriteString("\t$(MAKE) run-pre-tuist-generate-scripts; \\\n")
 	}
 	b.WriteString("\ttuist generate $(TUIST_GENERATE_FLAGS); \\\n")
 	b.WriteString("\txcodebuild -workspace \"$(WORKSPACE)\" -scheme \"$(SCHEME)\" -destination \"$(BUILD_DESTINATION)\" -derivedDataPath \"$(DERIVED_DATA_PATH)\" build\n")
@@ -118,9 +118,9 @@ func renderGeneratedMakefile(cfg config.ProjectConfig) string {
 	b.WriteString("test: ## Run tests with xcodebuild\n")
 	b.WriteString("\t@set -e; \\\n")
 	b.WriteString("\ttrap '$(MAKE) clean-package-artifacts >/dev/null' EXIT; \\\n")
-	if hasPreGenerateScripts {
+	if hasPreTuistGenerateScripts {
 		b.WriteString("\ttuist install; \\\n")
-		b.WriteString("\t$(MAKE) run-pre-generate-scripts; \\\n")
+		b.WriteString("\t$(MAKE) run-pre-tuist-generate-scripts; \\\n")
 	}
 	b.WriteString("\ttuist generate $(TUIST_GENERATE_FLAGS); \\\n")
 	b.WriteString("\txcodebuild -workspace \"$(WORKSPACE)\" -scheme \"$(SCHEME)\" -destination \"$(TEST_DESTINATION)\" -derivedDataPath \"$(DERIVED_DATA_PATH)\" test\n")
@@ -248,7 +248,7 @@ func normalizeCustomSection(section string) string {
 	return customTargetsMarker + "\n" + custom
 }
 
-func renderPreGenerateScripts(scripts []config.ScriptConfig) string {
+func renderPreTuistGenerateScripts(scripts []config.ScriptConfig) string {
 	if len(scripts) == 0 {
 		return "\t@:\n"
 	}
@@ -261,8 +261,8 @@ func renderPreGenerateScripts(scripts []config.ScriptConfig) string {
 		if description == "" {
 			description = path
 		}
-		b.WriteString("\techo \"==> pre-generate: " + escapeMakeDoubleQuoted(description) + "\"; \\\n")
-		b.WriteString("\tif [ ! -e " + shellQuote(path) + " ]; then echo \"Missing pre-generate script: " + escapeMakeDoubleQuoted(path) + "\" >&2; exit 1; fi; \\\n")
+		b.WriteString("\techo \"==> pre-tuist-generate: " + escapeMakeDoubleQuoted(description) + "\"; \\\n")
+		b.WriteString("\tif [ ! -e " + shellQuote(path) + " ]; then echo \"Missing pre-tuist-generate script: " + escapeMakeDoubleQuoted(path) + "\" >&2; exit 1; fi; \\\n")
 		b.WriteString("\t" + scriptExecutionCommand(script))
 		if index == len(scripts)-1 {
 			b.WriteString("\n")

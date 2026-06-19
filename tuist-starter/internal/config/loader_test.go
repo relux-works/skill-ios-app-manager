@@ -228,7 +228,7 @@ func TestLoadConfigParsesScripts(t *testing.T) {
   "swift_version": "6.2",
   "min_target": "17.0",
   "scripts": {
-    "pre_generate": [
+    "pre_tuist_generate": [
       {
         "path": "scripts/patch-package.sh",
         "language": "bash",
@@ -246,10 +246,10 @@ func TestLoadConfigParsesScripts(t *testing.T) {
 		t.Fatalf("LoadConfig() error = %v", err)
 	}
 
-	if len(cfg.Scripts.PreGenerate) != 1 {
-		t.Fatalf("Scripts.PreGenerate count = %d, want 1", len(cfg.Scripts.PreGenerate))
+	if len(cfg.Scripts.PreTuistGenerate) != 1 {
+		t.Fatalf("Scripts.PreTuistGenerate count = %d, want 1", len(cfg.Scripts.PreTuistGenerate))
 	}
-	script := cfg.Scripts.PreGenerate[0]
+	script := cfg.Scripts.PreTuistGenerate[0]
 	if script.Path != "scripts/patch-package.sh" {
 		t.Fatalf("Path = %q", script.Path)
 	}

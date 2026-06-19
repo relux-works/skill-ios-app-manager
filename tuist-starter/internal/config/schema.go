@@ -76,7 +76,7 @@ type PrivacyUsageDescriptionsConfig struct {
 }
 
 type ScriptsConfig struct {
-	PreGenerate []ScriptConfig `json:"pre_generate,omitempty"`
+	PreTuistGenerate []ScriptConfig `json:"pre_tuist_generate,omitempty"`
 }
 
 type ScriptConfig struct {

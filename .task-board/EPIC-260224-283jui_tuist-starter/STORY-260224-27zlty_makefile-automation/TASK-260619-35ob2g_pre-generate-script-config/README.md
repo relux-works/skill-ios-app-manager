@@ -1,18 +1,18 @@
-# TASK-260619-35ob2g: pre-generate-script-config
+# TASK-260619-35ob2g: pre-tuist-generate-script-config
 
 ## Description
-Add ios-app-manager project config support for typed pre-generate lifecycle scripts that run after Tuist dependency installation and before Tuist project generation.
+Add ios-app-manager project config support for typed pre-tuist-generate lifecycle scripts that run after Tuist dependency installation and before Tuist project generation.
 
 ## Scope
-- Parse scripts.pre_generate from ios-app-manager.json.
+- Parse scripts.pre_tuist_generate from ios-app-manager.json.
 - Validate script path and execution language.
 - Generate a Makefile target that runs configured scripts after tuist install and before tuist generate.
 - Document the config contract and cover it with tests.
 
 ## Acceptance Criteria
-- Config loader parses pre_generate scripts.
+- Config loader parses pre_tuist_generate scripts.
 - Validator rejects invalid script paths and languages.
-- Generated Makefiles expose run-pre-generate-scripts.
+- Generated Makefiles expose run-pre-tuist-generate-scripts.
 - setup/generate/build/test run the hook at the correct lifecycle point.
 - go test ./... passes in tuist-starter.
 
