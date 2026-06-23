@@ -76,13 +76,17 @@ let package = Package(
 	if len(result.Scanned) != 2 {
 		t.Fatalf("scanned len = %d, want 2", len(result.Scanned))
 	}
-	if len(result.Updated) != 1 {
-		t.Fatalf("updated len = %d, want 1", len(result.Updated))
+	if len(result.Updated) != 2 {
+		t.Fatalf("updated len = %d, want 2", len(result.Updated))
 	}
 
 	rootPackage := readVersionManifest(t, filepath.Join(projectRoot, "Package.swift"))
 	for _, want := range []string{
+		`let swiftPackageTargetSettings: Settings = .settings(base: [`,
+		`"SWIFT_VERSION": "6.0",`,
 		`let packageSettings = PackageSettings(`,
+		`targetSettings: [`,
+		`"Auth": swiftPackageTargetSettings,`,
 		`"SwiftIoC": .framework,`,
 		`"OTHER_LDFLAGS": .string("$(inherited) -framework AppIntents"),`,
 	} {
@@ -105,6 +109,120 @@ let package = Package(
 		if !strings.Contains(modulePackage, want) {
 			t.Fatalf("module Package.swift missing %q:\n%s", want, modulePackage)
 		}
+	}
+}
+
+func TestSyncPackageStrictnessSyncsTuistTargetSettingsForRecursiveLocalSwift6Packages(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	writeVersionManifest(t, filepath.Join(projectRoot, "Package.swift"), `// swift-tools-version: 6.2
+import PackageDescription
+
+#if TUIST
+import ProjectDescription
+
+let packageSettings = PackageSettings(
+    productTypes: [
+        "Feature": .framework,
+        "FeatureUI": .framework,
+        "ErrorHandlingModule": .framework,
+    ],
+    targetSettings: [
+        "Feature": .settings(base: [
+            "SWIFT_VERSION": "5.0",
+        ]),
+        "ErrorHandlingModule": .settings(base: [
+            "IPHONEOS_DEPLOYMENT_TARGET": "16.0",
+        ]),
+    ]
+)
+#endif
+
+let package = Package(
+    name: "DemoDependencies",
+    dependencies: [
+        .package(path: "../packages/Feature"),
+    ],
+    targets: []
+)
+`)
+	writeVersionManifest(t, filepath.Join(projectRoot, "..", "packages", "Feature", "Package.swift"), `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "Feature",
+    dependencies: [
+        .package(path: "../FeatureUI"),
+    ],
+    targets: [
+        .target(
+            name: "Feature",
+            dependencies: ["FeatureUI"],
+            path: "Sources"
+        ),
+        .testTarget(
+            name: "FeatureTests",
+            dependencies: ["Feature"],
+            path: "Tests"
+        ),
+    ]
+)
+`)
+	writeVersionManifest(t, filepath.Join(projectRoot, "..", "packages", "FeatureUI", "Package.swift"), `// swift-tools-version: 6.2
+import PackageDescription
+
+let package = Package(
+    name: "FeatureUI",
+    targets: [
+        .target(
+            name: "FeatureUI",
+            dependencies: [],
+            path: "Sources"
+        ),
+    ]
+)
+`)
+
+	result, err := SyncPackageStrictness(projectRoot, config.ProjectConfig{
+		SwiftVersion: "6.2",
+		ProjectSettings: config.ProjectSettings{
+			Swift: config.SwiftProjectSettings{
+				LanguageMode:       "v6",
+				StrictMemorySafety: "yes",
+				Concurrency: config.SwiftConcurrencySettings{
+					StrictChecking: "complete",
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("SyncPackageStrictness() error = %v", err)
+	}
+	if len(result.Updated) != 1 {
+		t.Fatalf("updated len = %d, want 1", len(result.Updated))
+	}
+
+	rootPackage := readVersionManifest(t, filepath.Join(projectRoot, "Package.swift"))
+	for _, want := range []string{
+		`let swiftPackageTargetSettings: Settings = .settings(base: [`,
+		`"SWIFT_VERSION": "6.0",`,
+		`"SWIFT_STRICT_CONCURRENCY": "complete",`,
+		`"SWIFT_UPCOMING_FEATURE_INFER_SENDABLE_FROM_CAPTURES": "YES",`,
+		`"Feature": swiftPackageTargetSettings,`,
+		`"FeatureUI": swiftPackageTargetSettings,`,
+		`"ErrorHandlingModule": .settings(base: [`,
+		`"IPHONEOS_DEPLOYMENT_TARGET": "16.0",`,
+	} {
+		if !strings.Contains(rootPackage, want) {
+			t.Fatalf("root Package.swift missing %q:\n%s", want, rootPackage)
+		}
+	}
+	if strings.Contains(rootPackage, `"SWIFT_VERSION": "5.0"`) {
+		t.Fatalf("root Package.swift kept stale Swift version override:\n%s", rootPackage)
+	}
+	if strings.Contains(rootPackage, `"FeatureTests": swiftPackageTargetSettings`) {
+		t.Fatalf("root Package.swift should not sync test targets:\n%s", rootPackage)
 	}
 }
 
@@ -173,8 +291,8 @@ let package = Package(
 	if err != nil {
 		t.Fatalf("SyncPackageStrictness() error = %v", err)
 	}
-	if len(result.Updated) != 1 {
-		t.Fatalf("updated len = %d, want 1", len(result.Updated))
+	if len(result.Updated) != 2 {
+		t.Fatalf("updated len = %d, want 2", len(result.Updated))
 	}
 
 	modulePackage := readVersionManifest(t, filepath.Join(projectRoot, "Packages", "AuthImpl", "Package.swift"))
@@ -257,8 +375,8 @@ let package = Package(
 	if err != nil {
 		t.Fatalf("SyncPackageStrictness() error = %v", err)
 	}
-	if len(result.Updated) != 1 {
-		t.Fatalf("updated len = %d, want 1", len(result.Updated))
+	if len(result.Updated) != 2 {
+		t.Fatalf("updated len = %d, want 2", len(result.Updated))
 	}
 
 	modulePackage := readVersionManifest(t, modulePath)
@@ -326,8 +444,8 @@ let strictSwiftSettings: [SwiftSetting] = [
 	if err != nil {
 		t.Fatalf("SyncPackageStrictness() error = %v", err)
 	}
-	if len(result.Updated) != 1 {
-		t.Fatalf("updated len = %d, want 1", len(result.Updated))
+	if len(result.Updated) != 2 {
+		t.Fatalf("updated len = %d, want 2", len(result.Updated))
 	}
 
 	modulePackage := readVersionManifest(t, modulePath)

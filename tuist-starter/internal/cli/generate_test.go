@@ -737,7 +737,7 @@ let package = Package(
 		"- application-configuration: regenerated application configuration in 7 file(s)",
 		"- app-capabilities: regenerated app capabilities via 1 enabled subplugin(s), updated 5 file(s)",
 		"- build-flags: regenerated build flag manifests in 2 file(s)",
-		"- package-strictness: regenerated package strictness manifests in 1 file(s)",
+		"- package-strictness: regenerated package strictness manifests in 2 file(s)",
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("generate project-config output missing %q:\n%s", want, output)
