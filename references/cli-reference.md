@@ -34,6 +34,7 @@ ios-app-manager [command] [flags]
 | `generate project-config` | Sync manifest config slices across app + extensions | `ios-app-manager generate project-config` |
 | `generate versions` | Generate or update app + extension versions | `ios-app-manager generate versions` |
 | `generate min-target` | Generate or update app + extension deployment target markers | `ios-app-manager generate min-target` |
+| `generate background-modes` | Generate or update the app target `UIBackgroundModes` entry | `ios-app-manager generate background-modes` |
 | `generate team-id` | Generate or update app + extension signing team settings | `ios-app-manager generate team-id` |
 | `generate application-configuration` | Generate or update product-level runtime app configuration | `ios-app-manager generate application-configuration` |
 | `generate app-capabilities` | Generate or update host app capabilities from config | `ios-app-manager generate app-capabilities` |
@@ -354,6 +355,30 @@ Flags:
 Example:
 ```bash
 ios-app-manager generate min-target
+```
+
+### `generate background-modes`
+
+Syntax:
+```bash
+ios-app-manager generate background-modes
+```
+
+Description:
+- Syncs `background_modes` from config into the scaffold-managed app `Project.swift` Info.plist as a `UIBackgroundModes` array.
+- Inserts the entry before `UILaunchScreen` when missing, replaces a drifted entry in place, and removes the entry when the configured list is empty.
+- Values are validated against Apple's documented `UIBackgroundModes` strings (for example `audio`, `voip`, `push-to-talk`, `remote-notification`).
+
+Config:
+```json
+{
+  "background_modes": ["audio", "push-to-talk"]
+}
+```
+
+Example:
+```bash
+ios-app-manager generate background-modes
 ```
 
 ### `generate team-id`
