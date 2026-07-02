@@ -66,6 +66,9 @@ let project = Project(
 {{- end }}
                     ]),
 {{- end }}
+{{- if .BackgroundModes }}
+                    "UIBackgroundModes": .array([{{ range $index, $mode := .BackgroundModes }}{{ if $index }}, {{ end }}.string({{ swiftLiteral $mode }}){{ end }}]),
+{{- end }}
                     "UILaunchScreen": .dictionary([:]),
                 ]
             ),

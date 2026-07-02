@@ -196,6 +196,7 @@ func normalizeProjectConfig(cfg config.ProjectConfig) config.ProjectConfig {
 	out.MinTarget = strings.TrimSpace(out.MinTarget)
 	out.URLScheme = strings.TrimSpace(out.URLScheme)
 	out.AppGroups = normalizeStringSlice(out.AppGroups)
+	out.BackgroundModes = normalizeStringSlice(out.BackgroundModes)
 	out.PrivacyUsageDescriptions.BluetoothAlways = strings.TrimSpace(out.PrivacyUsageDescriptions.BluetoothAlways)
 	out.PrivacyUsageDescriptions.BluetoothPeripheral = strings.TrimSpace(out.PrivacyUsageDescriptions.BluetoothPeripheral)
 	out.Configurations = normalizeConfigurations(out.Configurations)
