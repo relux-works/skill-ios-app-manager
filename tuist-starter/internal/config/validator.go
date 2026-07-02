@@ -88,6 +88,15 @@ func (c ProjectConfig) Validate() error {
 		}
 	}
 
+	for i, mode := range c.BackgroundModes {
+		if !isAllowedBackgroundMode(mode) {
+			issues = append(issues, fmt.Sprintf(
+				"BackgroundModes[%d] %q is not a UIBackgroundModes value (allowed: %s)",
+				i, mode, strings.Join(AllowedBackgroundModes, ", "),
+			))
+		}
+	}
+
 	for i, cfg := range c.Configurations {
 		if strings.TrimSpace(cfg) == "" {
 			issues = append(issues, fmt.Sprintf("Configurations[%d] must not be empty", i))
@@ -102,6 +111,16 @@ func (c ProjectConfig) Validate() error {
 	}
 
 	return &ValidationErrors{Issues: issues}
+}
+
+func isAllowedBackgroundMode(mode string) bool {
+	trimmed := strings.TrimSpace(mode)
+	for _, allowed := range AllowedBackgroundModes {
+		if trimmed == allowed {
+			return true
+		}
+	}
+	return false
 }
 
 func requiredString(value string, fieldName string, issues *[]string) {

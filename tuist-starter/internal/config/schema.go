@@ -22,6 +22,21 @@ const (
 	OrientationLandscape = "landscape"
 )
 
+// AllowedBackgroundModes lists Apple's documented UIBackgroundModes values.
+var AllowedBackgroundModes = []string{
+	"audio",
+	"bluetooth-central",
+	"bluetooth-peripheral",
+	"external-accessory",
+	"fetch",
+	"location",
+	"nearby-interaction",
+	"processing",
+	"push-to-talk",
+	"remote-notification",
+	"voip",
+}
+
 // ProjectConfig defines project-init schema for ios-app-manager.
 type ProjectConfig struct {
 	// Identity
@@ -49,6 +64,9 @@ type ProjectConfig struct {
 
 	// Privacy usage descriptions
 	PrivacyUsageDescriptions PrivacyUsageDescriptionsConfig `json:"privacy_usage_descriptions,omitempty"`
+
+	// Background execution (UIBackgroundModes Info.plist values, e.g. "audio", "voip", "push-to-talk")
+	BackgroundModes []string `json:"background_modes,omitempty"`
 
 	// Build
 	ProductName     string          `json:"product_name,omitempty"`   // defaults to AppName
