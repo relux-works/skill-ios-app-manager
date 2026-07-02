@@ -113,3 +113,20 @@ func TestProjectConfigValidateInvalidFormatsAllReturned(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateBackgroundModes(t *testing.T) {
+	cfg := validProjectConfig()
+	cfg.BackgroundModes = []string{"audio", "voip", "push-to-talk"}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate() with allowed background modes error = %v", err)
+	}
+
+	cfg.BackgroundModes = []string{"audio", "definitely-not-a-mode"}
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected invalid background mode to fail validation")
+	}
+	if !strings.Contains(err.Error(), "BackgroundModes[1]") {
+		t.Fatalf("expected BackgroundModes[1] in error, got %v", err)
+	}
+}
