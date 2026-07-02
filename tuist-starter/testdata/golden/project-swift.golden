@@ -48,6 +48,7 @@ let project = Project(
                     "AppGroups": .dictionary([
                         "main": .string("group.com.example.demo"),
                     ]),
+                    "UIBackgroundModes": .array([.string("audio"), .string("push-to-talk")]),
                     "UILaunchScreen": .dictionary([:]),
                 ]
             ),

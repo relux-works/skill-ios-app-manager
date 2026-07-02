@@ -18,5 +18,9 @@
   ],
   "modules_path": "Packages",
   "push_key_path": "certs/AuthKey_ABC123.p8",
-  "push_key_id": "ABC123DEF4"
+  "push_key_id": "ABC123DEF4",
+  "background_modes": [
+    "audio",
+    "push-to-talk"
+  ]
 }
