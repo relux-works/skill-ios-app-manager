@@ -64,9 +64,12 @@ Current generators:
 - `generate project-config`
 - `generate makefile`
 - `generate swiftlint`
+- `generate bundle-id`
 - `generate versions`
 - `generate min-target`
 - `generate team-id`
+- `generate platform-destinations`
+- `generate background-modes-config`
 - `generate presentation-config`
 - `generate export-compliance-config`
 - `generate privacy-usage-descriptions-config`
@@ -76,26 +79,63 @@ Current generators:
 - `generate package-strictness`
 
 `generate project-config` is the orchestration entrypoint for manifest config sync. Today it runs:
+- `generate bundle-id` — syncs host app bundle id and extension host-bundle roots while preserving extension suffixes
 - `generate versions` — syncs `marketing_version` and `project_version`
 - `generate min-target` — syncs `min_target` into `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET`
 - `generate team-id` — syncs `team_id` into `developmentTeam` constants and `DEVELOPMENT_TEAM` build settings
+- `generate platform-destinations` — syncs host app `destinations` from `platforms`
+- `generate background-modes-config` — syncs host app `background_modes` into `UIBackgroundModes`
 - `generate presentation-config` — syncs host app `theme` and `orientation` into Info.plist presentation keys
 - `generate export-compliance-config` — syncs host app `uses_non_exempt_encryption` into `ITSAppUsesNonExemptEncryption`
 - `generate privacy-usage-descriptions-config` — syncs host app `privacy_usage_descriptions` into Info.plist usage description keys
 - `generate application-configuration` — syncs product-level runtime identity into app manifests and generated shared config
 - `generate app-capabilities` — syncs host app capabilities from config
-- `generate build-flags` — syncs app/extension Swift language, strict memory safety, and concurrency settings from `project_settings.swift`
+- `generate build-flags` — syncs app/extension Swift language, strict memory safety, and concurrency restriction settings from `project_settings.swift`
 - `generate package-strictness` — syncs root/module `Package.swift` strictness from the same `project_settings.swift`
 
-These generators depend on the `init` scaffold shape. `versions`, `min-target`, `team-id`, and `build-flags` update the host app `Project.swift` plus every `Extensions/*/Project.swift`. `presentation-config`, `export-compliance-config`, and `privacy-usage-descriptions-config` update host app Info.plist keys only. `app-capabilities` syncs capability-owned manifest slices. `package-strictness` updates root `Package.swift` plus every module `Packages/*/Package.swift`.
+These generators depend on the `init` scaffold shape. `bundle-id`, `versions`, `min-target`, `team-id`, and `build-flags` update the host app `Project.swift` plus every `Extensions/*/Project.swift`; extension bundle ids are derived from the configured host `bundle_id` plus each extension's existing suffix. `platform-destinations` updates the host app target destination expression and matching entitlements factory argument. `background-modes-config`, `presentation-config`, `export-compliance-config`, and `privacy-usage-descriptions-config` update host app Info.plist keys only. `app-capabilities` syncs capability-owned manifest slices. `package-strictness` updates root `Package.swift` plus every module `Packages/*/Package.swift`.
+
+Platform destinations are optional. Configs without `platforms` keep the legacy `destinations: .iOS` output. Configs with `platforms` use explicit destinations:
+
+```json
+{
+  "platforms": {
+    "ios": {
+      "enabled": true,
+      "orientation": "portrait",
+      "mac_with_ipad_design": false
+    },
+    "ipad": {
+      "enabled": false,
+      "orientation": "landscape"
+    }
+  }
+}
+```
+
+`platforms.ios.orientation` controls `UISupportedInterfaceOrientations`. `platforms.ipad.orientation` controls `UISupportedInterfaceOrientations~ipad` only when iPad is enabled. `platforms.ios.mac_with_ipad_design` emits Tuist's `.macWithiPadDesign` destination; it has no separate orientation and follows the iOS app behavior.
 
 Presentation config is optional. Supported values are:
 - `theme`: `automatic`, `light`, `dark`. `automatic` omits `UIUserInterfaceStyle`.
-- `orientation`: `automatic`, `portrait`, `landscape`. `automatic` omits `UISupportedInterfaceOrientations`; `portrait` emits `UIInterfaceOrientationPortrait`; `landscape` emits both landscape orientations.
+- `orientation`: legacy fallback for configs without `platforms`; `automatic` omits `UISupportedInterfaceOrientations`; `portrait` emits `UIInterfaceOrientationPortrait`; `landscape` emits both landscape orientations.
 
 Export compliance config is optional. Set `uses_non_exempt_encryption` to `false` to emit `"ITSAppUsesNonExemptEncryption": .boolean(false)` in the host app Info.plist dictionary; omit the field to remove the scaffold-owned key.
 
-Privacy usage descriptions are optional. Configure `privacy_usage_descriptions.bluetooth_always` to emit `NSBluetoothAlwaysUsageDescription`, and `privacy_usage_descriptions.bluetooth_peripheral` to emit `NSBluetoothPeripheralUsageDescription`; omit or empty a value to remove the scaffold-owned key.
+Privacy usage descriptions are optional. Configure `privacy_usage_descriptions.bluetooth_always` to emit `NSBluetoothAlwaysUsageDescription`, `privacy_usage_descriptions.bluetooth_peripheral` to emit `NSBluetoothPeripheralUsageDescription`, `privacy_usage_descriptions.camera` to emit `NSCameraUsageDescription`, `privacy_usage_descriptions.microphone` to emit `NSMicrophoneUsageDescription`, and `privacy_usage_descriptions.local_network` to emit `NSLocalNetworkUsageDescription`; omit or empty a value to remove the scaffold-owned key.
+
+Background modes are optional. Configure `background_modes` with supported values:
+
+```json
+{
+  "background_modes": [
+    "audio",
+    "remote-notification",
+    "voip"
+  ]
+}
+```
+
+Values are validated against Apple's documented `UIBackgroundModes` strings. `audio` emits the iOS background mode for Audio, AirPlay, and Picture in Picture. `remote-notification` enables APNs background notification delivery for apps that implement the remote notification fetch callback. `voip` is emitted only when explicitly listed. Unknown values are rejected; omitting the field or using an empty list removes the scaffold-owned `UIBackgroundModes` key.
 
 Swift strictness is config-driven. Declare it in `ios-app-manager.json` under `project_settings.swift`; if you omit that block, defaults are derived from `swift_version` and the scaffold's current strict baseline.
 
@@ -150,6 +190,30 @@ Projects can configure lifecycle scripts in `ios-app-manager.json`. `scripts.pre
 
 Script paths are relative to the project root and cannot escape it. Supported `language` values are `bash`, `swift`, `go`, and `executable`.
 
+## Setup plugins
+
+Setup commands are plugin-based too. Broad domains must stay as orchestration plugins with concrete subplugins rather than one large generator:
+
+- `test-targets setup` orchestrates test target scaffolding.
+- Unit test target generation and UI test target generation are separate subplugin responsibilities.
+- Target names are explicit parameters, not hardcoded scaffold constants.
+
+```bash
+./ios-app-manager test-targets setup \
+  --unit-target DemoAppTests \
+  --ui-target DemoAppUITests \
+  --yes
+```
+
+App extension scaffolding follows the same rule:
+
+- `app-extensions setup` owns shared extension infrastructure and registry contracts.
+- Each concrete extension type is its own plugin.
+- `notification-service setup` creates a Notification Service Extension wrapper plus `<ExtensionName>Core`.
+- Extension `.appex` targets should stay thin runtime wrappers.
+- Testable extension internals must live in a dedicated SwiftPM package named `<ExtensionName>Core`, linked by the extension target and tested at package level.
+- Cross-cutting metadata generators such as bundle id, versions, min target, team id, and build flags should read registered extension targets and converge them; concrete extension plugins must not duplicate every metadata sync rule.
+
 Recommended config sync flow:
 
 ```bash
@@ -169,6 +233,8 @@ If you only want one slice, the leaf plugins still work directly:
 ./ios-app-manager generate versions
 ./ios-app-manager generate min-target
 ./ios-app-manager generate team-id
+./ios-app-manager generate platform-destinations
+./ios-app-manager generate background-modes-config
 ./ios-app-manager generate presentation-config
 ./ios-app-manager generate export-compliance-config
 ./ios-app-manager generate privacy-usage-descriptions-config
@@ -353,7 +419,7 @@ Generates a complete iOS project structure from a JSON config file:
 - **IoC container**: SwiftIoC-based Registry.swift with auto-discovery
 - **Relux state management**: Actions, Effects, State, Flow scaffolding
 - **Foundation modules**: SecureStore (Keychain), TokenProvider, Utilities, FoundationPlus, SwiftUIPlus
-- **Widget extensions**: WidgetKit (static + interactive), Live Activity + Dynamic Island, App Intents
+- **App extensions**: Notification Service Extension, WidgetKit (static + interactive), Live Activity + Dynamic Island, App Intents, with extension internals in Core SwiftPM packages
 - **Network**: HttpClient IoC registration with swift-httpclient
 - **AppConfig**: Environment switching with ApiConfigurator
 
@@ -370,6 +436,7 @@ cd tuist-starter
 ./ios-app-manager foundation-plus setup
 ./ios-app-manager swiftui-plus setup
 ./ios-app-manager app-extensions setup
+./ios-app-manager notification-service setup
 ./ios-app-manager widget-base setup
 ./ios-app-manager app-intents setup
 ./ios-app-manager static-widget setup

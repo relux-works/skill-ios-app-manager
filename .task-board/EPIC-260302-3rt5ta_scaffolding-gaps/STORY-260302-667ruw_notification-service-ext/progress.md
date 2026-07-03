@@ -1,18 +1,17 @@
 ## Status
-backlog
+done
 
 ## Assigned To
-(none)
+codex-inline
 
 ## Created
 2026-03-02T11:14:18Z
 
 ## Last Update
-2026-03-02T11:14:27Z
+2026-07-03T19:34:40Z
 
 ## Blocked By
-- STORY-260302-3v3bcu
-- STORY-260302-24xjv0
+- (none)
 
 ## Blocks
 - (none)
@@ -21,6 +20,7 @@ backlog
 (empty)
 
 ## Notes
+Implemented notification-service plugin as a concrete extension plugin. It creates UNNotificationServiceExtension wrapper, <ExtensionName>Core handler package, UserNotifications dependency, NSExtensionPrincipalClass, docs, and regression tests. Verification go test ./... and dry-run smoke passed.
 
 ## Precondition Resources
 (none)

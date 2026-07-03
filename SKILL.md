@@ -76,6 +76,14 @@ Scaffold extensions must follow the plugin architecture. If the behavior belongs
 
 For broad scaffold domains, keep the top-level plugin as an orchestrator and put concrete concerns into subplugins. Example: `generate app-capabilities` owns the host app capabilities domain, while `app-groups` is a capability subplugin with `init` dependency; future capabilities must be added as separate subplugins rather than collected into one large capability function.
 
+The same plugin/subplugin rule applies to test targets and app extensions:
+- `test-targets` is the orchestration plugin; unit-test-target and UI-test-target behavior belongs in separate subplugins with explicit target-name inputs.
+- `app-extensions` owns only shared extension infrastructure and registry contracts.
+- Every concrete extension type is its own plugin, for example widget-base/static-widget/live-activity/notification-service.
+- Do not collect unrelated test target or extension target behavior into one large generator.
+
+Extension targets must keep testable internals out of the `.appex` wrapper. A concrete extension plugin must generate a thin extension target plus a dedicated SwiftPM package named `<ExtensionName>Core`; business logic, payload parsing, timeline/content builders, attachment handling, and other internals go into that Core package. The extension target links the Core product and owns only the platform runtime entrypoint glue. Tests should target the Core package or a generated unit-test target, not the `.appex` target directly.
+
 Scaffold code, templates, docs, and tests must stay organization-agnostic. Use generic examples such as `com.example.*` / `group.com.example.*`; the only non-generic organization reference allowed in this skill is Relux Works ownership/module metadata. Do not add external organization, client, product, Jira, GitLab, or project-specific identifiers to scaffold sources.
 
 Scaffold plugins and subplugins must be idempotent. Re-running the same command against the same config must not duplicate Swift declarations, manifest entries, generated files, dependencies, entitlements, or package settings. When config values change, the plugin should converge generated output to the current config rather than append another variant.
@@ -90,9 +98,11 @@ Scaffold plugins and subplugins must be idempotent. Re-running the same command 
 - Sync project manifest config: `ios-app-manager generate project-config`
 - Sync generic app runtime config: `ios-app-manager generate application-configuration`
 - Sync host app capabilities from config: `ios-app-manager generate app-capabilities`
+- Generate app/extension bundle ids: `ios-app-manager generate bundle-id`
 - Generate app/extension versions: `ios-app-manager generate versions`
 - Generate app/extension min target: `ios-app-manager generate min-target`
 - Generate app/extension signing team id: `ios-app-manager generate team-id`
+- Generate host app background modes config: `ios-app-manager generate background-modes-config`
 - Generate host app theme/orientation presentation config: `ios-app-manager generate presentation-config`
 - Generate host app export compliance config: `ios-app-manager generate export-compliance-config`
 - Generate host app privacy usage descriptions config: `ios-app-manager generate privacy-usage-descriptions-config`
@@ -107,21 +117,24 @@ Scaffold plugins and subplugins must be idempotent. Re-running the same command 
 - Runtime profile helper: `ios-app-manager profile runtime scaffold`
 - Runtime profile log analysis: `ios-app-manager profile runtime analyze --input <log>`
 - Runtime error log analysis: `ios-app-manager profile runtime errors [--input <log>]`
+- Add test targets: `ios-app-manager test-targets setup --unit-target <UnitTestsName> --ui-target <UITestsName>`
 
 Generate commands are scaffold generator plugins:
 - Each `generate <artifact>` entrypoint is a separate scaffold plugin with its own responsibility and dependency contract.
 - Use this pattern for scaffold-only sync tasks instead of overloading `init`.
-- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate versions`, `generate min-target`, `generate team-id`, `generate presentation-config`, `generate export-compliance-config`, `generate privacy-usage-descriptions-config`, `generate application-configuration`, `generate app-capabilities`, `generate build-flags`, and `generate package-strictness`.
+- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate bundle-id`, `generate versions`, `generate min-target`, `generate team-id`, `generate platform-destinations`, `generate background-modes-config`, `generate presentation-config`, `generate export-compliance-config`, `generate privacy-usage-descriptions-config`, `generate application-configuration`, `generate app-capabilities`, `generate build-flags`, and `generate package-strictness`.
+- `generate bundle-id` depends on the `init` scaffold shape and syncs `bundle_id` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`. Extensions keep their own suffixes, while the containing host bundle root converges to the configured app bundle id.
 - `generate versions` depends on the `init` scaffold shape and syncs both `marketing_version` and `project_version` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`.
 - `generate min-target` depends on the same scaffold shape and syncs `min_target` into both `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET` for the host app and extensions.
 - `generate team-id` depends on the same scaffold shape and syncs `team_id` into `developmentTeam` constants and `DEVELOPMENT_TEAM` build settings for the host app, app-like targets, test targets, and extensions.
+- `generate background-modes-config` depends on the same scaffold shape and syncs host app `background_modes` values into `UIBackgroundModes`. Values are validated against Apple's documented `UIBackgroundModes` strings; common values include `audio` for Audio, AirPlay, and Picture in Picture, `remote-notification` for APNs background notification delivery, and explicit `voip`. Empty or omitted values remove the scaffold-owned key.
 - `generate presentation-config` depends on the same scaffold shape and syncs host app presentation keys from `theme` and `orientation` in `ios-app-manager.json`. Supported values: `theme` is `automatic`, `light`, or `dark`; `orientation` is `automatic`, `portrait`, or `landscape`. Automatic values remove the owned Info.plist keys and let iOS use defaults.
 - `generate export-compliance-config` depends on the same scaffold shape and syncs host app export compliance from `uses_non_exempt_encryption` in `ios-app-manager.json`. An explicit `false` writes `ITSAppUsesNonExemptEncryption` as `.boolean(false)`; omitting the field removes the owned Info.plist key.
-- `generate privacy-usage-descriptions-config` depends on the same scaffold shape and syncs host app `privacy_usage_descriptions` values into Info.plist usage description strings such as `NSBluetoothAlwaysUsageDescription` and `NSBluetoothPeripheralUsageDescription`. Empty values remove scaffold-owned keys.
+- `generate privacy-usage-descriptions-config` depends on the same scaffold shape and syncs host app `privacy_usage_descriptions` values into Info.plist usage description strings such as `NSBluetoothAlwaysUsageDescription`, `NSBluetoothPeripheralUsageDescription`, `NSCameraUsageDescription`, `NSMicrophoneUsageDescription`, and `NSLocalNetworkUsageDescription`. Empty values remove scaffold-owned keys.
 - `generate application-configuration` depends on the same scaffold shape and syncs product-level runtime identity from `ios-app-manager.json` into an `ApplicationConfiguration` Info.plist dictionary for the host app, app-like targets, and extensions. It also generates the `SharedConfig` reader source and app-target `Configuration+ApplicationConfiguration.swift` facade. This dictionary is distinct from target identity keys such as `CFBundleIdentifier`.
 - `generate app-capabilities` depends on the same scaffold shape and orchestrates host app capability subplugins.
 - `app-groups` is an app capability subplugin with `init` dependency; it syncs configured `app_groups` into `Tuist/ProjectDescriptionHelpers/AppCapabilities.swift`, host/test target `Project.swift` Info.plist `AppGroups` dictionaries, generated `SharedConfig`, and `Configuration+AppGroups.swift`. Generated app-group code reads product-level service identity through `Configuration.ApplicationConfiguration`, so prefer `generate project-config` when syncing app groups.
-- `generate build-flags` depends on the same scaffold shape and syncs Swift language, strict memory safety, and concurrency build settings from `project_settings.swift` into the host app and extensions.
+- `generate build-flags` depends on the same scaffold shape and syncs Swift language, strict memory safety, strict concurrency, approachable concurrency, default actor isolation, and upcoming-feature restriction settings from `project_settings.swift` into the host app and extensions.
 - `generate package-strictness` syncs the same `project_settings.swift` Swift language/concurrency settings into root `Package.swift` and every module `Packages/*/Package.swift`.
 - When `project_settings.swift` is omitted, Swift strictness defaults are derived from `swift_version` and the scaffold's current strict baseline.
 - Generated Makefiles use `tuist generate --no-open` by default. To auto-open Xcode explicitly, run `tuist generate --open` yourself or override the generated Makefile call with `make generate TUIST_GENERATE_FLAGS=--open`.
@@ -174,6 +187,7 @@ Leaf workflows remain available:
 ios-app-manager generate versions
 ios-app-manager generate min-target
 ios-app-manager generate team-id
+ios-app-manager generate background-modes-config
 ios-app-manager generate presentation-config
 ios-app-manager generate export-compliance-config
 ios-app-manager generate privacy-usage-descriptions-config
@@ -306,7 +320,9 @@ Key rules:
 - Utilities: `ios-app-manager utilities setup`
 - FoundationPlus (re-export + helpers): `ios-app-manager foundation-plus setup`
 - SwiftUIPlus (re-export + components): `ios-app-manager swiftui-plus setup`
+- Test targets: `ios-app-manager test-targets setup --unit-target <UnitTestsName> --ui-target <UITestsName>`
 - App extensions base: `ios-app-manager app-extensions setup`
+- Notification Service Extension: `ios-app-manager notification-service setup [--extension-target <Name>] [--bundle-id-suffix <suffix>]`
 - Widget base (WidgetBundle + WidgetKit): `ios-app-manager widget-base setup`
 - App Intents (interactive widgets): `ios-app-manager app-intents setup`
 - Static widget (timeline widget): `ios-app-manager static-widget setup`
@@ -317,9 +333,10 @@ Key rules:
 Pipeline order matters — each command has prerequisites:
 ```
 init → ioc → relux → secure-store → token-provider → utilities
-     → foundation-plus → swiftui-plus
-     → app-extensions → widget-base → app-intents → static-widget
-                                    → live-activity
+     → foundation-plus → swiftui-plus → test-targets
+     → app-extensions → notification-service
+                     → widget-base → app-intents → static-widget
+                                  → live-activity
      → module create (blueprints)
      → app-config → http-client
 ```
@@ -396,11 +413,13 @@ See [`diagrams/scaffolding-pipeline.puml`](diagrams/scaffolding-pipeline.puml) f
 | **utilities** | `utilities setup` | Utilities single-package: HttpClientUtils helpers | ioc |
 | **foundation-plus** | `foundation-plus setup` | FoundationPlus single-package: `@_exported import Foundation`, MaybeData, CompletionStatus | ioc |
 | **swiftui-plus** | `swiftui-plus setup` | SwiftUIPlus single-package: `@_exported import SwiftUI`, AsyncButton | ioc |
-| **app-extensions** | `app-extensions setup` | SharedKit package + Extensions/ directory for extension targets | init |
-| **widget-base** | `widget-base setup` | Widget extension target, WidgetBundle, WidgetKit SDK, App Groups | app-extensions |
-| **app-intents** | `app-intents setup` | AppIntent scaffold (WidgetToggleIntent), AppIntents SDK | widget-base |
-| **static-widget** | `static-widget setup` | StaticConfiguration widget: TimelineProvider, entry, view with interactive Button(intent:) | widget-base, app-intents |
-| **live-activity** | `live-activity setup` | ActivityAttributes in SharedKit, ActivityConfiguration + Dynamic Island, LiveActivityManager | widget-base |
+| **test-targets** | `test-targets setup --unit-target <name> --ui-target <name>` | Unit/UI test target scaffold via unit-test-target and UI-test-target subplugins | init |
+| **app-extensions** | `app-extensions setup` | SharedKit package + Extensions/ directory for extension targets; owns shared contracts, not concrete extension internals | init |
+| **notification-service** | `notification-service setup [--extension-target <name>] [--bundle-id-suffix <suffix>]` | Notification Service Extension wrapper plus `<ExtensionName>Core` handler package | app-extensions |
+| **widget-base** | `widget-base setup` | Widget extension target, thin WidgetBundle wrapper, WidgetKit SDK, App Groups, `<WidgetName>Core` package | app-extensions |
+| **app-intents** | `app-intents setup` | AppIntent scaffold in WidgetCore, AppIntents SDK on extension | widget-base |
+| **static-widget** | `static-widget setup` | StaticConfiguration widget internals in WidgetCore: TimelineProvider, entry, view with interactive Button(intent:) | widget-base, app-intents |
+| **live-activity** | `live-activity setup` | ActivityAttributes in SharedKit, ActivityConfiguration + Dynamic Island in WidgetCore, LiveActivityManager in app target | widget-base |
 | **module create** | `module create <Name> --type <type>` | Feature/kit/shared/ui/utility module with file layout, Registry re-generation | ioc |
 | **http-client** | `http-client setup` | HttpClient IoC registration, swift-httpclient dep, Configuration constants | ioc |
 | **app-config** | `app-config setup` | 8 AppConfig files: Env, Configuration, Manager, ApiConfigurator. Registry IoC patch | ioc, secure-store |
@@ -420,7 +439,9 @@ ios-app-manager token-provider setup
 ios-app-manager utilities setup
 ios-app-manager foundation-plus setup
 ios-app-manager swiftui-plus setup
+ios-app-manager test-targets setup --unit-target <UnitTestsName> --ui-target <UITestsName>
 ios-app-manager app-extensions setup
+ios-app-manager notification-service setup
 ios-app-manager widget-base setup
 ios-app-manager app-intents setup
 ios-app-manager static-widget setup

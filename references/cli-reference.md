@@ -32,10 +32,11 @@ ios-app-manager [command] [flags]
 | `generate makefile` | Generate or update `Makefile` | `ios-app-manager generate makefile` |
 | `generate swiftlint` | Generate or update `.swiftlint.yml` | `ios-app-manager generate swiftlint` |
 | `generate project-config` | Sync manifest config slices across app + extensions | `ios-app-manager generate project-config` |
+| `generate bundle-id` | Generate or update app + extension bundle identifiers | `ios-app-manager generate bundle-id` |
 | `generate versions` | Generate or update app + extension versions | `ios-app-manager generate versions` |
 | `generate min-target` | Generate or update app + extension deployment target markers | `ios-app-manager generate min-target` |
-| `generate background-modes` | Generate or update the app target `UIBackgroundModes` entry | `ios-app-manager generate background-modes` |
 | `generate team-id` | Generate or update app + extension signing team settings | `ios-app-manager generate team-id` |
+| `generate background-modes-config` | Generate or update host app background modes Info.plist key | `ios-app-manager generate background-modes-config` |
 | `generate application-configuration` | Generate or update product-level runtime app configuration | `ios-app-manager generate application-configuration` |
 | `generate app-capabilities` | Generate or update host app capabilities from config | `ios-app-manager generate app-capabilities` |
 | `generate presentation-config` | Generate or update host app theme/orientation Info.plist keys | `ios-app-manager generate presentation-config` |
@@ -58,11 +59,13 @@ ios-app-manager [command] [flags]
 | `utilities setup` | Create Utilities module | `ios-app-manager utilities setup` |
 | `foundation-plus setup` | Create FoundationPlus utility module | `ios-app-manager foundation-plus setup` |
 | `swiftui-plus setup` | Create SwiftUIPlus utility module | `ios-app-manager swiftui-plus setup` |
+| `test-targets setup --unit-target <name> --ui-target <name>` | Create unit and/or UI test targets through test-target subplugins | `ios-app-manager test-targets setup --unit-target DemoAppTests --ui-target DemoAppUITests` |
 | `app-extensions setup` | Create SharedKit + Extensions/ base | `ios-app-manager app-extensions setup` |
-| `widget-base setup` | Create WidgetBundle + widget extension target | `ios-app-manager widget-base setup` |
-| `app-intents setup` | Add AppIntent scaffold to widget extension | `ios-app-manager app-intents setup` |
-| `static-widget setup` | Create static timeline widget with interactive toggle | `ios-app-manager static-widget setup` |
-| `live-activity setup` | Create Live Activity + Dynamic Island scaffold | `ios-app-manager live-activity setup` |
+| `notification-service setup` | Create Notification Service Extension wrapper + Core package | `ios-app-manager notification-service setup` |
+| `widget-base setup` | Create thin WidgetBundle wrapper + WidgetCore package | `ios-app-manager widget-base setup` |
+| `app-intents setup` | Add AppIntent scaffold to WidgetCore | `ios-app-manager app-intents setup` |
+| `static-widget setup` | Create static timeline widget internals in WidgetCore | `ios-app-manager static-widget setup` |
+| `live-activity setup` | Create Live Activity + Dynamic Island scaffold with widget UI in WidgetCore | `ios-app-manager live-activity setup` |
 | `http-client setup` | Add HttpClient IoC registration with swift-httpclient | `ios-app-manager http-client setup` |
 | `app-config setup` | Scaffold AppConfig manager with env switching and ApiConfigurator | `ios-app-manager app-config setup` |
 | `status` | Project status placeholder command | `ios-app-manager status` |
@@ -70,6 +73,52 @@ ios-app-manager [command] [flags]
 | `m '<mutation>'` | Run DSL mutation expression | `ios-app-manager m 'create_module(name=Auth,type=feature)'` |
 
 ## Command reference
+
+### `test-targets setup`
+
+Syntax:
+```bash
+ios-app-manager test-targets setup [--unit-target <name>] [--ui-target <name>] [--yes]
+```
+
+Description:
+- Orchestrates test target scaffolding through separate unit-test-target and UI-test-target subplugins.
+- Requires at least one explicit target name.
+- Adds `.unitTests` and/or `.uiTests` targets to `Project.swift`.
+- Creates starter Swift source under `Targets/<TargetName>/Sources/`.
+- Is idempotent: reruns do not duplicate targets or overwrite existing starter source files.
+
+Examples:
+```bash
+ios-app-manager test-targets setup --unit-target DemoAppTests --yes
+ios-app-manager test-targets setup --ui-target DemoAppUITests --yes
+ios-app-manager test-targets setup --unit-target DemoAppTests --ui-target DemoAppUITests --yes
+```
+
+### `notification-service setup`
+
+Syntax:
+```bash
+ios-app-manager notification-service setup [--extension-target <name>] [--bundle-id-suffix <suffix>] [--yes]
+```
+
+Description:
+- Creates a Notification Service Extension target under `Extensions/<ExtensionName>/`.
+- Keeps the `.appex` target thin: the generated wrapper subclasses `UNNotificationServiceExtension` and delegates to Core.
+- Creates `<ExtensionName>Core` as a SwiftPM package under the extension directory.
+- Adds a package-level Swift Testing target for the Core package.
+- Links the extension target to `<ExtensionName>Core` and `UserNotifications`.
+- Adds `NSExtensionPrincipalClass` and the notification service extension point to the extension Info.plist.
+- Is idempotent: reruns do not duplicate manifest dependencies or Core test targets.
+
+Examples:
+```bash
+ios-app-manager notification-service setup --yes
+ios-app-manager notification-service setup \
+  --extension-target VideoCallNotificationService \
+  --bundle-id-suffix notification-service \
+  --yes
+```
 
 ### `init`
 
@@ -316,6 +365,28 @@ Example:
 ios-app-manager generate swiftlint
 ```
 
+### `generate bundle-id`
+
+Syntax:
+```bash
+ios-app-manager generate bundle-id
+```
+
+Description:
+- Syncs `bundle_id` from config into scaffold-managed `Project.swift` manifests.
+- Updates the host app manifest and every `Extensions/*/Project.swift` generated from scaffold templates.
+- Host app targets converge to the configured app bundle id.
+- Extension targets preserve their suffix and derive the final bundle id from the configured host bundle root, for example `<bundle_id>.widget`.
+- Intended dependency: `init` scaffold must already exist.
+
+Flags:
+- `--config <path>`: Config file path.
+
+Example:
+```bash
+ios-app-manager generate bundle-id
+```
+
 ### `generate versions`
 
 Syntax:
@@ -357,30 +428,6 @@ Example:
 ios-app-manager generate min-target
 ```
 
-### `generate background-modes`
-
-Syntax:
-```bash
-ios-app-manager generate background-modes
-```
-
-Description:
-- Syncs `background_modes` from config into the scaffold-managed app `Project.swift` Info.plist as a `UIBackgroundModes` array.
-- Inserts the entry before `UILaunchScreen` when missing, replaces a drifted entry in place, and removes the entry when the configured list is empty.
-- Values are validated against Apple's documented `UIBackgroundModes` strings (for example `audio`, `voip`, `push-to-talk`, `remote-notification`).
-
-Config:
-```json
-{
-  "background_modes": ["audio", "push-to-talk"]
-}
-```
-
-Example:
-```bash
-ios-app-manager generate background-modes
-```
-
 ### `generate team-id`
 
 Syntax:
@@ -399,6 +446,30 @@ Flags:
 Example:
 ```bash
 ios-app-manager generate team-id
+```
+
+### `generate background-modes-config`
+
+Syntax:
+```bash
+ios-app-manager generate background-modes-config
+```
+
+Description:
+- Syncs host app background mode values from `ios-app-manager.json`.
+- `background_modes` is optional and values are validated against Apple's documented `UIBackgroundModes` strings.
+- `audio` writes the iOS background mode for Audio, AirPlay, and Picture in Picture.
+- `remote-notification` writes the APNs background notification mode for apps that implement the remote notification fetch callback.
+- `voip` writes the VoIP background mode only when explicitly listed.
+- Unknown values are rejected by config validation.
+- Omitting the field or using an empty list removes the scaffold-owned `UIBackgroundModes` key.
+
+Flags:
+- `--config <path>`: Optional command-level config override.
+
+Example:
+```bash
+ios-app-manager generate background-modes-config
 ```
 
 ### `generate presentation-config`
@@ -456,6 +527,9 @@ Description:
 - Syncs host app privacy usage description values from `ios-app-manager.json`.
 - `privacy_usage_descriptions.bluetooth_always` writes `NSBluetoothAlwaysUsageDescription` for the host app target only.
 - `privacy_usage_descriptions.bluetooth_peripheral` writes `NSBluetoothPeripheralUsageDescription` for the host app target only.
+- `privacy_usage_descriptions.camera` writes `NSCameraUsageDescription` for the host app target only.
+- `privacy_usage_descriptions.microphone` writes `NSMicrophoneUsageDescription` for the host app target only.
+- `privacy_usage_descriptions.local_network` writes `NSLocalNetworkUsageDescription` for the host app target only.
 - Omitting or emptying a field removes the scaffold-owned Info.plist key.
 
 Flags:
@@ -522,7 +596,7 @@ ios-app-manager generate build-flags
 Description:
 - Syncs a strict Swift compiler baseline into scaffold-managed `Project.swift` manifests.
 - Updates the host app manifest and every `Extensions/*/Project.swift` generated from scaffold templates.
-- Canonicalizes Swift strictness build settings such as strict memory safety, strict concurrency checking, default actor isolation, and selected upcoming feature toggles.
+- Canonicalizes Swift strictness build settings such as strict memory safety, strict concurrency checking, approachable concurrency, default actor isolation, and selected upcoming feature toggles.
 - Values are loaded from `project_settings.swift` in `ios-app-manager.json`; omitted values use the scaffold strict baseline.
 
 Flags:
@@ -543,9 +617,12 @@ ios-app-manager generate project-config
 Description:
 - Orchestrates project-manifest config sync across scaffolded app and extension manifests.
 - Runs the current config-sync leaf plugins in order:
+  - `generate bundle-id`
   - `generate versions`
   - `generate min-target`
   - `generate team-id`
+  - `generate platform-destinations`
+  - `generate background-modes-config`
   - `generate presentation-config`
   - `generate export-compliance-config`
   - `generate privacy-usage-descriptions-config`

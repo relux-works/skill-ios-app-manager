@@ -14,8 +14,10 @@ package "Infra" {
   component "Init" as mod_init <<module>> #FFF3CD
   component "IoC" as mod_ioc <<module>> #FFF3CD
   component "Live Activity" as mod_live_activity <<module>> #FFF3CD
+  component "Notification Service" as mod_notification_service <<module>> #FFF3CD
   component "Relux" as mod_relux <<module>> #FFF3CD
   component "Static Widget" as mod_static_widget <<module>> #FFF3CD
+  component "Test Targets" as mod_test_targets <<module>> #FFF3CD
   component "Widget Base" as mod_widget_base <<module>> #FFF3CD
 }
 
@@ -55,9 +57,11 @@ FeatureModule ..> mod_utilities
 mod_app_intents --> mod_widget_base
 mod_ioc --> mod_init
 mod_live_activity --> mod_widget_base
+mod_notification_service --> mod_app_extensions
 mod_relux --> mod_ioc
 mod_static_widget --> mod_app_intents
 mod_static_widget --> mod_widget_base
+mod_test_targets --> mod_init
 mod_widget_base --> mod_app_extensions
 mod_app_config --> mod_ioc
 mod_app_config --> mod_secure_store

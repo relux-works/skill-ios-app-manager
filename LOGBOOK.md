@@ -3,6 +3,32 @@
 > Institutional memory. Concise, factual, high-signal.
 > Newest entries first. One block per insight.
 
+## 2026-07-02
+
+### 1252 — Remote Notification Background Mode
+- ROOT CAUSE: Apps implementing `application:didReceiveRemoteNotification:fetchCompletionHandler:` need `remote-notification` in `UIBackgroundModes`; the scaffold contract only accepted `audio` and `voip`.
+- FIX: Extend `background_modes` validation/generation/docs to include `remote-notification`.
+- SCOPE: `tuist-starter/internal/config`, `tuist-starter/internal/scaffold/background_modes_config_test.go`, `README.md`, `SKILL.md`, `references/cli-reference.md`.
+- STATUS: `go test ./...`, `./scripts/setup.sh`, downstream `generate background-modes-config`, and VideoCallDemo focused push harness test passed.
+
+## 2026-07-01
+
+### 1836 — Background Modes Project Config
+- DECISION: `UIBackgroundModes` is owned by a dedicated `generate background-modes-config` leaf and wired into `generate project-config`, not merged into presentation/privacy sync.
+- FIX: Added `background_modes` config enum validation for `audio` and explicit `voip`; unknown values are rejected.
+- FIX: Host app `Project.swift` converges `UIBackgroundModes` idempotently; omitted or empty config removes the scaffold-owned key.
+- SCOPE: `tuist-starter/internal/config`, `tuist-starter/internal/scaffold/background_modes_config.go`, `tuist-starter/internal/cli/generate_test.go`, docs.
+- STATUS: `go test ./...`, `go vet ./...`, and `./scripts/setup.sh` passed.
+
+## 2026-06-30
+
+### 2106 — Extension Metadata Sync Generators
+- DECISION: Cross-cutting extension metadata belongs to project-config leaf generators, not concrete extension plugins.
+- FIX: Added `generate bundle-id` and wired it into `generate project-config`; existing `versions`, `min-target`, `team-id`, and `build-flags` discover `Extensions/**/Project.swift`.
+- FIX: Added regression coverage for configured Swift concurrency restrictions propagating to extension manifests.
+- SCOPE: `tuist-starter/internal/scaffold/bundle_id.go`, `generator_bundle_id.go`, `build_flags_test.go`, `generate_test.go`, docs.
+- STATUS: `go test ./...` passed from `tuist-starter`.
+
 ## 2026-05-19
 
 ### 1606 — Setup Xcode Sudo Bootstrap
