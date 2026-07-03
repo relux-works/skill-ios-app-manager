@@ -179,6 +179,98 @@ func TestLoadConfigParsesExplicitExportComplianceFalse(t *testing.T) {
 	}
 }
 
+func TestLoadConfigParsesBackgroundModes(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config-background-modes.json")
+	content := `{
+  "app_name": "DemoApp",
+  "bundle_id": "com.example.demo",
+  "team_id": "ABCDE12345",
+  "marketing_version": "1.0.0",
+  "project_version": "1",
+  "swift_version": "6.2",
+  "min_target": "17.0",
+  "background_modes": [
+    "Audio",
+    "Remote-Notification",
+    "voip",
+    "audio",
+    "remote-notification"
+  ]
+}`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	want := []string{BackgroundModeAudio, BackgroundModeRemoteNotification, BackgroundModeVoIP}
+	if !reflect.DeepEqual(cfg.BackgroundModes, want) {
+		t.Fatalf("BackgroundModes = %#v, want %#v", cfg.BackgroundModes, want)
+	}
+}
+
+func TestLoadConfigParsesPlatformDestinations(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config-platforms.json")
+	content := `{
+  "app_name": "DemoApp",
+  "bundle_id": "com.example.demo",
+  "team_id": "ABCDE12345",
+  "marketing_version": "1.0.0",
+  "project_version": "1",
+  "swift_version": "6.2",
+  "min_target": "17.0",
+  "orientation": "landscape",
+  "platforms": {
+    "ios": {
+      "orientation": "portrait",
+      "mac_with_ipad_design": true
+    },
+    "ipad": {
+      "enabled": false
+    }
+  }
+}`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if cfg.Platforms == nil {
+		t.Fatal("Platforms = nil, want parsed platform destinations")
+	}
+	if !cfg.UsesExplicitPlatformDestinations() {
+		t.Fatal("UsesExplicitPlatformDestinations() = false, want true")
+	}
+	if !cfg.IOSTargetEnabled() {
+		t.Fatal("IOSTargetEnabled() = false, want true")
+	}
+	if cfg.IPadTargetEnabled() {
+		t.Fatal("IPadTargetEnabled() = true, want false")
+	}
+	if !cfg.MacWithIPadDesignTargetEnabled() {
+		t.Fatal("MacWithIPadDesignTargetEnabled() = false, want true")
+	}
+	if cfg.IOSTargetOrientation() != OrientationPortrait {
+		t.Fatalf("IOSTargetOrientation() = %q, want %q", cfg.IOSTargetOrientation(), OrientationPortrait)
+	}
+	if cfg.IPadTargetOrientation() != OrientationAutomatic {
+		t.Fatalf("IPadTargetOrientation() = %q, want %q", cfg.IPadTargetOrientation(), OrientationAutomatic)
+	}
+}
+
 func TestLoadConfigParsesPrivacyUsageDescriptions(t *testing.T) {
 	t.Parallel()
 
@@ -194,7 +286,10 @@ func TestLoadConfigParsesPrivacyUsageDescriptions(t *testing.T) {
   "min_target": "17.0",
   "privacy_usage_descriptions": {
     "bluetooth_always": "Find nearby transfer receivers.",
-    "bluetooth_peripheral": "Advertise nearby transfer availability."
+    "bluetooth_peripheral": "Advertise nearby transfer availability.",
+    "camera": "Join video calls.",
+    "microphone": "Join audio calls.",
+    "local_network": "Connect calls on the local network when available."
   }
 }`
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -211,6 +306,15 @@ func TestLoadConfigParsesPrivacyUsageDescriptions(t *testing.T) {
 	}
 	if cfg.PrivacyUsageDescriptions.BluetoothPeripheral != "Advertise nearby transfer availability." {
 		t.Fatalf("BluetoothPeripheral = %q", cfg.PrivacyUsageDescriptions.BluetoothPeripheral)
+	}
+	if cfg.PrivacyUsageDescriptions.Camera != "Join video calls." {
+		t.Fatalf("Camera = %q", cfg.PrivacyUsageDescriptions.Camera)
+	}
+	if cfg.PrivacyUsageDescriptions.Microphone != "Join audio calls." {
+		t.Fatalf("Microphone = %q", cfg.PrivacyUsageDescriptions.Microphone)
+	}
+	if cfg.PrivacyUsageDescriptions.LocalNetwork != "Connect calls on the local network when available." {
+		t.Fatalf("LocalNetwork = %q", cfg.PrivacyUsageDescriptions.LocalNetwork)
 	}
 }
 

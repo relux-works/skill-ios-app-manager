@@ -22,9 +22,15 @@ const (
 	OrientationLandscape = "landscape"
 )
 
+const (
+	BackgroundModeAudio              = "audio"
+	BackgroundModeRemoteNotification = "remote-notification"
+	BackgroundModeVoIP               = "voip"
+)
+
 // AllowedBackgroundModes lists Apple's documented UIBackgroundModes values.
 var AllowedBackgroundModes = []string{
-	"audio",
+	BackgroundModeAudio,
 	"bluetooth-central",
 	"bluetooth-peripheral",
 	"external-accessory",
@@ -33,8 +39,8 @@ var AllowedBackgroundModes = []string{
 	"nearby-interaction",
 	"processing",
 	"push-to-talk",
-	"remote-notification",
-	"voip",
+	BackgroundModeRemoteNotification,
+	BackgroundModeVoIP,
 }
 
 // ProjectConfig defines project-init schema for ios-app-manager.
@@ -56,8 +62,9 @@ type ProjectConfig struct {
 	AppGroups []string `json:"app_groups,omitempty"`
 
 	// Presentation
-	Theme       string `json:"theme,omitempty"`       // automatic, light, dark
-	Orientation string `json:"orientation,omitempty"` // automatic, portrait, landscape
+	Theme       string                      `json:"theme,omitempty"`       // automatic, light, dark
+	Orientation string                      `json:"orientation,omitempty"` // automatic, portrait, landscape
+	Platforms   *PlatformDestinationsConfig `json:"platforms,omitempty"`
 
 	// Export compliance
 	UsesNonExemptEncryption *bool `json:"uses_non_exempt_encryption,omitempty"`
@@ -84,6 +91,17 @@ type ProjectConfig struct {
 	PushTokenPath string `json:"push_token_path,omitempty"`
 }
 
+type PlatformDestinationsConfig struct {
+	IOS  PlatformDestinationConfig `json:"ios,omitempty"`
+	IPad PlatformDestinationConfig `json:"ipad,omitempty"`
+}
+
+type PlatformDestinationConfig struct {
+	Enabled           *bool  `json:"enabled,omitempty"`
+	Orientation       string `json:"orientation,omitempty"` // automatic, portrait, landscape
+	MacWithIPadDesign *bool  `json:"mac_with_ipad_design,omitempty"`
+}
+
 type SharedConfigConfig struct {
 	ModuleName string `json:"module_name,omitempty"` // default: SharedConfig
 }
@@ -91,6 +109,9 @@ type SharedConfigConfig struct {
 type PrivacyUsageDescriptionsConfig struct {
 	BluetoothAlways     string `json:"bluetooth_always,omitempty"`
 	BluetoothPeripheral string `json:"bluetooth_peripheral,omitempty"`
+	Camera              string `json:"camera,omitempty"`
+	Microphone          string `json:"microphone,omitempty"`
+	LocalNetwork        string `json:"local_network,omitempty"`
 }
 
 type ScriptsConfig struct {
@@ -110,6 +131,8 @@ func (c *ProjectConfig) applyDefaults() {
 
 	c.Theme = normalizeEnumDefault(c.Theme, DefaultTheme)
 	c.Orientation = normalizeEnumDefault(c.Orientation, DefaultOrientation)
+	c.applyPlatformDefaults()
+	c.BackgroundModes = normalizeBackgroundModes(c.BackgroundModes)
 
 	if strings.TrimSpace(c.ModulesPath) == "" {
 		c.ModulesPath = defaultModulesPath
@@ -124,10 +147,91 @@ func (c *ProjectConfig) applyDefaults() {
 	c.applySwiftDefaults()
 }
 
+func (c *ProjectConfig) applyPlatformDefaults() {
+	if c.Platforms == nil {
+		return
+	}
+
+	c.Platforms.IOS.Orientation = normalizeEnumDefault(c.Platforms.IOS.Orientation, c.Orientation)
+	c.Platforms.IPad.Orientation = normalizeEnumDefault(c.Platforms.IPad.Orientation, DefaultOrientation)
+}
+
+func (c ProjectConfig) UsesExplicitPlatformDestinations() bool {
+	return c.Platforms != nil
+}
+
+func (c ProjectConfig) IOSTargetEnabled() bool {
+	if c.Platforms == nil {
+		return true
+	}
+	return boolDefault(c.Platforms.IOS.Enabled, true)
+}
+
+func (c ProjectConfig) IPadTargetEnabled() bool {
+	if c.Platforms == nil {
+		return true
+	}
+	return boolDefault(c.Platforms.IPad.Enabled, false)
+}
+
+func (c ProjectConfig) MacWithIPadDesignTargetEnabled() bool {
+	if c.Platforms == nil || !c.IOSTargetEnabled() {
+		return false
+	}
+	return boolDefault(c.Platforms.IOS.MacWithIPadDesign, false)
+}
+
+func (c ProjectConfig) IOSTargetOrientation() string {
+	if c.Platforms == nil {
+		return normalizeEnumDefault(c.Orientation, DefaultOrientation)
+	}
+	return normalizeEnumDefault(c.Platforms.IOS.Orientation, normalizeEnumDefault(c.Orientation, DefaultOrientation))
+}
+
+func (c ProjectConfig) IPadTargetOrientation() string {
+	if c.Platforms == nil {
+		return normalizeEnumDefault(c.Orientation, DefaultOrientation)
+	}
+	return normalizeEnumDefault(c.Platforms.IPad.Orientation, DefaultOrientation)
+}
+
+func (c ProjectConfig) NormalizedBackgroundModes() []string {
+	return normalizeBackgroundModes(c.BackgroundModes)
+}
+
 func normalizeEnumDefault(value string, defaultValue string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
 		return defaultValue
 	}
 	return strings.ToLower(trimmed)
+}
+
+func boolDefault(value *bool, defaultValue bool) bool {
+	if value == nil {
+		return defaultValue
+	}
+	return *value
+}
+
+func normalizeBackgroundModes(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+
+	normalized := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, raw := range values {
+		value := strings.ToLower(strings.TrimSpace(raw))
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		normalized = append(normalized, value)
+	}
+
+	return normalized
 }

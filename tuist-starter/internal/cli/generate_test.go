@@ -24,10 +24,89 @@ func TestGenerateHelpShowsMakefileSubcommand(t *testing.T) {
 		}
 	}
 
-	for _, expected := range []string{"versions", "min-target", "team-id", "application-configuration", "app-capabilities", "build-flags", "project-config"} {
+	for _, expected := range []string{"background-modes-config", "bundle-id", "versions", "min-target", "team-id", "application-configuration", "app-capabilities", "build-flags", "project-config"} {
 		if !strings.Contains(output, expected) {
 			t.Fatalf("generate --help output missing %q:\n%s", expected, output)
 		}
+	}
+}
+
+func TestGenerateBundleIDUpdatesHostAndExtensionManifests(t *testing.T) {
+	t.Parallel()
+
+	cfg := testProjectConfig()
+	configPath := writeTestConfig(t, cfg)
+	projectRoot := filepath.Dir(configPath)
+
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Project.swift"), `import ProjectDescription
+
+let appName = "DemoApp"
+let bundleID = "com.old.demo"
+
+let project = Project(
+    name: appName,
+    targets: [
+        .target(
+            name: appName,
+            bundleId: bundleID
+        )
+    ]
+)
+`)
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"), `import ProjectDescription
+
+let hostBundleId = "com.old.demo"
+
+let project = Project(
+    name: "DemoWidget",
+    targets: [
+        .target(
+            name: "DemoWidget",
+            product: .appExtension,
+            bundleId: "\(hostBundleId).widget"
+        )
+    ]
+)
+`)
+
+	output, err := executeRootCommand("generate", "--config", configPath, "bundle-id")
+	if err != nil {
+		t.Fatalf("executeRootCommand(generate bundle-id) error = %v", err)
+	}
+	if !strings.Contains(output, "regenerated bundle id manifests in 2 file(s)") {
+		t.Fatalf("generate bundle-id output = %q, want regenerate message", output)
+	}
+
+	for _, manifestPath := range []string{
+		filepath.Join(projectRoot, "Project.swift"),
+		filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"),
+	} {
+		content, err := os.ReadFile(manifestPath)
+		if err != nil {
+			t.Fatalf("ReadFile(%q) error = %v", manifestPath, err)
+		}
+		if strings.Contains(string(content), "com.old.demo") {
+			t.Fatalf("%s kept stale bundle id:\n%s", manifestPath, string(content))
+		}
+	}
+
+	hostContent, err := os.ReadFile(filepath.Join(projectRoot, "Project.swift"))
+	if err != nil {
+		t.Fatalf("ReadFile(Project.swift) error = %v", err)
+	}
+	if !strings.Contains(string(hostContent), `let bundleID = "com.example.demo"`) {
+		t.Fatalf("Project.swift missing synced bundleID:\n%s", string(hostContent))
+	}
+
+	extensionContent, err := os.ReadFile(filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"))
+	if err != nil {
+		t.Fatalf("ReadFile(extension Project.swift) error = %v", err)
+	}
+	if !strings.Contains(string(extensionContent), `let hostBundleId = "com.example.demo"`) {
+		t.Fatalf("extension Project.swift missing synced hostBundleId:\n%s", string(extensionContent))
+	}
+	if !strings.Contains(string(extensionContent), `bundleId: "\(hostBundleId).widget"`) {
+		t.Fatalf("extension Project.swift did not preserve suffix interpolation:\n%s", string(extensionContent))
 	}
 }
 
@@ -627,6 +706,7 @@ let project = Project(
     targets: [
         .target(
             name: "DemoApp",
+            product: .app,
             bundleId: "com.demo.app",
             deploymentTargets: .iOS("16.0"),
             infoPlist: .extendingDefault(
@@ -717,6 +797,7 @@ let package = Package(
 	updatedCfg.MarketingVersion = "2.0.0"
 	updatedCfg.ProjectVersion = "55"
 	updatedCfg.MinTarget = "18.0"
+	updatedCfg.BackgroundModes = []string{config.BackgroundModeAudio}
 	if err := config.WriteProjectConfig(configPath, updatedCfg); err != nil {
 		t.Fatalf("WriteProjectConfig(%q) error = %v", configPath, err)
 	}
@@ -728,9 +809,11 @@ let package = Package(
 
 	for _, want := range []string{
 		"project config sync summary:",
+		"- bundle-id: regenerated bundle id manifests in 2 file(s)",
 		"- versions: regenerated version manifests in 2 file(s)",
 		"- min-target: regenerated min target manifests in 3 file(s)",
 		"- team-id: regenerated team id manifests in 2 file(s)",
+		"- background-modes-config: regenerated background modes config in 1 file(s)",
 		"- presentation-config: presentation config already up to date",
 		"- export-compliance-config: export compliance config already up to date",
 		"- privacy-usage-descriptions-config: privacy usage descriptions config already up to date",
@@ -776,11 +859,31 @@ let package = Package(
 			`"SWIFT_UPCOMING_FEATURE_REGION_BASED_ISOLATION": "YES"`,
 			`"SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY": "YES"`,
 			`"SWIFT_UPCOMING_FEATURE_NONISOLATED_NONSENDING_BY_DEFAULT": "YES"`,
+			`com.example.demo`,
 		} {
 			if !strings.Contains(string(content), want) {
 				t.Fatalf("%s missing %q:\n%s", manifestPath, want, string(content))
 			}
 		}
+		if strings.Contains(string(content), "com.demo.app") {
+			t.Fatalf("%s kept stale bundle id:\n%s", manifestPath, string(content))
+		}
+	}
+
+	hostManifest, err := os.ReadFile(filepath.Join(projectRoot, "Project.swift"))
+	if err != nil {
+		t.Fatalf("ReadFile(Project.swift) error = %v", err)
+	}
+	if !strings.Contains(string(hostManifest), `"UIBackgroundModes": .array([`) ||
+		!strings.Contains(string(hostManifest), `.string("audio"),`) {
+		t.Fatalf("host Project.swift missing audio background mode:\n%s", string(hostManifest))
+	}
+	extensionManifest, err := os.ReadFile(filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift"))
+	if err != nil {
+		t.Fatalf("ReadFile(extension Project.swift) error = %v", err)
+	}
+	if strings.Contains(string(extensionManifest), "UIBackgroundModes") {
+		t.Fatalf("extension Project.swift should not receive host app background modes:\n%s", string(extensionManifest))
 	}
 
 	packageManifest, err := os.ReadFile(filepath.Join(projectRoot, "Packages", "Auth", "Package.swift"))

@@ -141,6 +141,9 @@ func syncExistingInfoPlistDictionaryLines(
 		}
 	}
 	if withLine < 0 {
+		if targetInfoPlistUsesDefault(lines, infoPlistLine) {
+			return lines, false, nil
+		}
 		return nil, false, fmt.Errorf("infoPlist declaration does not use .extendingDefault(with: [...])")
 	}
 
@@ -167,6 +170,20 @@ func syncExistingInfoPlistDictionaryLines(
 	updated = append(updated, lines[insertIndex:]...)
 
 	return updated, true, nil
+}
+
+func targetInfoPlistUsesDefault(lines []string, infoPlistLine int) bool {
+	for index := infoPlistLine; index < len(lines); index++ {
+		line := lines[index]
+		if strings.Contains(line, ".default") {
+			return true
+		}
+		if strings.Contains(line, "sources:") || strings.Contains(line, "dependencies:") {
+			break
+		}
+	}
+
+	return false
 }
 
 func insertInfoPlistDictionaryLines(

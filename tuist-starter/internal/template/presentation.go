@@ -7,26 +7,48 @@ import (
 	"github.com/relux-works/ios-app-manager/internal/config"
 )
 
-func presentationInfoPlistLines(theme string, orientation string) []string {
-	lines := make([]string, 0, 6)
+const (
+	infoPlistKeyUserInterfaceStyle             = "UIUserInterfaceStyle"
+	infoPlistKeySupportedInterfaceOrientations = "UISupportedInterfaceOrientations"
+	infoPlistKeyIPadSupportedOrientations      = "UISupportedInterfaceOrientations~ipad"
+)
 
-	switch strings.ToLower(strings.TrimSpace(theme)) {
+func presentationInfoPlistLines(value any) []string {
+	cfg := projectConfigFromTemplateValue(value)
+	lines := make([]string, 0, 10)
+
+	switch strings.ToLower(strings.TrimSpace(cfg.Theme)) {
 	case config.ThemeLight:
-		lines = append(lines, strconv.Quote("UIUserInterfaceStyle")+": .string("+strconv.Quote("Light")+"),")
+		lines = append(lines, strconv.Quote(infoPlistKeyUserInterfaceStyle)+": .string("+strconv.Quote("Light")+"),")
 	case config.ThemeDark:
-		lines = append(lines, strconv.Quote("UIUserInterfaceStyle")+": .string("+strconv.Quote("Dark")+"),")
+		lines = append(lines, strconv.Quote(infoPlistKeyUserInterfaceStyle)+": .string("+strconv.Quote("Dark")+"),")
 	}
 
+	if !cfg.UsesExplicitPlatformDestinations() {
+		return appendOrientationInfoPlistLines(lines, infoPlistKeySupportedInterfaceOrientations, cfg.Orientation)
+	}
+
+	if cfg.IOSTargetEnabled() {
+		lines = appendOrientationInfoPlistLines(lines, infoPlistKeySupportedInterfaceOrientations, cfg.IOSTargetOrientation())
+	}
+	if cfg.IPadTargetEnabled() {
+		lines = appendOrientationInfoPlistLines(lines, infoPlistKeyIPadSupportedOrientations, cfg.IPadTargetOrientation())
+	}
+
+	return lines
+}
+
+func appendOrientationInfoPlistLines(lines []string, key string, orientation string) []string {
 	switch strings.ToLower(strings.TrimSpace(orientation)) {
 	case config.OrientationPortrait:
-		lines = append(lines,
-			strconv.Quote("UISupportedInterfaceOrientations")+": .array([",
+		return append(lines,
+			strconv.Quote(key)+": .array([",
 			"    .string("+strconv.Quote("UIInterfaceOrientationPortrait")+"),",
 			"]),",
 		)
 	case config.OrientationLandscape:
-		lines = append(lines,
-			strconv.Quote("UISupportedInterfaceOrientations")+": .array([",
+		return append(lines,
+			strconv.Quote(key)+": .array([",
 			"    .string("+strconv.Quote("UIInterfaceOrientationLandscapeLeft")+"),",
 			"    .string("+strconv.Quote("UIInterfaceOrientationLandscapeRight")+"),",
 			"]),",

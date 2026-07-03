@@ -97,6 +97,96 @@ let project = Project(
 	}
 }
 
+func TestSyncBuildFlagsPropagatesConfiguredConcurrencyRestrictionsToExtensions(t *testing.T) {
+	t.Parallel()
+
+	approachable := true
+	globalConcurrency := false
+	nonisolatedNonsendingByDefault := false
+
+	projectRoot := t.TempDir()
+	writeVersionManifest(t, filepath.Join(projectRoot, "Project.swift"), `import ProjectDescription
+
+let project = Project(
+    name: "DemoApp",
+    targets: [
+        .target(
+            name: "DemoApp",
+            bundleId: "com.demo.app",
+            settings: .settings(
+                base: [
+                    "SWIFT_VERSION": "6.0",
+                ]
+            )
+        )
+    ]
+)
+`)
+	extensionManifestPath := filepath.Join(projectRoot, "Extensions", "DemoWidget", "Project.swift")
+	writeVersionManifest(t, extensionManifestPath, `import ProjectDescription
+
+let project = Project(
+    name: "DemoWidget",
+    targets: [
+        .target(
+            name: "DemoWidget",
+            product: .appExtension,
+            bundleId: "com.demo.app.widget",
+            settings: .settings(
+                base: [
+                    "SWIFT_VERSION": "6.0",
+                    "SWIFT_APPROACHABLE_CONCURRENCY": "NO",
+                    "SWIFT_STRICT_CONCURRENCY": "minimal",
+                ]
+            )
+        )
+    ]
+)
+`)
+
+	result, err := SyncBuildFlags(projectRoot, config.ProjectConfig{
+		ProjectSettings: config.ProjectSettings{
+			Swift: config.SwiftProjectSettings{
+				LanguageMode:       "v5",
+				StrictMemorySafety: "no",
+				Concurrency: config.SwiftConcurrencySettings{
+					Approachable:                   &approachable,
+					DefaultActorIsolation:          "MainActor",
+					StrictChecking:                 "targeted",
+					GlobalConcurrency:              &globalConcurrency,
+					MemberImportVisibility:         "migrate",
+					ExistentialAny:                 "no",
+					NonisolatedNonsendingByDefault: &nonisolatedNonsendingByDefault,
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("SyncBuildFlags() error = %v", err)
+	}
+	if len(result.Updated) != 2 {
+		t.Fatalf("updated len = %d, want 2", len(result.Updated))
+	}
+
+	content := readVersionManifest(t, extensionManifestPath)
+	for _, want := range []string{
+		`"SWIFT_VERSION": "5.0"`,
+		`"SWIFT_STRICT_MEMORY_SAFETY": "NO"`,
+		`"SWIFT_APPROACHABLE_CONCURRENCY": "YES"`,
+		`"SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor"`,
+		`"SWIFT_STRICT_CONCURRENCY_DEFAULT": "targeted"`,
+		`"SWIFT_STRICT_CONCURRENCY": "targeted"`,
+		`"SWIFT_UPCOMING_FEATURE_GLOBAL_CONCURRENCY": "NO"`,
+		`"SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "MIGRATE"`,
+		`"SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY": "NO"`,
+		`"SWIFT_UPCOMING_FEATURE_NONISOLATED_NONSENDING_BY_DEFAULT": "NO"`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("extension manifest missing %q:\n%s", want, content)
+		}
+	}
+}
+
 func TestSyncBuildFlagsReportsUpToDateManifest(t *testing.T) {
 	t.Parallel()
 

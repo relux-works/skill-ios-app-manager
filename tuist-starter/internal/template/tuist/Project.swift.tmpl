@@ -22,7 +22,7 @@ let project = Project(
     targets: [
         .target(
             name: appName,
-            destinations: .iOS,
+            destinations: {{ targetDestinationsExpression . }},
             product: .app,
             bundleId: bundleID,
             deploymentTargets: .iOS(minTarget),
@@ -45,7 +45,7 @@ let project = Project(
 {{- range privacyUsageDescriptionInfoPlistLines .PrivacyUsageDescriptions }}
                     {{ . }}
 {{- end }}
-{{- range presentationInfoPlistLines .Theme .Orientation }}
+{{- range presentationInfoPlistLines . }}
                     {{ . }}
 {{- end }}
 {{- range exportComplianceInfoPlistLines .UsesNonExemptEncryption }}
@@ -74,7 +74,7 @@ let project = Project(
             ),
             sources: [{{ swiftLiteral (printf "Targets/%s/Sources/**" .AppName) }}],
             resources: [{{ swiftLiteral (printf "Targets/%s/Resources/**" .AppName) }}],
-            entitlements: EntitlementsFactory.make(hostBundleId: bundleID, destinations: .iOS, capabilities: AppCapabilities.app),
+            entitlements: EntitlementsFactory.make(hostBundleId: bundleID, destinations: {{ targetDestinationsExpression . }}, capabilities: AppCapabilities.app),
             dependencies: [
 {{- range .LocalPackages }}
                 .package(product: {{ swiftLiteral . }}),

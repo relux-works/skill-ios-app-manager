@@ -146,3 +146,58 @@ let project = Project(
 		t.Fatalf("second syncProjectManifestInfoPlistDictionaryContent() changed = true:\n%s", secondUpdated)
 	}
 }
+
+func TestSyncProjectManifestInfoPlistDictionarySkipsDefaultInfoPlistTargets(t *testing.T) {
+	t.Parallel()
+
+	content := `import ProjectDescription
+
+let project = Project(
+    name: "DemoApp",
+    targets: [
+        .target(
+            name: "DemoApp",
+            product: .app,
+            bundleId: "com.example.demo",
+            infoPlist: .extendingDefault(
+                with: [
+                    "UILaunchScreen": .dictionary([:]),
+                ]
+            ),
+            sources: ["Sources/**"]
+        ),
+        .target(
+            name: "DemoAppTests",
+            product: .unitTests,
+            bundleId: "com.example.demo.tests",
+            infoPlist: .default,
+            sources: ["Tests/**"]
+        )
+    ]
+)
+`
+
+	updated, changed, err := syncProjectManifestInfoPlistDictionaryContent(
+		content,
+		"ApplicationConfiguration",
+		true,
+		func(indent string) []string {
+			return []string{
+				indent + strconv.Quote("ApplicationConfiguration") + ": .dictionary([",
+				indent + "]),",
+			}
+		},
+	)
+	if err != nil {
+		t.Fatalf("syncProjectManifestInfoPlistDictionaryContent() error = %v", err)
+	}
+	if !changed {
+		t.Fatal("syncProjectManifestInfoPlistDictionaryContent() changed = false, want true")
+	}
+	if count := strings.Count(updated, `"ApplicationConfiguration": .dictionary([`); count != 1 {
+		t.Fatalf("ApplicationConfiguration count = %d, want host app target only:\n%s", count, updated)
+	}
+	if !strings.Contains(updated, `infoPlist: .default,`) {
+		t.Fatalf("default Info.plist target was modified:\n%s", updated)
+	}
+}

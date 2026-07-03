@@ -9,52 +9,46 @@ import (
 	"github.com/relux-works/ios-app-manager/internal/config"
 )
 
-const (
-	privacyBluetoothAlwaysUsageDescriptionInfoPlistKey     = "NSBluetoothAlwaysUsageDescription"
-	privacyBluetoothPeripheralUsageDescriptionInfoPlistKey = "NSBluetoothPeripheralUsageDescription"
-	privacyCameraUsageDescriptionInfoPlistKey              = "NSCameraUsageDescription"
-	privacyMicrophoneUsageDescriptionInfoPlistKey          = "NSMicrophoneUsageDescription"
-	privacyLocalNetworkUsageDescriptionInfoPlistKey        = "NSLocalNetworkUsageDescription"
-)
+const backgroundModesInfoPlistKey = "UIBackgroundModes"
 
-type PrivacyUsageDescriptionsConfigSyncResult struct {
+type BackgroundModesConfigSyncResult struct {
 	Scanned []string
 	Updated []string
 }
 
 func init() {
 	RegisterGenerator(&GeneratorPlugin{
-		Name:         "privacy-usage-descriptions-config",
-		Short:        "Sync host app privacy usage description Info.plist configuration",
+		Name:         "background-modes-config",
+		Short:        "Sync host app background modes Info.plist configuration",
 		Dependencies: []string{"init"},
-		Run:          runGeneratePrivacyUsageDescriptionsConfig,
+		Run:          runGenerateBackgroundModesConfig,
 	})
 }
 
-func runGeneratePrivacyUsageDescriptionsConfig(input GenerateInput) (GenerateResult, error) {
-	result, err := SyncPrivacyUsageDescriptionsConfig(input.ProjectRoot, input.Config)
+func runGenerateBackgroundModesConfig(input GenerateInput) (GenerateResult, error) {
+	result, err := SyncBackgroundModesConfig(input.ProjectRoot, input.Config)
 	if err != nil {
 		return GenerateResult{}, err
 	}
 
 	if len(result.Updated) > 0 {
 		return GenerateResult{
-			Message: fmt.Sprintf("regenerated privacy usage descriptions config in %d file(s)\n", len(result.Updated)),
+			Message: fmt.Sprintf("regenerated background modes config in %d file(s)\n", len(result.Updated)),
 		}, nil
 	}
 
 	return GenerateResult{
-		Message: "privacy usage descriptions config already up to date\n",
+		Message: "background modes config already up to date\n",
 	}, nil
 }
 
-func SyncPrivacyUsageDescriptionsConfig(projectRoot string, cfg config.ProjectConfig) (PrivacyUsageDescriptionsConfigSyncResult, error) {
+func SyncBackgroundModesConfig(projectRoot string, cfg config.ProjectConfig) (BackgroundModesConfigSyncResult, error) {
 	root := strings.TrimSpace(projectRoot)
 	if root == "" {
-		return PrivacyUsageDescriptionsConfigSyncResult{}, fmt.Errorf("project root is required")
+		return BackgroundModesConfigSyncResult{}, fmt.Errorf("project root is required")
 	}
 
-	result := PrivacyUsageDescriptionsConfigSyncResult{
+	result := BackgroundModesConfigSyncResult{
 		Scanned: make([]string, 0, 4),
 		Updated: make([]string, 0, 4),
 	}
@@ -66,7 +60,7 @@ func SyncPrivacyUsageDescriptionsConfig(projectRoot string, cfg config.ProjectCo
 
 	for _, manifestPath := range projectManifestPaths {
 		result.Scanned = appendUniqueStrings(result.Scanned, manifestPath)
-		updated, err := syncProjectManifestPrivacyUsageDescriptionsConfig(manifestPath, cfg)
+		updated, err := syncProjectManifestBackgroundModesConfig(manifestPath, cfg)
 		if err != nil {
 			return result, err
 		}
@@ -78,13 +72,13 @@ func SyncPrivacyUsageDescriptionsConfig(projectRoot string, cfg config.ProjectCo
 	return result, nil
 }
 
-func syncProjectManifestPrivacyUsageDescriptionsConfig(path string, cfg config.ProjectConfig) (bool, error) {
+func syncProjectManifestBackgroundModesConfig(path string, cfg config.ProjectConfig) (bool, error) {
 	payload, err := os.ReadFile(path)
 	if err != nil {
 		return false, fmt.Errorf("read Project.swift: %w", err)
 	}
 
-	updated, changed, err := syncProjectManifestPrivacyUsageDescriptionsConfigContent(string(payload), cfg)
+	updated, changed, err := syncProjectManifestBackgroundModesConfigContent(string(payload), cfg)
 	if err != nil {
 		return false, err
 	}
@@ -99,16 +93,16 @@ func syncProjectManifestPrivacyUsageDescriptionsConfig(path string, cfg config.P
 	return true, nil
 }
 
-func syncProjectManifestPrivacyUsageDescriptionsConfigContent(content string, cfg config.ProjectConfig) (string, bool, error) {
+func syncProjectManifestBackgroundModesConfigContent(content string, cfg config.ProjectConfig) (string, bool, error) {
 	lines := strings.Split(content, "\n")
 	hasTrailingNewline := strings.HasSuffix(content, "\n")
 
-	filtered, err := removeProjectManifestPrivacyUsageDescriptionsConfigEntries(lines)
+	filtered, err := removeProjectManifestBackgroundModesConfigEntries(lines)
 	if err != nil {
 		return "", false, err
 	}
 
-	rendered := renderPrivacyUsageDescriptionsInfoPlistLines("", cfg)
+	rendered := renderBackgroundModesInfoPlistLines("", cfg)
 	if len(rendered) == 0 {
 		updated := joinSyncLines(filtered, hasTrailingNewline)
 		return updated, updated != content, nil
@@ -123,14 +117,14 @@ func syncProjectManifestPrivacyUsageDescriptionsConfigContent(content string, cf
 	for index := len(targets) - 1; index >= 0; index-- {
 		target := targets[index]
 		targetLines := append([]string(nil), updatedLines[target.start:target.end+1]...)
-		if !targetReceivesPrivacyUsageDescriptionsConfig(targetLines) {
+		if !targetReceivesBackgroundModesConfig(targetLines) {
 			continue
 		}
 
-		nextTargetLines, _, err := syncTargetPrivacyUsageDescriptionsInfoPlistLines(
+		nextTargetLines, _, err := syncTargetBackgroundModesInfoPlistLines(
 			targetLines,
 			func(indent string) []string {
-				return renderPrivacyUsageDescriptionsInfoPlistLines(indent, cfg)
+				return renderBackgroundModesInfoPlistLines(indent, cfg)
 			},
 		)
 		if err != nil {
@@ -148,13 +142,9 @@ func syncProjectManifestPrivacyUsageDescriptionsConfigContent(content string, cf
 	return updated, updated != content, nil
 }
 
-func removeProjectManifestPrivacyUsageDescriptionsConfigEntries(lines []string) ([]string, error) {
+func removeProjectManifestBackgroundModesConfigEntries(lines []string) ([]string, error) {
 	keys := map[string]struct{}{
-		privacyBluetoothAlwaysUsageDescriptionInfoPlistKey:     {},
-		privacyBluetoothPeripheralUsageDescriptionInfoPlistKey: {},
-		privacyCameraUsageDescriptionInfoPlistKey:              {},
-		privacyMicrophoneUsageDescriptionInfoPlistKey:          {},
-		privacyLocalNetworkUsageDescriptionInfoPlistKey:        {},
+		backgroundModesInfoPlistKey: {},
 	}
 
 	filtered := make([]string, 0, len(lines))
@@ -177,7 +167,7 @@ func removeProjectManifestPrivacyUsageDescriptionsConfigEntries(lines []string) 
 	return filtered, nil
 }
 
-func syncTargetPrivacyUsageDescriptionsInfoPlistLines(
+func syncTargetBackgroundModesInfoPlistLines(
 	lines []string,
 	render infoPlistDictionaryRenderer,
 ) ([]string, bool, error) {
@@ -208,8 +198,13 @@ func syncTargetPrivacyUsageDescriptionsInfoPlistLines(
 	insertIndex := closeLine
 	insertIndent := leadingIndent(lines[closeLine]) + "    "
 	for index := withLine + 1; index < closeLine; index++ {
-		if strings.Contains(lines[index], `"`+presentationThemeInfoPlistKey+`":`) ||
+		if strings.Contains(lines[index], `"`+privacyBluetoothAlwaysUsageDescriptionInfoPlistKey+`":`) ||
+			strings.Contains(lines[index], `"`+privacyBluetoothPeripheralUsageDescriptionInfoPlistKey+`":`) ||
+			strings.Contains(lines[index], `"`+privacyCameraUsageDescriptionInfoPlistKey+`":`) ||
+			strings.Contains(lines[index], `"`+privacyMicrophoneUsageDescriptionInfoPlistKey+`":`) ||
+			strings.Contains(lines[index], `"`+presentationThemeInfoPlistKey+`":`) ||
 			strings.Contains(lines[index], `"`+presentationOrientationInfoPlistKey+`":`) ||
+			strings.Contains(lines[index], `"`+presentationIPadOrientationInfoPlistKey+`":`) ||
 			strings.Contains(lines[index], `"`+exportComplianceUsesNonExemptEncryptionInfoPlistKey+`":`) ||
 			strings.Contains(lines[index], `"ApplicationConfiguration":`) ||
 			strings.Contains(lines[index], `"AppGroups":`) ||
@@ -229,7 +224,7 @@ func syncTargetPrivacyUsageDescriptionsInfoPlistLines(
 	return updated, true, nil
 }
 
-func targetReceivesPrivacyUsageDescriptionsConfig(lines []string) bool {
+func targetReceivesBackgroundModesConfig(lines []string) bool {
 	for _, line := range lines {
 		if projectManifestAppProductPattern.MatchString(line) {
 			return true
@@ -238,24 +233,19 @@ func targetReceivesPrivacyUsageDescriptionsConfig(lines []string) bool {
 	return false
 }
 
-func renderPrivacyUsageDescriptionsInfoPlistLines(indent string, cfg config.ProjectConfig) []string {
-	lines := make([]string, 0, 5)
+func renderBackgroundModesInfoPlistLines(indent string, cfg config.ProjectConfig) []string {
+	modes := cfg.NormalizedBackgroundModes()
+	if len(modes) == 0 {
+		return nil
+	}
 
-	if value := strings.TrimSpace(cfg.PrivacyUsageDescriptions.BluetoothAlways); value != "" {
-		lines = append(lines, indent+strconv.Quote(privacyBluetoothAlwaysUsageDescriptionInfoPlistKey)+": .string("+strconv.Quote(value)+"),")
+	lines := []string{
+		indent + strconv.Quote(backgroundModesInfoPlistKey) + ": .array([",
 	}
-	if value := strings.TrimSpace(cfg.PrivacyUsageDescriptions.BluetoothPeripheral); value != "" {
-		lines = append(lines, indent+strconv.Quote(privacyBluetoothPeripheralUsageDescriptionInfoPlistKey)+": .string("+strconv.Quote(value)+"),")
+	for _, mode := range modes {
+		lines = append(lines, indent+"    .string("+strconv.Quote(mode)+"),")
 	}
-	if value := strings.TrimSpace(cfg.PrivacyUsageDescriptions.Camera); value != "" {
-		lines = append(lines, indent+strconv.Quote(privacyCameraUsageDescriptionInfoPlistKey)+": .string("+strconv.Quote(value)+"),")
-	}
-	if value := strings.TrimSpace(cfg.PrivacyUsageDescriptions.Microphone); value != "" {
-		lines = append(lines, indent+strconv.Quote(privacyMicrophoneUsageDescriptionInfoPlistKey)+": .string("+strconv.Quote(value)+"),")
-	}
-	if value := strings.TrimSpace(cfg.PrivacyUsageDescriptions.LocalNetwork); value != "" {
-		lines = append(lines, indent+strconv.Quote(privacyLocalNetworkUsageDescriptionInfoPlistKey)+": .string("+strconv.Quote(value)+"),")
-	}
+	lines = append(lines, indent+"]),")
 
 	return lines
 }

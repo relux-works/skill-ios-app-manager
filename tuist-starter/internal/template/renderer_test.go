@@ -158,6 +158,89 @@ func TestRendererRenderPresentationConfig(t *testing.T) {
 	}
 }
 
+func TestRendererRenderExplicitIPhoneOnlyPlatformDestinations(t *testing.T) {
+	t.Parallel()
+
+	iPadEnabled := false
+	cfg := loadConfigFixture(t, "minimal-config.json")
+	cfg.Theme = config.ThemeLight
+	cfg.Orientation = config.OrientationLandscape
+	cfg.Platforms = &config.PlatformDestinationsConfig{
+		IOS: config.PlatformDestinationConfig{
+			Orientation: config.OrientationPortrait,
+		},
+		IPad: config.PlatformDestinationConfig{
+			Enabled:     &iPadEnabled,
+			Orientation: config.OrientationLandscape,
+		},
+	}
+
+	rendered, err := NewRenderer(WithRootDir(t.TempDir())).Render(cfg)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	projectSwift := rendered["Project.swift"]
+	for _, want := range []string{
+		`destinations: [.iPhone],`,
+		`EntitlementsFactory.make(hostBundleId: bundleID, destinations: [.iPhone], capabilities: AppCapabilities.app)`,
+		`"UIUserInterfaceStyle": .string("Light")`,
+		`"UISupportedInterfaceOrientations": .array([`,
+		`.string("UIInterfaceOrientationPortrait")`,
+	} {
+		if !strings.Contains(projectSwift, want) {
+			t.Fatalf("Project.swift missing %q:\n%s", want, projectSwift)
+		}
+	}
+	for _, omitted := range []string{
+		`destinations: .iOS,`,
+		`"UISupportedInterfaceOrientations~ipad"`,
+		`UIInterfaceOrientationLandscapeLeft`,
+	} {
+		if strings.Contains(projectSwift, omitted) {
+			t.Fatalf("Project.swift should omit %q:\n%s", omitted, projectSwift)
+		}
+	}
+}
+
+func TestRendererRenderExplicitIPhoneIPadAndMacDesignedPlatformDestinations(t *testing.T) {
+	t.Parallel()
+
+	iPadEnabled := true
+	macWithIPadDesign := true
+	cfg := loadConfigFixture(t, "minimal-config.json")
+	cfg.Platforms = &config.PlatformDestinationsConfig{
+		IOS: config.PlatformDestinationConfig{
+			Orientation:       config.OrientationPortrait,
+			MacWithIPadDesign: &macWithIPadDesign,
+		},
+		IPad: config.PlatformDestinationConfig{
+			Enabled:     &iPadEnabled,
+			Orientation: config.OrientationLandscape,
+		},
+	}
+
+	rendered, err := NewRenderer(WithRootDir(t.TempDir())).Render(cfg)
+	if err != nil {
+		t.Fatalf("Render() error = %v", err)
+	}
+
+	projectSwift := rendered["Project.swift"]
+	for _, want := range []string{
+		`destinations: [.iPhone, .iPad, .macWithiPadDesign],`,
+		`EntitlementsFactory.make(hostBundleId: bundleID, destinations: [.iPhone, .iPad, .macWithiPadDesign], capabilities: AppCapabilities.app)`,
+		`"UISupportedInterfaceOrientations": .array([`,
+		`.string("UIInterfaceOrientationPortrait")`,
+		`"UISupportedInterfaceOrientations~ipad": .array([`,
+		`.string("UIInterfaceOrientationLandscapeLeft")`,
+		`.string("UIInterfaceOrientationLandscapeRight")`,
+	} {
+		if !strings.Contains(projectSwift, want) {
+			t.Fatalf("Project.swift missing %q:\n%s", want, projectSwift)
+		}
+	}
+}
+
 func TestRendererRenderExportComplianceConfig(t *testing.T) {
 	t.Parallel()
 
@@ -183,6 +266,9 @@ func TestRendererRenderPrivacyUsageDescriptionsConfig(t *testing.T) {
 	cfg.PrivacyUsageDescriptions = config.PrivacyUsageDescriptionsConfig{
 		BluetoothAlways:     "Find nearby transfer receivers.",
 		BluetoothPeripheral: "Advertise nearby transfer availability.",
+		Camera:              "Join video calls.",
+		Microphone:          "Join audio calls.",
+		LocalNetwork:        "Connect calls on the local network when available.",
 	}
 
 	rendered, err := NewRenderer(WithRootDir(t.TempDir())).Render(cfg)
@@ -194,6 +280,9 @@ func TestRendererRenderPrivacyUsageDescriptionsConfig(t *testing.T) {
 	for _, want := range []string{
 		`"NSBluetoothAlwaysUsageDescription": .string("Find nearby transfer receivers.")`,
 		`"NSBluetoothPeripheralUsageDescription": .string("Advertise nearby transfer availability.")`,
+		`"NSCameraUsageDescription": .string("Join video calls.")`,
+		`"NSMicrophoneUsageDescription": .string("Join audio calls.")`,
+		`"NSLocalNetworkUsageDescription": .string("Connect calls on the local network when available.")`,
 	} {
 		if !strings.Contains(projectSwift, want) {
 			t.Fatalf("Project.swift missing privacy usage description %q:\n%s", want, projectSwift)

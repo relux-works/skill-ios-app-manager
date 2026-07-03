@@ -129,6 +129,7 @@ func (r *Renderer) renderTemplate(templateName string, data rendererTemplateData
 			"presentationInfoPlistLines":            presentationInfoPlistLines,
 			"projectBuildSetting":                   projectBuildSetting,
 			"swiftLiteral":                          swiftLiteral,
+			"targetDestinationsExpression":          TargetDestinationsExpression,
 		}).
 		ParseFS(templatesFS, templatePath)
 	if err != nil {
@@ -199,6 +200,9 @@ func normalizeProjectConfig(cfg config.ProjectConfig) config.ProjectConfig {
 	out.BackgroundModes = normalizeStringSlice(out.BackgroundModes)
 	out.PrivacyUsageDescriptions.BluetoothAlways = strings.TrimSpace(out.PrivacyUsageDescriptions.BluetoothAlways)
 	out.PrivacyUsageDescriptions.BluetoothPeripheral = strings.TrimSpace(out.PrivacyUsageDescriptions.BluetoothPeripheral)
+	out.PrivacyUsageDescriptions.Camera = strings.TrimSpace(out.PrivacyUsageDescriptions.Camera)
+	out.PrivacyUsageDescriptions.Microphone = strings.TrimSpace(out.PrivacyUsageDescriptions.Microphone)
+	out.PrivacyUsageDescriptions.LocalNetwork = strings.TrimSpace(out.PrivacyUsageDescriptions.LocalNetwork)
 	out.Configurations = normalizeConfigurations(out.Configurations)
 	out.ModulesPath = normalizeModulesPath(out.ModulesPath)
 	out.ProjectSettings.Swift.LanguageMode = strings.TrimSpace(out.ProjectSettings.Swift.LanguageMode)
@@ -258,6 +262,45 @@ func swiftLiteral(value string) string {
 
 func projectBuildSetting(key, value string) string {
 	return fmt.Sprintf(`"%s": %s,`, key, strconv.Quote(value))
+}
+
+func TargetDestinationsExpression(value any) string {
+	cfg := projectConfigFromTemplateValue(value)
+	if !cfg.UsesExplicitPlatformDestinations() {
+		return ".iOS"
+	}
+
+	destinations := make([]string, 0, 3)
+	if cfg.IOSTargetEnabled() {
+		destinations = append(destinations, ".iPhone")
+	}
+	if cfg.IPadTargetEnabled() {
+		destinations = append(destinations, ".iPad")
+	}
+	if cfg.MacWithIPadDesignTargetEnabled() {
+		destinations = append(destinations, ".macWithiPadDesign")
+	}
+	if len(destinations) == 0 {
+		destinations = append(destinations, ".iPhone")
+	}
+
+	return "[" + strings.Join(destinations, ", ") + "]"
+}
+
+func projectConfigFromTemplateValue(value any) config.ProjectConfig {
+	switch typed := value.(type) {
+	case config.ProjectConfig:
+		return typed
+	case rendererTemplateData:
+		return typed.ProjectConfig
+	case *rendererTemplateData:
+		if typed == nil {
+			return config.ProjectConfig{}
+		}
+		return typed.ProjectConfig
+	default:
+		return config.ProjectConfig{}
+	}
 }
 
 func packageBuildSetting(key, value string) string {

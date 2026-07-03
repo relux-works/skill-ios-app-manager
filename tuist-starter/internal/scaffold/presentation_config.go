@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	presentationThemeInfoPlistKey       = "UIUserInterfaceStyle"
-	presentationOrientationInfoPlistKey = "UISupportedInterfaceOrientations"
+	presentationThemeInfoPlistKey           = "UIUserInterfaceStyle"
+	presentationOrientationInfoPlistKey     = "UISupportedInterfaceOrientations"
+	presentationIPadOrientationInfoPlistKey = "UISupportedInterfaceOrientations~ipad"
 )
 
 var projectManifestAppProductPattern = regexp.MustCompile(`product:\s*\.app\s*[,)]`)
@@ -150,8 +151,9 @@ func syncProjectManifestPresentationConfigContent(content string, cfg config.Pro
 
 func removeProjectManifestPresentationConfigEntries(lines []string) ([]string, error) {
 	keys := map[string]struct{}{
-		presentationThemeInfoPlistKey:       {},
-		presentationOrientationInfoPlistKey: {},
+		presentationThemeInfoPlistKey:           {},
+		presentationOrientationInfoPlistKey:     {},
+		presentationIPadOrientationInfoPlistKey: {},
 	}
 
 	filtered := make([]string, 0, len(lines))
@@ -243,7 +245,7 @@ func targetReceivesPresentationConfig(lines []string) bool {
 }
 
 func renderPresentationInfoPlistLines(indent string, cfg config.ProjectConfig) []string {
-	lines := make([]string, 0, 6)
+	lines := make([]string, 0, 10)
 
 	switch strings.ToLower(strings.TrimSpace(cfg.Theme)) {
 	case config.ThemeLight:
@@ -252,16 +254,31 @@ func renderPresentationInfoPlistLines(indent string, cfg config.ProjectConfig) [
 		lines = append(lines, indent+strconv.Quote(presentationThemeInfoPlistKey)+": .string("+strconv.Quote("Dark")+"),")
 	}
 
-	switch strings.ToLower(strings.TrimSpace(cfg.Orientation)) {
+	if !cfg.UsesExplicitPlatformDestinations() {
+		return appendPresentationOrientationInfoPlistLines(lines, indent, presentationOrientationInfoPlistKey, cfg.Orientation)
+	}
+
+	if cfg.IOSTargetEnabled() {
+		lines = appendPresentationOrientationInfoPlistLines(lines, indent, presentationOrientationInfoPlistKey, cfg.IOSTargetOrientation())
+	}
+	if cfg.IPadTargetEnabled() {
+		lines = appendPresentationOrientationInfoPlistLines(lines, indent, presentationIPadOrientationInfoPlistKey, cfg.IPadTargetOrientation())
+	}
+
+	return lines
+}
+
+func appendPresentationOrientationInfoPlistLines(lines []string, indent string, key string, orientation string) []string {
+	switch strings.ToLower(strings.TrimSpace(orientation)) {
 	case config.OrientationPortrait:
-		lines = append(lines,
-			indent+strconv.Quote(presentationOrientationInfoPlistKey)+": .array([",
+		return append(lines,
+			indent+strconv.Quote(key)+": .array([",
 			indent+"    .string("+strconv.Quote("UIInterfaceOrientationPortrait")+"),",
 			indent+"]),",
 		)
 	case config.OrientationLandscape:
-		lines = append(lines,
-			indent+strconv.Quote(presentationOrientationInfoPlistKey)+": .array([",
+		return append(lines,
+			indent+strconv.Quote(key)+": .array([",
 			indent+"    .string("+strconv.Quote("UIInterfaceOrientationLandscapeLeft")+"),",
 			indent+"    .string("+strconv.Quote("UIInterfaceOrientationLandscapeRight")+"),",
 			indent+"]),",

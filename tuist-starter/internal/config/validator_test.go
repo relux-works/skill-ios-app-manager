@@ -115,8 +115,15 @@ func TestProjectConfigValidateInvalidFormatsAllReturned(t *testing.T) {
 }
 
 func TestValidateBackgroundModes(t *testing.T) {
+	t.Parallel()
+
 	cfg := validProjectConfig()
-	cfg.BackgroundModes = []string{"audio", "voip", "push-to-talk"}
+	cfg.BackgroundModes = []string{
+		BackgroundModeAudio,
+		BackgroundModeRemoteNotification,
+		BackgroundModeVoIP,
+		"push-to-talk",
+	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatalf("Validate() with allowed background modes error = %v", err)
 	}
@@ -128,5 +135,67 @@ func TestValidateBackgroundModes(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "BackgroundModes[1]") {
 		t.Fatalf("expected BackgroundModes[1] in error, got %v", err)
+	}
+}
+
+func TestProjectConfigValidateInvalidPlatformDestinations(t *testing.T) {
+	t.Parallel()
+
+	iosEnabled := false
+	iPadEnabled := false
+	macWithIPadDesign := true
+	cfg := validProjectConfig()
+	cfg.Platforms = &PlatformDestinationsConfig{
+		IOS: PlatformDestinationConfig{
+			Enabled:           &iosEnabled,
+			Orientation:       "sideways",
+			MacWithIPadDesign: &macWithIPadDesign,
+		},
+		IPad: PlatformDestinationConfig{
+			Enabled:     &iPadEnabled,
+			Orientation: "upside-down",
+		},
+	}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("Validate() error = nil, want validation errors")
+	}
+
+	msg := err.Error()
+	wantIssues := []string{
+		"Platforms.IOS.Orientation must be automatic, portrait, or landscape",
+		"Platforms.IPad.Orientation must be automatic, portrait, or landscape",
+		"Platforms must enable at least one destination",
+		"Platforms.IOS.MacWithIPadDesign requires Platforms.IOS.Enabled",
+	}
+	for _, want := range wantIssues {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("Validate() error = %q, want %q", msg, want)
+		}
+	}
+}
+
+func TestProjectConfigValidateInvalidBackgroundModes(t *testing.T) {
+	t.Parallel()
+
+	cfg := validProjectConfig()
+	cfg.BackgroundModes = []string{BackgroundModeAudio, "definitely-not-a-mode", ""}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("Validate() error = nil, want validation errors")
+	}
+
+	msg := err.Error()
+	wantIssues := []string{
+		"BackgroundModes[1]",
+		"BackgroundModes[2]",
+		"is not a UIBackgroundModes value",
+	}
+	for _, want := range wantIssues {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("Validate() error = %q, want %q", msg, want)
+		}
 	}
 }

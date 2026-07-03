@@ -54,6 +54,16 @@ func (c ProjectConfig) Validate() error {
 	default:
 		issues = append(issues, "Orientation must be automatic, portrait, or landscape")
 	}
+	if c.Platforms != nil {
+		validatePlatformDestination(c.Platforms.IOS, "Platforms.IOS", &issues)
+		validatePlatformDestination(c.Platforms.IPad, "Platforms.IPad", &issues)
+		if !c.IOSTargetEnabled() && !c.IPadTargetEnabled() {
+			issues = append(issues, "Platforms must enable at least one destination")
+		}
+		if !c.IOSTargetEnabled() && c.Platforms.IOS.MacWithIPadDesign != nil && *c.Platforms.IOS.MacWithIPadDesign {
+			issues = append(issues, "Platforms.IOS.MacWithIPadDesign requires Platforms.IOS.Enabled")
+		}
+	}
 	if value := strings.TrimSpace(c.ProjectSettings.Swift.LanguageMode); value != "" && !languageModePattern.MatchString(value) {
 		issues = append(issues, "ProjectSettings.Swift.LanguageMode must use SwiftPM format (e.g. v6)")
 	}
@@ -114,13 +124,24 @@ func (c ProjectConfig) Validate() error {
 }
 
 func isAllowedBackgroundMode(mode string) bool {
-	trimmed := strings.TrimSpace(mode)
+	trimmed := strings.ToLower(strings.TrimSpace(mode))
+	if trimmed == "" {
+		return false
+	}
 	for _, allowed := range AllowedBackgroundModes {
 		if trimmed == allowed {
 			return true
 		}
 	}
 	return false
+}
+
+func validatePlatformDestination(destination PlatformDestinationConfig, fieldName string, issues *[]string) {
+	switch value := strings.ToLower(strings.TrimSpace(destination.Orientation)); value {
+	case "", OrientationAutomatic, OrientationPortrait, OrientationLandscape:
+	default:
+		*issues = append(*issues, fmt.Sprintf("%s.Orientation must be automatic, portrait, or landscape", fieldName))
+	}
 }
 
 func requiredString(value string, fieldName string, issues *[]string) {

@@ -21,9 +21,12 @@ func runGenerateProjectConfig(input GenerateInput) (GenerateResult, error) {
 	}
 
 	leafRuns := []leafRun{
+		{name: "bundle-id", run: runGenerateBundleID},
 		{name: "versions", run: runGenerateVersions},
 		{name: "min-target", run: runGenerateMinTarget},
 		{name: "team-id", run: runGenerateTeamID},
+		{name: "platform-destinations", run: runGeneratePlatformDestinations},
+		{name: "background-modes-config", run: runGenerateBackgroundModesConfig},
 		{name: "presentation-config", run: runGeneratePresentationConfig},
 		{name: "export-compliance-config", run: runGenerateExportComplianceConfig},
 		{name: "privacy-usage-descriptions-config", run: runGeneratePrivacyUsageDescriptionsConfig},
