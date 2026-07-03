@@ -14,7 +14,8 @@ const usageGuide = `## Usage
     ios-app-manager app-intents setup --yes
 
   This creates:
-    - <AppName>WidgetToggleIntent.swift — sample AppIntent with shared state mutation
+    - <AppName>WidgetToggleIntent.swift in <AppName>WidgetCore
+      — sample AppIntent with shared state mutation
 
   It also adds AppIntents SDK to the widget extension dependencies.`
 
@@ -53,14 +54,14 @@ func planSetup(input registry.SetupInput) (string, error) {
 	plan := fmt.Sprintf(`## App Intents Setup Plan
 
   Create:
-    Extensions/%s/Sources/%sWidgetToggleIntent.swift
+    Extensions/%s/%sCore/Sources/%sWidgetToggleIntent.swift
       — sample AppIntent: toggles shared state via App Groups UserDefaults
 
   Patch:
     Extensions/%s/Project.swift
       — add AppIntents SDK dependency
 
-  App: %s`, widgetTargetName, appTypeName, widgetTargetName, input.AppName)
+  App: %s`, widgetTargetName, widgetTargetName, appTypeName, widgetTargetName, input.AppName)
 
 	return plan, nil
 }

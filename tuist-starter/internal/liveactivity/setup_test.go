@@ -60,7 +60,7 @@ func TestSetupCreatesLiveActivityFilesAndPatches(t *testing.T) {
 	}
 
 	attributesPath := filepath.Join(projectRoot, "Packages", "SharedKit", "Sources", "DemoAppActivityAttributes.swift")
-	widgetPath := filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources", "DemoAppLiveActivityWidget.swift")
+	widgetPath := filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "DemoAppWidgetCore", "Sources", "DemoAppLiveActivityWidget.swift")
 	managerPath := filepath.Join(projectRoot, "Targets", "DemoApp", "Sources", "LiveActivityManager.swift")
 
 	requireFile(t, attributesPath)
@@ -70,6 +70,9 @@ func TestSetupCreatesLiveActivityFilesAndPatches(t *testing.T) {
 	// ActivityAttributes must be generated in SharedKit, not in widget extension.
 	if _, err := os.Stat(filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources", "DemoAppActivityAttributes.swift")); err == nil {
 		t.Fatal("ActivityAttributes unexpectedly generated in widget extension Sources/")
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources", "DemoAppLiveActivityWidget.swift")); err == nil {
+		t.Fatal("Live Activity widget unexpectedly generated in widget extension Sources/")
 	}
 
 	attributes := readFile(t, attributesPath)
@@ -86,6 +89,9 @@ func TestSetupCreatesLiveActivityFilesAndPatches(t *testing.T) {
 	widget := readFile(t, widgetPath)
 	for _, want := range []string{
 		"import SharedKit",
+		"public struct DemoAppLiveActivityWidget: Widget",
+		"public init() {}",
+		"public var body: some WidgetConfiguration",
 		"ActivityConfiguration(for: DemoAppActivityAttributes.self)",
 		"DynamicIsland",
 	} {
@@ -124,8 +130,13 @@ func TestSetupCreatesLiveActivityFilesAndPatches(t *testing.T) {
 	}
 
 	widgetBundle := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources", "DemoAppWidgetBundle.swift"))
-	if !strings.Contains(widgetBundle, "DemoAppLiveActivityWidget()") {
-		t.Fatalf("WidgetBundle missing Live Activity widget registration:\n%s", widgetBundle)
+	for _, want := range []string{
+		"import DemoAppWidgetCore",
+		"DemoAppLiveActivityWidget()",
+	} {
+		if !strings.Contains(widgetBundle, want) {
+			t.Fatalf("WidgetBundle missing %q:\n%s", want, widgetBundle)
+		}
 	}
 }
 
@@ -167,6 +178,9 @@ func TestSetupIdempotent(t *testing.T) {
 	widgetBundle := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources", "DemoAppWidgetBundle.swift"))
 	if got := strings.Count(widgetBundle, "DemoAppLiveActivityWidget()"); got != 1 {
 		t.Fatalf("WidgetBundle registration appears %d times, want 1:\n%s", got, widgetBundle)
+	}
+	if got := strings.Count(widgetBundle, "import DemoAppWidgetCore"); got != 1 {
+		t.Fatalf("WidgetBundle Core import appears %d times, want 1:\n%s", got, widgetBundle)
 	}
 }
 
@@ -219,7 +233,7 @@ func TestGoldenActivityConfigurationTemplate(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	widget := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources", "DemoAppLiveActivityWidget.swift"))
+	widget := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "DemoAppWidgetCore", "Sources", "DemoAppLiveActivityWidget.swift"))
 	testutil.AssertGoldenFile(t, "liveactivity/activity_configuration", widget)
 }
 

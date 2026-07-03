@@ -14,12 +14,12 @@ const usageGuide = `## Usage
     ios-app-manager static-widget setup --yes
 
   This creates:
-    - <AppName>Widget.swift with StaticConfiguration
-    - <AppName>TimelineProvider.swift for placeholder/snapshot/timeline
-    - <AppName>TimelineEntry.swift timeline entry model
-    - <AppName>WidgetView.swift SwiftUI widget view
+    - <AppName>Widget.swift with StaticConfiguration in <AppName>WidgetCore
+    - <AppName>TimelineProvider.swift for placeholder/snapshot/timeline in <AppName>WidgetCore
+    - <AppName>TimelineEntry.swift timeline entry model in <AppName>WidgetCore
+    - <AppName>WidgetView.swift SwiftUI widget view in <AppName>WidgetCore
 
-  It also patches WidgetBundle to register the new static widget.`
+  It also patches WidgetBundle to import Core and register the new static widget.`
 
 func init() {
 	registry.Register(&registry.Module{
@@ -57,20 +57,20 @@ func planSetup(input registry.SetupInput) (string, error) {
 	plan := fmt.Sprintf(`## Static Widget Setup Plan
 
   Create:
-    Extensions/%s/Sources/%sWidget.swift
+    Extensions/%s/%sCore/Sources/%sWidget.swift
       — Widget struct with StaticConfiguration
-    Extensions/%s/Sources/%sTimelineProvider.swift
+    Extensions/%s/%sCore/Sources/%sTimelineProvider.swift
       — TimelineProvider implementation (placeholder/snapshot/timeline)
-    Extensions/%s/Sources/%sTimelineEntry.swift
+    Extensions/%s/%sCore/Sources/%sTimelineEntry.swift
       — timeline entry model (date + sample data)
-    Extensions/%s/Sources/%sWidgetView.swift
+    Extensions/%s/%sCore/Sources/%sWidgetView.swift
       — SwiftUI view for widget entry rendering
 
   Patch:
     Extensions/%s/Sources/%sBundle.swift
-      — register %sWidget() in WidgetBundle body
+      — import %sCore and register %sWidget() in WidgetBundle body
 
-  App: %s`, widgetTargetName, appTypeName, widgetTargetName, appTypeName, widgetTargetName, appTypeName, widgetTargetName, appTypeName, widgetTargetName, widgetTargetName, appTypeName, input.AppName)
+  App: %s`, widgetTargetName, widgetTargetName, appTypeName, widgetTargetName, widgetTargetName, appTypeName, widgetTargetName, widgetTargetName, appTypeName, widgetTargetName, widgetTargetName, appTypeName, widgetTargetName, widgetTargetName, widgetTargetName, appTypeName, input.AppName)
 
 	return plan, nil
 }

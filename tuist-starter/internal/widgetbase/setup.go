@@ -34,7 +34,8 @@ type SetupInput struct {
 }
 
 type widgetBundleTemplateData struct {
-	AppTypeName string
+	AppTypeName     string
+	CorePackageName string
 }
 
 // Setup creates the base WidgetKit extension scaffold and wires it into the host app.
@@ -73,7 +74,8 @@ func Setup(input SetupInput) error {
 		appTypeName+widgetExtensionSuffix+"Bundle.swift",
 	)
 	if err := renderTemplate("widget_bundle.swift.tmpl", widgetBundlePath, widgetBundleTemplateData{
-		AppTypeName: appTypeName,
+		AppTypeName:     appTypeName,
+		CorePackageName: widgetTargetName + "Core",
 	}); err != nil {
 		return fmt.Errorf("render widget bundle: %w", err)
 	}

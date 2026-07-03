@@ -15,6 +15,7 @@ const usageGuide = `## Usage
 
   This creates:
     - Extensions/<AppName>Widget app-extension target
+    - Extensions/<AppName>Widget/<AppName>WidgetCore package for widget internals
     - <AppName>WidgetBundle.swift @main entry point
 
   Additional widget modules (static/configurable/live activity) can append
@@ -57,15 +58,17 @@ func planSetup(input registry.SetupInput) (string, error) {
   Create:
     Extensions/%s/
       Project.swift                      — WidgetKit extension target
+      %sCore/Package.swift               — testable widget Core package
       Sources/%sWidgetBundle.swift       — @main WidgetBundle entry point
 
   Patch:
     Extensions/%s/Project.swift         — add WidgetKit dependency + App Groups entitlement
+    Package.swift                        — add extension Core package path
     Project.swift                        — embed widget extension in host app target
     Workspace.swift                      — add extension project path
     Tuist/ProjectDescriptionHelpers/AppCapabilities.swift — ensure app group capability
 
-  App: %s`, widgetTargetName, appTypeName, widgetTargetName, input.AppName)
+  App: %s`, widgetTargetName, widgetTargetName, appTypeName, widgetTargetName, input.AppName)
 
 	return plan, nil
 }

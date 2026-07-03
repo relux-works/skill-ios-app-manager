@@ -3,8 +3,10 @@ import SharedKit
 import SwiftUI
 import WidgetKit
 
-struct DemoAppLiveActivityWidget: Widget {
-    var body: some WidgetConfiguration {
+public struct DemoAppLiveActivityWidget: Widget {
+    public init() {}
+
+    public var body: some WidgetConfiguration {
         ActivityConfiguration(for: DemoAppActivityAttributes.self) { context in
             VStack(alignment: .leading, spacing: 8) {
                 Text(context.state.title)
@@ -45,4 +47,3 @@ struct DemoAppLiveActivityWidget: Widget {
         "\(Int((progress * 100).rounded()))%"
     }
 }
-

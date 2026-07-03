@@ -61,10 +61,11 @@ func TestSetupCreatesStaticWidgetFilesAndRegistersWidget(t *testing.T) {
 	}
 
 	widgetSourcesDir := filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources")
-	widgetPath := filepath.Join(widgetSourcesDir, "DemoAppWidget.swift")
-	providerPath := filepath.Join(widgetSourcesDir, "DemoAppTimelineProvider.swift")
-	entryPath := filepath.Join(widgetSourcesDir, "DemoAppTimelineEntry.swift")
-	viewPath := filepath.Join(widgetSourcesDir, "DemoAppWidgetView.swift")
+	widgetCoreSourcesDir := filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "DemoAppWidgetCore", "Sources")
+	widgetPath := filepath.Join(widgetCoreSourcesDir, "DemoAppWidget.swift")
+	providerPath := filepath.Join(widgetCoreSourcesDir, "DemoAppTimelineProvider.swift")
+	entryPath := filepath.Join(widgetCoreSourcesDir, "DemoAppTimelineEntry.swift")
+	viewPath := filepath.Join(widgetCoreSourcesDir, "DemoAppWidgetView.swift")
 
 	requireFile(t, widgetPath)
 	requireFile(t, providerPath)
@@ -73,8 +74,10 @@ func TestSetupCreatesStaticWidgetFilesAndRegistersWidget(t *testing.T) {
 
 	widget := readFile(t, widgetPath)
 	for _, want := range []string{
-		"struct DemoAppWidget: Widget",
-		`let kind: String = "DemoAppWidget"`,
+		"public struct DemoAppWidget: Widget",
+		`private let kind: String = "DemoAppWidget"`,
+		"public init() {}",
+		"public var body: some WidgetConfiguration",
 		"StaticConfiguration(kind: kind, provider: DemoAppTimelineProvider())",
 		"DemoAppWidgetView(entry: entry)",
 		`.configurationDisplayName("DemoApp")`,
@@ -87,11 +90,12 @@ func TestSetupCreatesStaticWidgetFilesAndRegistersWidget(t *testing.T) {
 
 	provider := readFile(t, providerPath)
 	for _, want := range []string{
-		"struct DemoAppTimelineProvider: TimelineProvider",
+		"public struct DemoAppTimelineProvider: TimelineProvider",
 		`UserDefaults(suiteName: "group.com.demo.shared")`,
-		"func placeholder(in context: Context) -> DemoAppTimelineEntry",
-		"func getSnapshot(in context: Context, completion: @escaping (DemoAppTimelineEntry) -> Void)",
-		"func getTimeline(in context: Context, completion: @escaping (Timeline<DemoAppTimelineEntry>) -> Void)",
+		"public init() {}",
+		"public func placeholder(in context: Context) -> DemoAppTimelineEntry",
+		"public func getSnapshot(in context: Context, completion: @escaping (DemoAppTimelineEntry) -> Void)",
+		"public func getTimeline(in context: Context, completion: @escaping (Timeline<DemoAppTimelineEntry>) -> Void)",
 	} {
 		if !strings.Contains(provider, want) {
 			t.Fatalf("DemoAppTimelineProvider.swift missing %q:\n%s", want, provider)
@@ -100,10 +104,11 @@ func TestSetupCreatesStaticWidgetFilesAndRegistersWidget(t *testing.T) {
 
 	entry := readFile(t, entryPath)
 	for _, want := range []string{
-		"struct DemoAppTimelineEntry: TimelineEntry",
-		"let date: Date",
-		"let title: String",
-		"let isToggled: Bool",
+		"public struct DemoAppTimelineEntry: TimelineEntry",
+		"public let date: Date",
+		"public let title: String",
+		"public let isToggled: Bool",
+		"public init(date: Date, title: String, isToggled: Bool)",
 	} {
 		if !strings.Contains(entry, want) {
 			t.Fatalf("DemoAppTimelineEntry.swift missing %q:\n%s", want, entry)
@@ -113,8 +118,10 @@ func TestSetupCreatesStaticWidgetFilesAndRegistersWidget(t *testing.T) {
 	view := readFile(t, viewPath)
 	for _, want := range []string{
 		"import AppIntents",
-		"struct DemoAppWidgetView: View",
+		"public struct DemoAppWidgetView: View",
 		"let entry: DemoAppTimelineEntry",
+		"public init(entry: DemoAppTimelineEntry)",
+		"public var body: some View",
 		"Text(entry.title)",
 		"Text(entry.date, style: .time)",
 		"Button(intent: DemoAppWidgetToggleIntent())",
@@ -126,8 +133,13 @@ func TestSetupCreatesStaticWidgetFilesAndRegistersWidget(t *testing.T) {
 	}
 
 	widgetBundle := readFile(t, filepath.Join(widgetSourcesDir, "DemoAppWidgetBundle.swift"))
-	if !strings.Contains(widgetBundle, "DemoAppWidget()") {
-		t.Fatalf("WidgetBundle missing static widget registration:\n%s", widgetBundle)
+	for _, want := range []string{
+		"import DemoAppWidgetCore",
+		"DemoAppWidget()",
+	} {
+		if !strings.Contains(widgetBundle, want) {
+			t.Fatalf("WidgetBundle missing %q:\n%s", want, widgetBundle)
+		}
 	}
 }
 
@@ -156,6 +168,9 @@ func TestSetupIsIdempotent(t *testing.T) {
 	if got := strings.Count(widgetBundle, "DemoAppWidget()"); got != 1 {
 		t.Fatalf("WidgetBundle registration appears %d times, want 1:\n%s", got, widgetBundle)
 	}
+	if got := strings.Count(widgetBundle, "import DemoAppWidgetCore"); got != 1 {
+		t.Fatalf("WidgetBundle Core import appears %d times, want 1:\n%s", got, widgetBundle)
+	}
 }
 
 func TestGoldenStaticWidgetTemplate(t *testing.T) {
@@ -171,7 +186,7 @@ func TestGoldenStaticWidgetTemplate(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	widget := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources", "DemoAppWidget.swift"))
+	widget := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "DemoAppWidgetCore", "Sources", "DemoAppWidget.swift"))
 	testutil.AssertGoldenFile(t, "staticwidget/static_widget", widget)
 }
 
@@ -188,7 +203,7 @@ func TestGoldenTimelineProviderTemplate(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	provider := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources", "DemoAppTimelineProvider.swift"))
+	provider := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "DemoAppWidgetCore", "Sources", "DemoAppTimelineProvider.swift"))
 	testutil.AssertGoldenFile(t, "staticwidget/timeline_provider", provider)
 }
 
@@ -205,7 +220,7 @@ func TestGoldenTimelineEntryTemplate(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	entry := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources", "DemoAppTimelineEntry.swift"))
+	entry := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "DemoAppWidgetCore", "Sources", "DemoAppTimelineEntry.swift"))
 	testutil.AssertGoldenFile(t, "staticwidget/timeline_entry", entry)
 }
 
@@ -222,7 +237,7 @@ func TestGoldenWidgetViewTemplate(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	view := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources", "DemoAppWidgetView.swift"))
+	view := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "DemoAppWidgetCore", "Sources", "DemoAppWidgetView.swift"))
 	testutil.AssertGoldenFile(t, "staticwidget/widget_view", view)
 }
 

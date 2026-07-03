@@ -165,6 +165,7 @@ func TestMakeAppExtensionProjectCreatesScaffold(t *testing.T) {
 	t.Parallel()
 
 	projectRoot := t.TempDir()
+	setupProjectFiles(t, projectRoot, "Packages", false)
 	writeConfigFile(t, projectRoot, config.ProjectConfig{
 		AppName:          "DemoApp",
 		BundleID:         "com.demo.app",
@@ -191,6 +192,9 @@ func TestMakeAppExtensionProjectCreatesScaffold(t *testing.T) {
 	requireDir(t, filepath.Join(extensionRoot, "Sources"))
 	requireFile(t, filepath.Join(extensionRoot, "Project.swift"))
 	requireFile(t, filepath.Join(extensionRoot, "Sources", "WidgetExtension.swift"))
+	requireFile(t, filepath.Join(extensionRoot, "WidgetExtensionCore", "Package.swift"))
+	requireFile(t, filepath.Join(extensionRoot, "WidgetExtensionCore", "Sources", "WidgetExtensionCore.swift"))
+	requireFile(t, filepath.Join(extensionRoot, "WidgetExtensionCore", "Tests", "WidgetExtensionCoreTests", "WidgetExtensionCoreTests.swift"))
 
 	projectSwift := readFile(t, filepath.Join(extensionRoot, "Project.swift"))
 	for _, want := range []string{
@@ -224,10 +228,60 @@ func TestMakeAppExtensionProjectCreatesScaffold(t *testing.T) {
 		`"SWIFT_UPCOMING_FEATURE_NONISOLATED_NONSENDING_BY_DEFAULT": "YES"`,
 		`"MARKETING_VERSION": .string(marketingVersion)`,
 		`"CURRENT_PROJECT_VERSION": .string(currentProjectVersion)`,
+		`.external(name: "WidgetExtensionCore")`,
 	} {
 		if !strings.Contains(projectSwift, want) {
 			t.Fatalf("Project.swift missing %q:\n%s", want, projectSwift)
 		}
+	}
+
+	extensionSource := readFile(t, filepath.Join(extensionRoot, "Sources", "WidgetExtension.swift"))
+	for _, want := range []string{
+		`import WidgetExtensionCore`,
+		`public enum WidgetExtensionEntryPoint`,
+		`public static let core = WidgetExtensionCore.self`,
+	} {
+		if !strings.Contains(extensionSource, want) {
+			t.Fatalf("extension source missing %q:\n%s", want, extensionSource)
+		}
+	}
+
+	corePackageSwift := readFile(t, filepath.Join(extensionRoot, "WidgetExtensionCore", "Package.swift"))
+	for _, want := range []string{
+		`name: "WidgetExtensionCore"`,
+		`.library(name: "WidgetExtensionCore", type: .dynamic, targets: ["WidgetExtensionCore"])`,
+		`.target(`,
+		`name: "WidgetExtensionCore"`,
+		`.testTarget(`,
+		`name: "WidgetExtensionCoreTests"`,
+		`dependencies: ["WidgetExtensionCore"]`,
+		`.swiftLanguageMode(.v6)`,
+	} {
+		if !strings.Contains(corePackageSwift, want) {
+			t.Fatalf("Core Package.swift missing %q:\n%s", want, corePackageSwift)
+		}
+	}
+
+	coreSource := readFile(t, filepath.Join(extensionRoot, "WidgetExtensionCore", "Sources", "WidgetExtensionCore.swift"))
+	if !strings.Contains(coreSource, "public enum WidgetExtensionCore {}") {
+		t.Fatalf("Core source missing namespace:\n%s", coreSource)
+	}
+
+	coreTests := readFile(t, filepath.Join(extensionRoot, "WidgetExtensionCore", "Tests", "WidgetExtensionCoreTests", "WidgetExtensionCoreTests.swift"))
+	for _, want := range []string{
+		"import Testing",
+		"@testable import WidgetExtensionCore",
+		"@Suite",
+		"#expect(true)",
+	} {
+		if !strings.Contains(coreTests, want) {
+			t.Fatalf("Core tests missing %q:\n%s", want, coreTests)
+		}
+	}
+
+	rootPackage := readFile(t, filepath.Join(projectRoot, "Package.swift"))
+	if !strings.Contains(rootPackage, `.package(path: "Extensions/WidgetExtension/WidgetExtensionCore")`) {
+		t.Fatalf("root Package.swift missing Core package dependency:\n%s", rootPackage)
 	}
 
 	manifest, err := tuistproj.ParseManifest(projectSwift)
@@ -239,6 +293,53 @@ func TestMakeAppExtensionProjectCreatesScaffold(t *testing.T) {
 	}
 	if manifest.Targets[0].Name != "WidgetExtension" {
 		t.Fatalf("targets[0].Name = %q, want %q", manifest.Targets[0].Name, "WidgetExtension")
+	}
+}
+
+func TestMakeAppExtensionProjectIsIdempotent(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	setupProjectFiles(t, projectRoot, "Packages", false)
+	writeConfigFile(t, projectRoot, config.ProjectConfig{
+		AppName:          "DemoApp",
+		BundleID:         "com.demo.app",
+		TeamID:           "TEAM123456",
+		MarketingVersion: "2.3.4",
+		ProjectVersion:   "42",
+		SwiftVersion:     "6.0",
+		MinTarget:        "17.0",
+	})
+
+	input := ExtensionProjectInput{
+		ProjectRoot:              projectRoot,
+		ExtensionName:            "WidgetExtension",
+		BundleIDSuffix:           "widget",
+		ExtensionPointIdentifier: "com.apple.widgetkit-extension",
+		HostBundleID:             "com.demo.app",
+	}
+
+	if err := makeAppExtensionProject(input); err != nil {
+		t.Fatalf("first makeAppExtensionProject() error = %v", err)
+	}
+	if err := makeAppExtensionProject(input); err != nil {
+		t.Fatalf("second makeAppExtensionProject() error = %v", err)
+	}
+
+	extensionRoot := filepath.Join(projectRoot, "Extensions", "WidgetExtension")
+	projectSwift := readFile(t, filepath.Join(extensionRoot, "Project.swift"))
+	if got := strings.Count(projectSwift, `.external(name: "WidgetExtensionCore")`); got != 1 {
+		t.Fatalf("Core dependency appears %d times, want 1:\n%s", got, projectSwift)
+	}
+
+	corePackageSwift := readFile(t, filepath.Join(extensionRoot, "WidgetExtensionCore", "Package.swift"))
+	if got := strings.Count(corePackageSwift, `name: "WidgetExtensionCoreTests"`); got != 1 {
+		t.Fatalf("Core test target appears %d times, want 1:\n%s", got, corePackageSwift)
+	}
+
+	rootPackage := readFile(t, filepath.Join(projectRoot, "Package.swift"))
+	if got := strings.Count(rootPackage, `.package(path: "Extensions/WidgetExtension/WidgetExtensionCore")`); got != 1 {
+		t.Fatalf("root Core package dependency appears %d times, want 1:\n%s", got, rootPackage)
 	}
 }
 

@@ -2,10 +2,14 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-struct DemoAppWidgetView: View {
+public struct DemoAppWidgetView: View {
     let entry: DemoAppTimelineEntry
 
-    var body: some View {
+    public init(entry: DemoAppTimelineEntry) {
+        self.entry = entry
+    }
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(entry.title)
                 .font(.headline)

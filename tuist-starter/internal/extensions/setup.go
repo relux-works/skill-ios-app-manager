@@ -18,6 +18,7 @@ import (
 const (
 	sharedKitModuleName     = "SharedKit"
 	sharedKitModuleType     = "utility"
+	extensionCoreSuffix     = "Core"
 	defaultPlatform         = "iOS(.v17)"
 	defaultModulesRelPath   = "Packages"
 	extensionsDirectoryName = "Extensions"
@@ -39,17 +40,21 @@ type SetupInput struct {
 type ExtensionProjectInput struct {
 	ProjectRoot              string
 	ExtensionName            string
+	CorePackageName          string
 	BundleIDSuffix           string
 	ExtensionPointIdentifier string
+	PrincipalClass           string
 	HostBundleID             string
 }
 
 type extensionProjectTemplateData struct {
 	ProjectName              string
 	TargetName               string
+	CorePackageName          string
 	HostBundleID             string
 	BundleIDSuffix           string
 	ExtensionPointIdentifier string
+	PrincipalClass           string
 	DevelopmentTeam          string
 	MarketingVersion         string
 	ProjectVersion           string
@@ -124,6 +129,7 @@ func makeAppExtensionProject(input ExtensionProjectInput) error {
 	}
 
 	targetName := scaffold.SwiftTypeName(input.ExtensionName)
+	corePackageName := resolveCorePackageName(input.CorePackageName, targetName)
 	hostBundleID := strings.TrimSuffix(strings.TrimSpace(input.HostBundleID), ".")
 	if hostBundleID == "" {
 		hostBundleID = defaultHostBundleID
@@ -140,9 +146,11 @@ func makeAppExtensionProject(input ExtensionProjectInput) error {
 	projectData := extensionProjectTemplateData{
 		ProjectName:              targetName,
 		TargetName:               targetName,
+		CorePackageName:          corePackageName,
 		HostBundleID:             hostBundleID,
 		BundleIDSuffix:           bundleIDSuffix,
 		ExtensionPointIdentifier: strings.TrimSpace(input.ExtensionPointIdentifier),
+		PrincipalClass:           strings.TrimSpace(input.PrincipalClass),
 		DevelopmentTeam:          strings.TrimSpace(cfg.TeamID),
 		MarketingVersion:         strings.TrimSpace(cfg.MarketingVersion),
 		ProjectVersion:           strings.TrimSpace(cfg.ProjectVersion),
@@ -157,11 +165,21 @@ func makeAppExtensionProject(input ExtensionProjectInput) error {
 
 	sourceFilePath := filepath.Join(sourcesDir, targetName+".swift")
 	sourceFileContent := fmt.Sprintf(
-		"import Foundation\n\npublic enum %sEntryPoint {}\n",
+		"import Foundation\nimport %s\n\npublic enum %sEntryPoint {\n    public static let core = %s.self\n}\n",
+		corePackageName,
 		targetName,
+		corePackageName,
 	)
-	if err := os.WriteFile(sourceFilePath, []byte(sourceFileContent), 0o644); err != nil {
+	if err := writeFileIfMissing(sourceFilePath, sourceFileContent); err != nil {
 		return fmt.Errorf("write extension source file: %w", err)
+	}
+
+	if err := scaffoldExtensionCorePackage(projectDir, corePackageName, cfg); err != nil {
+		return fmt.Errorf("scaffold extension Core package: %w", err)
+	}
+
+	if err := addExtensionCoreToRootPackageSwift(input.ProjectRoot, targetName, corePackageName); err != nil {
+		return fmt.Errorf("add extension Core package to root Package.swift: %w", err)
 	}
 
 	return nil
@@ -200,6 +218,14 @@ func validateExtensionProjectInput(input ExtensionProjectInput) error {
 		return fmt.Errorf("extension point identifier is required")
 	}
 	return nil
+}
+
+func resolveCorePackageName(raw string, targetName string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed != "" {
+		return scaffold.SwiftTypeName(trimmed)
+	}
+	return scaffold.SwiftTypeName(targetName + extensionCoreSuffix)
 }
 
 func normalizeModulesRelPath(raw string) string {
@@ -263,6 +289,131 @@ func createPackageDir(pkgDir, moduleName, platform string, cfg config.ProjectCon
 	}
 
 	return nil
+}
+
+func scaffoldExtensionCorePackage(extensionProjectDir, corePackageName string, cfg config.ProjectConfig) error {
+	pkgDir := filepath.Join(extensionProjectDir, corePackageName)
+	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", corePackageName, err)
+	}
+
+	manifestPath := filepath.Join(pkgDir, "Package.swift")
+	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+		manifest, err := generateExtensionCorePackageSwift(corePackageName, cfg)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(manifestPath, []byte(manifest), 0o644); err != nil {
+			return fmt.Errorf("write Package.swift: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("stat Package.swift: %w", err)
+	} else {
+		if err := ensureExtensionCoreTestTarget(manifestPath, corePackageName); err != nil {
+			return err
+		}
+	}
+
+	sourcePath := filepath.Join(pkgDir, "Sources", corePackageName+".swift")
+	if err := writeFileIfMissing(sourcePath, fmt.Sprintf("public enum %s {}\n", corePackageName)); err != nil {
+		return fmt.Errorf("write Core source: %w", err)
+	}
+
+	testPath := filepath.Join(pkgDir, "Tests", corePackageName+"Tests", corePackageName+"Tests.swift")
+	testSource := fmt.Sprintf(`import Testing
+@testable import %s
+
+@Suite
+struct %sTests {
+    @Test
+    func scaffoldBuilds() {
+        #expect(true)
+    }
+}
+`, corePackageName, corePackageName)
+	if err := writeFileIfMissing(testPath, testSource); err != nil {
+		return fmt.Errorf("write Core tests: %w", err)
+	}
+
+	return nil
+}
+
+func generateExtensionCorePackageSwift(corePackageName string, cfg config.ProjectConfig) (string, error) {
+	manifest, err := tuistproj.GeneratePackageSwift(tuistproj.PackageGenerationInput{
+		ModuleName: corePackageName,
+		Type:       tuistproj.PackageTypeInterface,
+		Platform:   defaultPlatform,
+		Config:     cfg,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	updated, err := tuistproj.ApplyManifestEdits(manifest, extensionCoreTestTargetEdit(corePackageName))
+	if err != nil {
+		return "", err
+	}
+	return updated, nil
+}
+
+func ensureExtensionCoreTestTarget(manifestPath string, corePackageName string) error {
+	err := tuistproj.ApplyManifestEditsToFile(manifestPath, extensionCoreTestTargetEdit(corePackageName))
+	if err != nil && strings.Contains(err.Error(), "already contains") {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("ensure Core test target: %w", err)
+	}
+	return nil
+}
+
+func extensionCoreTestTargetEdit(corePackageName string) tuistproj.ManifestEdit {
+	testTargetName := corePackageName + "Tests"
+	return tuistproj.ManifestEdit{
+		Type: tuistproj.AddTarget,
+		Name: testTargetName,
+		Content: fmt.Sprintf(`.testTarget(
+    name: "%s",
+    dependencies: ["%s"],
+    path: "Tests/%s",
+    swiftSettings: [
+        .swiftLanguageMode(.v6),
+    ]
+)`, testTargetName, corePackageName, testTargetName),
+	}
+}
+
+func addExtensionCoreToRootPackageSwift(projectRoot, extensionName, corePackageName string) error {
+	rootPackageSwiftPath := filepath.Join(projectRoot, "Package.swift")
+	if _, err := os.Stat(rootPackageSwiftPath); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("stat Package.swift: %w", err)
+	}
+
+	refPath := filepath.ToSlash(filepath.Join(extensionsDirectoryName, extensionName, corePackageName))
+	err := tuistproj.ApplyManifestEditsToFile(rootPackageSwiftPath, tuistproj.ManifestEdit{
+		Type:    tuistproj.AddDependency,
+		Name:    corePackageName,
+		Content: fmt.Sprintf(`.package(path: "%s")`, refPath),
+	})
+	if err != nil && strings.Contains(err.Error(), "already contains") {
+		return nil
+	}
+	return err
+}
+
+func writeFileIfMissing(path string, content string) error {
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	} else if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(content), 0o644)
 }
 
 func renderTemplate(templateName, outputPath string, data any) error {

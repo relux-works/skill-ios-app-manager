@@ -15,6 +15,7 @@ import (
 const (
 	extensionsDirectoryName = "Extensions"
 	widgetExtensionSuffix   = "Widget"
+	extensionCoreSuffix     = "Core"
 )
 
 //go:embed setup_templates/*.tmpl
@@ -65,9 +66,12 @@ func Setup(input SetupInput) error {
 		return err
 	}
 
-	widgetSourcesDir := filepath.Join(input.ProjectRoot, extensionsDirectoryName, widgetTargetName, "Sources")
-	if err := os.MkdirAll(widgetSourcesDir, 0o755); err != nil {
-		return fmt.Errorf("create widget sources directory: %w", err)
+	widgetRoot := filepath.Join(input.ProjectRoot, extensionsDirectoryName, widgetTargetName)
+	widgetSourcesDir := filepath.Join(widgetRoot, "Sources")
+	widgetCorePackageName := widgetTargetName + extensionCoreSuffix
+	widgetCoreSourcesDir := filepath.Join(widgetRoot, widgetCorePackageName, "Sources")
+	if err := os.MkdirAll(widgetCoreSourcesDir, 0o755); err != nil {
+		return fmt.Errorf("create widget Core sources directory: %w", err)
 	}
 
 	data := templateData{
@@ -77,13 +81,16 @@ func Setup(input SetupInput) error {
 	}
 
 	for _, tf := range widgetTemplateFiles {
-		outputPath := filepath.Join(widgetSourcesDir, appTypeName+tf.fileSuffix)
+		outputPath := filepath.Join(widgetCoreSourcesDir, appTypeName+tf.fileSuffix)
 		if err := renderTemplate(tf.templateName, outputPath, data); err != nil {
 			return fmt.Errorf("render %s: %w", outputPath, err)
 		}
 	}
 
 	widgetBundlePath := filepath.Join(widgetSourcesDir, widgetTargetName+"Bundle.swift")
+	if err := ensureWidgetBundleImport(widgetBundlePath, widgetCorePackageName); err != nil {
+		return fmt.Errorf("ensure widget Core import in WidgetBundle: %w", err)
+	}
 	if err := appendWidgetBundleEntry(widgetBundlePath, appTypeName+"Widget"); err != nil {
 		return fmt.Errorf("register static widget in WidgetBundle: %w", err)
 	}
@@ -154,6 +161,40 @@ func renderTemplate(templateName, outputPath string, data any) error {
 		return fmt.Errorf("write rendered template: %w", err)
 	}
 
+	return nil
+}
+
+func ensureWidgetBundleImport(widgetBundlePath, moduleName string) error {
+	payload, err := os.ReadFile(widgetBundlePath)
+	if err != nil {
+		return fmt.Errorf("read WidgetBundle file: %w", err)
+	}
+	content := string(payload)
+
+	importLine := fmt.Sprintf("import %s", moduleName)
+	if strings.Contains(content, importLine) {
+		return nil
+	}
+
+	lines := strings.Split(content, "\n")
+	insertAt := -1
+	for index, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "import ") {
+			insertAt = index + 1
+		}
+	}
+	if insertAt < 0 {
+		return fmt.Errorf("WidgetBundle has no import section")
+	}
+
+	updatedLines := make([]string, 0, len(lines)+1)
+	updatedLines = append(updatedLines, lines[:insertAt]...)
+	updatedLines = append(updatedLines, importLine)
+	updatedLines = append(updatedLines, lines[insertAt:]...)
+
+	if err := os.WriteFile(widgetBundlePath, []byte(strings.Join(updatedLines, "\n")), 0o644); err != nil {
+		return fmt.Errorf("write WidgetBundle file: %w", err)
+	}
 	return nil
 }
 

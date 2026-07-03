@@ -1,11 +1,13 @@
 import AppIntents
 import WidgetKit
 
-struct DemoAppWidgetToggleIntent: AppIntent {
-    static var title: LocalizedStringResource = "Toggle Widget"
-    static var description: IntentDescription = "Toggles shared widget state"
+public struct DemoAppWidgetToggleIntent: AppIntent {
+    public static var title: LocalizedStringResource = "Toggle Widget"
+    public static var description: IntentDescription = "Toggles shared widget state"
 
-    func perform() async throws -> some IntentResult {
+    public init() {}
+
+    public func perform() async throws -> some IntentResult {
         let defaults = UserDefaults(suiteName: "group.com.demo.shared")
         let current = defaults?.bool(forKey: "widgetToggle") ?? false
         defaults?.set(!current, forKey: "widgetToggle")

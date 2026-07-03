@@ -16,6 +16,7 @@ import (
 const (
 	extensionsDirectoryName  = "Extensions"
 	widgetExtensionSuffix    = "Widget"
+	extensionCoreSuffix      = "Core"
 	appIntentsDependencyName = "AppIntents"
 )
 
@@ -54,9 +55,15 @@ func Setup(input SetupInput) error {
 		return err
 	}
 
-	widgetSourcesDir := filepath.Join(input.ProjectRoot, extensionsDirectoryName, widgetTargetName, "Sources")
-	if err := os.MkdirAll(widgetSourcesDir, 0o755); err != nil {
-		return fmt.Errorf("create widget sources directory: %w", err)
+	widgetCoreSourcesDir := filepath.Join(
+		input.ProjectRoot,
+		extensionsDirectoryName,
+		widgetTargetName,
+		widgetTargetName+extensionCoreSuffix,
+		"Sources",
+	)
+	if err := os.MkdirAll(widgetCoreSourcesDir, 0o755); err != nil {
+		return fmt.Errorf("create widget Core sources directory: %w", err)
 	}
 
 	data := templateData{
@@ -64,7 +71,7 @@ func Setup(input SetupInput) error {
 		AppGroupID:  appGroupID,
 	}
 
-	intentPath := filepath.Join(widgetSourcesDir, appTypeName+"WidgetToggleIntent.swift")
+	intentPath := filepath.Join(widgetCoreSourcesDir, appTypeName+"WidgetToggleIntent.swift")
 	if err := renderTemplate("widget_toggle_intent.swift.tmpl", intentPath, data); err != nil {
 		return fmt.Errorf("render widget toggle intent: %w", err)
 	}

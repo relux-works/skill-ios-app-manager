@@ -1,19 +1,21 @@
 import WidgetKit
 import Foundation
 
-struct DemoAppTimelineProvider: TimelineProvider {
+public struct DemoAppTimelineProvider: TimelineProvider {
     private let defaults = UserDefaults(suiteName: "group.com.demo.shared")
 
-    func placeholder(in context: Context) -> DemoAppTimelineEntry {
+    public init() {}
+
+    public func placeholder(in context: Context) -> DemoAppTimelineEntry {
         DemoAppTimelineEntry(date: Date(), title: "DemoApp", isToggled: false)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (DemoAppTimelineEntry) -> Void) {
+    public func getSnapshot(in context: Context, completion: @escaping (DemoAppTimelineEntry) -> Void) {
         let toggled = defaults?.bool(forKey: "widgetToggle") ?? false
         completion(DemoAppTimelineEntry(date: Date(), title: "DemoApp", isToggled: toggled))
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<DemoAppTimelineEntry>) -> Void) {
+    public func getTimeline(in context: Context, completion: @escaping (Timeline<DemoAppTimelineEntry>) -> Void) {
         let toggled = defaults?.bool(forKey: "widgetToggle") ?? false
         let entry = DemoAppTimelineEntry(date: Date(), title: "DemoApp", isToggled: toggled)
         completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(60 * 15))))

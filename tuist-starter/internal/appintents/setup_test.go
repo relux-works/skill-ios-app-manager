@@ -60,19 +60,21 @@ func TestSetupCreatesIntentFileAndAddsDependency(t *testing.T) {
 		t.Fatalf("Setup() error = %v", err)
 	}
 
-	widgetSourcesDir := filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "Sources")
+	widgetCoreSourcesDir := filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "DemoAppWidgetCore", "Sources")
 
-	intentPath := filepath.Join(widgetSourcesDir, "DemoAppWidgetToggleIntent.swift")
+	intentPath := filepath.Join(widgetCoreSourcesDir, "DemoAppWidgetToggleIntent.swift")
 	requireFile(t, intentPath)
 
 	intent := readFile(t, intentPath)
 	for _, want := range []string{
 		"import AppIntents",
 		"import WidgetKit",
-		"struct DemoAppWidgetToggleIntent: AppIntent",
+		"public struct DemoAppWidgetToggleIntent: AppIntent",
+		"public static var title: LocalizedStringResource",
+		"public init() {}",
 		`UserDefaults(suiteName: "group.com.demo.shared")`,
 		"WidgetCenter.shared.reloadAllTimelines()",
-		"func perform() async throws -> some IntentResult",
+		"public func perform() async throws -> some IntentResult",
 	} {
 		if !strings.Contains(intent, want) {
 			t.Fatalf("intent file missing %q:\n%s", want, intent)
@@ -99,7 +101,7 @@ func TestSetupDerivesAppGroupFromBundleID(t *testing.T) {
 	}
 
 	intent := readFile(t, filepath.Join(
-		projectRoot, "Extensions", "DemoAppWidget", "Sources", "DemoAppWidgetToggleIntent.swift",
+		projectRoot, "Extensions", "DemoAppWidget", "DemoAppWidgetCore", "Sources", "DemoAppWidgetToggleIntent.swift",
 	))
 	if !strings.Contains(intent, `UserDefaults(suiteName: "group.com.demo.app")`) {
 		t.Fatalf("intent missing derived app group:\n%s", intent)
@@ -144,7 +146,7 @@ func TestGoldenWidgetToggleIntentTemplate(t *testing.T) {
 	}
 
 	intent := readFile(t, filepath.Join(
-		projectRoot, "Extensions", "DemoAppWidget", "Sources", "DemoAppWidgetToggleIntent.swift",
+		projectRoot, "Extensions", "DemoAppWidget", "DemoAppWidgetCore", "Sources", "DemoAppWidgetToggleIntent.swift",
 	))
 	testutil.AssertGoldenFile(t, "appintents/widget_toggle_intent", intent)
 }

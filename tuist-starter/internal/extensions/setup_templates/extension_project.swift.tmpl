@@ -20,10 +20,14 @@ let project = Project(
                 "CFBundleVersion": .string(currentProjectVersion),
                 "NSExtension": .dictionary([
                     "NSExtensionPointIdentifier": .string("{{ .ExtensionPointIdentifier }}"),
+{{- if .PrincipalClass }}
+                    "NSExtensionPrincipalClass": .string("{{ .PrincipalClass }}"),
+{{- end }}
                 ]),
             ]),
             sources: ["Sources/**"],
             dependencies: [
+                .external(name: "{{ .CorePackageName }}"),
             ],
             settings: .settings(
                 base: [

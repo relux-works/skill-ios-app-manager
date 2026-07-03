@@ -1,9 +1,12 @@
 import WidgetKit
 import SwiftUI
 
-struct DemoAppWidget: Widget {
-    let kind: String = "DemoAppWidget"
-    var body: some WidgetConfiguration {
+public struct DemoAppWidget: Widget {
+    private let kind: String = "DemoAppWidget"
+
+    public init() {}
+
+    public var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: DemoAppTimelineProvider()) { entry in
             DemoAppWidgetView(entry: entry)
         }

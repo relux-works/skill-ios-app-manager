@@ -1,8 +1,14 @@
 import WidgetKit
 import Foundation
 
-struct {{.AppTypeName}}TimelineEntry: TimelineEntry {
-    let date: Date
-    let title: String
-    let isToggled: Bool
+public struct {{.AppTypeName}}TimelineEntry: TimelineEntry {
+    public let date: Date
+    public let title: String
+    public let isToggled: Bool
+
+    public init(date: Date, title: String, isToggled: Bool) {
+        self.date = date
+        self.title = title
+        self.isToggled = isToggled
+    }
 }

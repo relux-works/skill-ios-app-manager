@@ -17,6 +17,7 @@ const (
 	sharedKitPackageName                    = "SharedKit"
 	extensionsDirectoryName                 = "Extensions"
 	widgetExtensionSuffix                   = "Widget"
+	extensionCoreSuffix                     = "Core"
 	liveActivityInfoPlistKey                = "NSSupportsLiveActivities"
 	liveActivityFrequentUpdatesInfoPlistKey = "NSSupportsLiveActivitiesFrequentUpdates"
 	activityKitDependencyName               = "ActivityKit"
@@ -62,11 +63,13 @@ func Setup(input SetupInput) error {
 	widgetTargetName := appTypeName + widgetExtensionSuffix
 	widgetRoot := filepath.Join(input.ProjectRoot, extensionsDirectoryName, widgetTargetName)
 	widgetSourcesDir := filepath.Join(widgetRoot, "Sources")
-	if err := os.MkdirAll(widgetSourcesDir, 0o755); err != nil {
-		return fmt.Errorf("create widget sources directory: %w", err)
+	widgetCorePackageName := widgetTargetName + extensionCoreSuffix
+	widgetCoreSourcesDir := filepath.Join(widgetRoot, widgetCorePackageName, "Sources")
+	if err := os.MkdirAll(widgetCoreSourcesDir, 0o755); err != nil {
+		return fmt.Errorf("create widget Core sources directory: %w", err)
 	}
 
-	liveActivityWidgetPath := filepath.Join(widgetSourcesDir, appTypeName+"LiveActivityWidget.swift")
+	liveActivityWidgetPath := filepath.Join(widgetCoreSourcesDir, appTypeName+"LiveActivityWidget.swift")
 	if err := renderTemplate("activity_configuration.swift.tmpl", liveActivityWidgetPath, data); err != nil {
 		return fmt.Errorf("render live activity widget: %w", err)
 	}
@@ -80,6 +83,9 @@ func Setup(input SetupInput) error {
 	}
 
 	widgetBundlePath := filepath.Join(widgetSourcesDir, widgetTargetName+"Bundle.swift")
+	if err := ensureWidgetBundleImport(widgetBundlePath, widgetCorePackageName); err != nil {
+		return fmt.Errorf("ensure widget Core import in WidgetBundle: %w", err)
+	}
 	if err := appendWidgetBundleEntry(widgetBundlePath, appTypeName+"LiveActivityWidget"); err != nil {
 		return fmt.Errorf("register live activity widget in WidgetBundle: %w", err)
 	}
@@ -200,6 +206,40 @@ func addLiveActivityInfoPlistKeys(projectSwiftPath string) error {
 		return fmt.Errorf("write Project.swift: %w", err)
 	}
 
+	return nil
+}
+
+func ensureWidgetBundleImport(widgetBundlePath, moduleName string) error {
+	payload, err := os.ReadFile(widgetBundlePath)
+	if err != nil {
+		return fmt.Errorf("read WidgetBundle file: %w", err)
+	}
+	content := string(payload)
+
+	importLine := fmt.Sprintf("import %s", moduleName)
+	if strings.Contains(content, importLine) {
+		return nil
+	}
+
+	lines := strings.Split(content, "\n")
+	insertAt := -1
+	for index, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "import ") {
+			insertAt = index + 1
+		}
+	}
+	if insertAt < 0 {
+		return fmt.Errorf("WidgetBundle has no import section")
+	}
+
+	updatedLines := make([]string, 0, len(lines)+1)
+	updatedLines = append(updatedLines, lines[:insertAt]...)
+	updatedLines = append(updatedLines, importLine)
+	updatedLines = append(updatedLines, lines[insertAt:]...)
+
+	if err := os.WriteFile(widgetBundlePath, []byte(strings.Join(updatedLines, "\n")), 0o644); err != nil {
+		return fmt.Errorf("write WidgetBundle file: %w", err)
+	}
 	return nil
 }
 

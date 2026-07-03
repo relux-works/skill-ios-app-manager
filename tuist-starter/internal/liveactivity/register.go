@@ -14,14 +14,14 @@ const usageGuide = `## Usage
 
   This creates:
     - SharedKit ActivityAttributes + ContentState model
-    - Widget extension ActivityConfiguration + Dynamic Island UI
+    - WidgetCore ActivityConfiguration + Dynamic Island UI
     - App-side LiveActivityManager (start/update/end + push token stub)
 
   It also patches:
     - Host app Info.plist dictionary in Project.swift:
       - NSSupportsLiveActivities = true
       - NSSupportsLiveActivitiesFrequentUpdates = true
-    - WidgetBundle body to register the Live Activity widget.`
+    - WidgetBundle body to import Core and register the Live Activity widget.`
 
 func init() {
 	registry.Register(&registry.Module{
@@ -57,7 +57,7 @@ func planSetup(input registry.SetupInput) (string, error) {
   Create:
     Packages/SharedKit/Sources/%sActivityAttributes.swift
       — ActivityAttributes + ContentState shared by app and widget extension
-    Extensions/%sWidget/Sources/%sLiveActivityWidget.swift
+    Extensions/%sWidget/%sWidgetCore/Sources/%sLiveActivityWidget.swift
       — ActivityConfiguration + Dynamic Island presentation
     Targets/%s/Sources/LiveActivityManager.swift
       — app lifecycle manager (start/update/end + push token updates stub)
@@ -66,9 +66,9 @@ func planSetup(input registry.SetupInput) (string, error) {
     Project.swift                                  — add ActivityKit SDK dependency
     Project.swift                                  — set NSSupportsLiveActivities keys in app Info.plist dictionary
     Extensions/%sWidget/Project.swift              — add ActivityKit SDK dependency
-    Extensions/%sWidget/Sources/%sWidgetBundle.swift — register %sLiveActivityWidget() in WidgetBundle body
+    Extensions/%sWidget/Sources/%sWidgetBundle.swift — import %sWidgetCore and register %sLiveActivityWidget() in WidgetBundle body
 
-  App: %s`, input.AppName, input.AppName, input.AppName, input.AppName, input.AppName, input.AppName, input.AppName, input.AppName, input.AppName)
+  App: %s`, input.AppName, input.AppName, input.AppName, input.AppName, input.AppName, input.AppName, input.AppName, input.AppName, input.AppName, input.AppName, input.AppName)
 
 	return plan, nil
 }

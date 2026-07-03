@@ -67,6 +67,9 @@ func TestSetupCreatesWidgetExtensionAndPatchesHost(t *testing.T) {
 	requireFile(t, filepath.Join(extensionRoot, "Project.swift"))
 	requireFile(t, filepath.Join(extensionRoot, "Sources", extensionTargetName+".swift"))
 	requireFile(t, filepath.Join(extensionRoot, "Sources", "DemoAppWidgetBundle.swift"))
+	requireFile(t, filepath.Join(extensionRoot, extensionTargetName+"Core", "Package.swift"))
+	requireFile(t, filepath.Join(extensionRoot, extensionTargetName+"Core", "Sources", extensionTargetName+"Core.swift"))
+	requireFile(t, filepath.Join(extensionRoot, extensionTargetName+"Core", "Tests", extensionTargetName+"CoreTests", extensionTargetName+"CoreTests.swift"))
 
 	extensionProject := readFile(t, filepath.Join(extensionRoot, "Project.swift"))
 	for _, want := range []string{
@@ -77,6 +80,7 @@ func TestSetupCreatesWidgetExtensionAndPatchesHost(t *testing.T) {
 		`"DEVELOPMENT_TEAM": .string(developmentTeam)`,
 		`"MARKETING_VERSION": .string(marketingVersion)`,
 		`"NSExtensionPointIdentifier": .string("com.apple.widgetkit-extension")`,
+		`.external(name: "DemoAppWidgetCore")`,
 		`.sdk(name: "WidgetKit", type: .framework)`,
 		`"com.apple.security.application-groups": .array([`,
 		`.string("group.com.demo.shared")`,
@@ -98,9 +102,24 @@ func TestSetupCreatesWidgetExtensionAndPatchesHost(t *testing.T) {
 		}
 	}
 
+	extensionSource := readFile(t, filepath.Join(extensionRoot, "Sources", extensionTargetName+".swift"))
+	for _, want := range []string{
+		"import DemoAppWidgetCore",
+		"public static let core = DemoAppWidgetCore.self",
+	} {
+		if !strings.Contains(extensionSource, want) {
+			t.Fatalf("extension entry point missing %q:\n%s", want, extensionSource)
+		}
+	}
+
 	projectSwift := readFile(t, filepath.Join(projectRoot, "Project.swift"))
 	if !strings.Contains(projectSwift, `.project(target: "DemoAppWidget", path: "Extensions/DemoAppWidget")`) {
 		t.Fatalf("Project.swift missing widget extension dependency:\n%s", projectSwift)
+	}
+
+	rootPackageSwift := readFile(t, filepath.Join(projectRoot, "Package.swift"))
+	if !strings.Contains(rootPackageSwift, `.package(path: "Extensions/DemoAppWidget/DemoAppWidgetCore")`) {
+		t.Fatalf("Package.swift missing widget Core package dependency:\n%s", rootPackageSwift)
 	}
 
 	workspaceSwift := readFile(t, filepath.Join(projectRoot, "Workspace.swift"))
@@ -175,8 +194,21 @@ func TestSetupIsIdempotent(t *testing.T) {
 	if got := strings.Count(extensionProject, `.sdk(name: "WidgetKit", type: .framework)`); got != 1 {
 		t.Fatalf("WidgetKit dependency appears %d times, want 1:\n%s", got, extensionProject)
 	}
+	if got := strings.Count(extensionProject, `.external(name: "DemoAppWidgetCore")`); got != 1 {
+		t.Fatalf("Core dependency appears %d times, want 1:\n%s", got, extensionProject)
+	}
 	if got := strings.Count(extensionProject, appGroupsEntitlementKey); got != 1 {
 		t.Fatalf("app groups entitlement appears %d times, want 1:\n%s", got, extensionProject)
+	}
+
+	rootPackageSwift := readFile(t, filepath.Join(projectRoot, "Package.swift"))
+	if got := strings.Count(rootPackageSwift, `.package(path: "Extensions/DemoAppWidget/DemoAppWidgetCore")`); got != 1 {
+		t.Fatalf("Core package dependency appears %d times, want 1:\n%s", got, rootPackageSwift)
+	}
+
+	corePackageSwift := readFile(t, filepath.Join(projectRoot, "Extensions", "DemoAppWidget", "DemoAppWidgetCore", "Package.swift"))
+	if got := strings.Count(corePackageSwift, `name: "DemoAppWidgetCoreTests"`); got != 1 {
+		t.Fatalf("Core test target appears %d times, want 1:\n%s", got, corePackageSwift)
 	}
 
 	appCapabilities := readFile(t, filepath.Join(projectRoot, "Tuist", "ProjectDescriptionHelpers", "AppCapabilities.swift"))
@@ -205,6 +237,18 @@ let project = Project(
 )
 `
 	writeTestFile(t, filepath.Join(projectRoot, "Project.swift"), projectSwift)
+
+	rootPackageSwift := `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "DemoAppDependencies",
+    dependencies: [
+    ],
+    targets: []
+)
+`
+	writeTestFile(t, filepath.Join(projectRoot, "Package.swift"), rootPackageSwift)
 
 	if includeWorkspace {
 		workspace := `import ProjectDescription
