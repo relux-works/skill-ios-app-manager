@@ -546,7 +546,7 @@ func TestSetupCommandAppliesExternalDepsBeforePlan(t *testing.T) {
 		},
 		{
 			URL:     "https://github.com/relux-works/swiftui-relux.git",
-			Version: "8.0.3",
+			Version: "9.0.0",
 			Product: "SwiftUIRelux",
 			Package: "swiftui-relux",
 		},
@@ -567,7 +567,7 @@ func TestSetupCommandAppliesExternalDepsBeforePlan(t *testing.T) {
 			`from: "1.0.3"`,
 			`name: "swiftui-relux"`,
 			`url: "https://github.com/relux-works/swiftui-relux.git"`,
-			`from: "8.0.3"`,
+			`from: "9.0.0"`,
 			`"SwiftIoC": .framework`,
 			`"SwiftUIRelux": .framework`,
 		} {

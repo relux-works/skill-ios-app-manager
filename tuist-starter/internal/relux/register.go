@@ -31,7 +31,7 @@ func init() {
 		ExternalDeps: []registry.ExternalDep{
 			{
 				URL:     "https://github.com/relux-works/swiftui-relux.git",
-				Version: "8.0.3",
+				Version: "9.0.0",
 				Product: "SwiftUIRelux",
 				Package: "swiftui-relux",
 			},
@@ -70,7 +70,7 @@ func Plan(input registry.SetupInput) (string, error) {
     Targets/%[1]s/Sources/App/%[1]s.ReluxLogger.swift — Relux logging
 
   Patch:
-    Package.swift  — add swiftui-relux dependency (from: 8.0.3)
+    Package.swift  — add swiftui-relux dependency (from: 9.0.0)
     Project.swift  — add .external(name: "SwiftUIRelux")
     App.swift      — inject Relux.Resolver, @_exported import Relux
     Registry.swift — add Relux infrastructure builders (Store, RootSaga)`, input.AppName)
