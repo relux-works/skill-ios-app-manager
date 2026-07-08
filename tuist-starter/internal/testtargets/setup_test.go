@@ -67,6 +67,9 @@ func TestSetupCreatesUnitAndUITestTargets(t *testing.T) {
 	}
 
 	projectSwift := readFile(t, filepath.Join(projectRoot, "Project.swift"))
+	if strings.Contains(projectSwift, "        )\n        .target(") {
+		t.Fatalf("Project.swift has adjacent targets without comma:\n%s", projectSwift)
+	}
 	for _, want := range []string{
 		`name: "DemoAppTests"`,
 		`product: .unitTests`,

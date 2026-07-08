@@ -125,6 +125,15 @@ func applyManifestAdd(content string, section manifestSection, edit ManifestEdit
 	}
 
 	updatedLines := make([]string, 0, len(lines)+len(insertLines))
+	if len(section.Items) > 0 {
+		previousItemEnd := section.Items[len(section.Items)-1].EndLine - 1
+		if previousItemEnd >= 0 && previousItemEnd < len(lines) {
+			trimmed := strings.TrimSpace(lines[previousItemEnd])
+			if trimmed != "" && !strings.HasSuffix(trimmed, ",") {
+				lines[previousItemEnd] += ","
+			}
+		}
+	}
 	updatedLines = append(updatedLines, lines[:insertAt]...)
 	updatedLines = append(updatedLines, insertLines...)
 	updatedLines = append(updatedLines, lines[insertAt:]...)
