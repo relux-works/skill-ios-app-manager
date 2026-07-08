@@ -79,19 +79,19 @@ Current generators:
 - `generate package-strictness`
 
 `generate project-config` is the orchestration entrypoint for manifest config sync. Today it runs:
-- `generate bundle-id` — syncs host app bundle id and extension host-bundle roots while preserving extension suffixes
-- `generate versions` — syncs `marketing_version` and `project_version`
-- `generate min-target` — syncs `min_target` into `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET`
-- `generate team-id` — syncs `team_id` into `developmentTeam` constants and `DEVELOPMENT_TEAM` build settings
-- `generate platform-destinations` — syncs host app `destinations` from `platforms`
-- `generate background-modes-config` — syncs host app `background_modes` into `UIBackgroundModes`
-- `generate presentation-config` — syncs host app `theme` and `orientation` into Info.plist presentation keys
-- `generate export-compliance-config` — syncs host app `uses_non_exempt_encryption` into `ITSAppUsesNonExemptEncryption`
-- `generate privacy-usage-descriptions-config` — syncs host app `privacy_usage_descriptions` into Info.plist usage description keys
-- `generate application-configuration` — syncs product-level runtime identity into app manifests and generated shared config
-- `generate app-capabilities` — syncs host app capabilities from config
-- `generate build-flags` — syncs app/extension Swift language, strict memory safety, and concurrency restriction settings from `project_settings.swift`
-- `generate package-strictness` — syncs root/module `Package.swift` strictness from the same `project_settings.swift`
+- `generate bundle-id`: syncs host app bundle id and extension host-bundle roots while preserving extension suffixes
+- `generate versions`: syncs `marketing_version` and `project_version`
+- `generate min-target`: syncs `min_target` into `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET`
+- `generate team-id`: syncs `team_id` into `developmentTeam` constants and `DEVELOPMENT_TEAM` build settings
+- `generate platform-destinations`: syncs host app `destinations` from `platforms`
+- `generate background-modes-config`: syncs host app `background_modes` into `UIBackgroundModes`
+- `generate presentation-config`: syncs host app `theme` and `orientation` into Info.plist presentation keys
+- `generate export-compliance-config`: syncs host app `uses_non_exempt_encryption` into `ITSAppUsesNonExemptEncryption`
+- `generate privacy-usage-descriptions-config`: syncs host app `privacy_usage_descriptions` into Info.plist usage description keys
+- `generate application-configuration`: syncs product-level runtime identity into app manifests and generated shared config
+- `generate app-capabilities`: syncs host app capabilities from config
+- `generate build-flags`: syncs app/extension Swift language, strict memory safety, and concurrency restriction settings from `project_settings.swift`
+- `generate package-strictness`: syncs root/module `Package.swift` strictness from the same `project_settings.swift`
 
 These generators depend on the `init` scaffold shape. `bundle-id`, `versions`, `min-target`, `team-id`, and `build-flags` update the host app `Project.swift` plus every `Extensions/*/Project.swift`; extension bundle ids are derived from the configured host `bundle_id` plus each extension's existing suffix. `platform-destinations` updates the host app target destination expression and matching entitlements factory argument. `background-modes-config`, `presentation-config`, `export-compliance-config`, and `privacy-usage-descriptions-config` update host app Info.plist keys only. `app-capabilities` syncs capability-owned manifest slices. `package-strictness` updates root `Package.swift` plus every module `Packages/*/Package.swift`.
 
@@ -514,6 +514,16 @@ Adding new CI steps:
 Go: Cobra (CLI framework) + gopkg.in/yaml.v3.
 
 Swift packages managed in generated projects: SwiftIoC, swiftui-relux, swift-relux, swift-httpclient.
+
+## The Relux stack
+
+This package is part of the Relux stack: the
+[Relux](https://github.com/relux-works/swift-relux) unidirectional data-flow
+architecture for Swift 6, a family of modules around it, and agent-ready testing
+tools. The stack is how we build MVPs fast on agentic rails and then scale them into
+enterprise-grade apps: Tuist workspaces, strict modularization, and a UDF architecture
+proven in production for years. Browse the full picture in the
+[Relux Works open-source catalog](https://relux.works/en/open-source/).
 
 <!-- relux-ecosystem:start -->
 
