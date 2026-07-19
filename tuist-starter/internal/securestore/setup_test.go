@@ -78,6 +78,39 @@ func TestSetupCreatesPackageSwift(t *testing.T) {
 	requireFile(t, filepath.Join(projectRoot, "Packages", "SecureStoreImpl", "Package.swift"))
 }
 
+func TestSetupBuilderConfigUsesCanonicalAppGroupProperty(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	setupProjectFiles(t, projectRoot, "Packages")
+	writeTestFile(t, filepath.Join(projectRoot, "ios-app-manager.json"), `{
+  "app_name": "DemoApp",
+  "bundle_id": "com.example.demo",
+  "team_id": "ABCDE12345",
+  "swift_version": "6.2",
+  "min_target": "17.0",
+  "marketing_version": "1.0.0",
+  "project_version": "1",
+  "app_groups": ["group.com.example.demo"]
+}`)
+
+	if err := Setup(SetupInput{
+		ProjectRoot: projectRoot,
+		AppName:     "DemoApp",
+		AccessGroup: testAccessGroup,
+	}); err != nil {
+		t.Fatalf("Setup() error = %v", err)
+	}
+
+	builderConfig := readFile(t, filepath.Join(projectRoot, "Packages", "SecureStore", ".builder-config"))
+	if !strings.Contains(builderConfig, "Configuration.AppGroups.main") {
+		t.Fatalf("builder config does not use canonical app-group property:\n%s", builderConfig)
+	}
+	if strings.Contains(builderConfig, "GROUP_COM_EXAMPLE_DEMO") {
+		t.Fatalf("builder config kept obsolete Info.plist-shaped accessor:\n%s", builderConfig)
+	}
+}
+
 func TestSetupUpdatesManifests(t *testing.T) {
 	t.Parallel()
 

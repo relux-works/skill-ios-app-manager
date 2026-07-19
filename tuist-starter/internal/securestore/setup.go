@@ -86,7 +86,7 @@ func Setup(input SetupInput) error {
 	}
 
 	// Write .builder-config for IoC registry to pass serviceName and accessGroup.
-	accessGroupKey := tmplutil.InfoPlistKey(input.AccessGroup)
+	accessGroupKey := tmplutil.AppGroupSwiftIdentifier(cfg.BundleID, input.AccessGroup)
 	builderArgs := fmt.Sprintf(
 		"serviceName: Configuration.Keychain.serviceName, accessGroup: Configuration.AppGroups.%s",
 		accessGroupKey,

@@ -67,6 +67,7 @@ func NewSetupCommand(mod *registry.Module, opts *RootOptions) *cobra.Command {
 				ProjectRoot: projectRoot,
 				AppName:     appName,
 				ModulesPath: modulesPath,
+				ConfigPath:  selectedConfigPath,
 				ExtraArgs:   extraArgs,
 			}
 

@@ -163,7 +163,7 @@ func TestSecureStoreIoCDiscovery(t *testing.T) {
 		"import SecureStore",
 		"import SecureStoreImpl",
 		"SecureStore.Module.Interface.self",
-		"SecureStore.Module.Impl(serviceName: Configuration.Keychain.serviceName, accessGroup: Configuration.AppGroups.GROUP_COM_EXAMPLE_DEMO)",
+		"SecureStore.Module.Impl(serviceName: Configuration.Keychain.serviceName, accessGroup: Configuration.AppGroups.main)",
 	} {
 		if !strings.Contains(registryContent, expected) {
 			t.Fatalf("Registry.swift missing %q:\n%s", expected, registryContent)

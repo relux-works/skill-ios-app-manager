@@ -3,6 +3,7 @@ package appconfig
 import (
 	"fmt"
 
+	"github.com/relux-works/ios-app-manager/internal/config"
 	"github.com/relux-works/ios-app-manager/internal/registry"
 )
 
@@ -44,9 +45,18 @@ func init() {
 
 // SetupFromRegistry adapts the registry.SetupInput to the local Setup().
 func SetupFromRegistry(input registry.SetupInput) error {
+	cfg := config.ProjectConfig{AppName: input.AppName}
+	if input.ConfigPath != "" {
+		loaded, err := config.LoadConfig(input.ConfigPath)
+		if err != nil {
+			return fmt.Errorf("load app-config runtime profiles: %w", err)
+		}
+		cfg = loaded
+	}
 	return Setup(SetupInput{
 		ProjectRoot: input.ProjectRoot,
 		AppName:     input.AppName,
+		Config:      cfg,
 	})
 }
 

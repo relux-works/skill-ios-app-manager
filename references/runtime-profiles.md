@@ -1,0 +1,128 @@
+# Runtime profiles
+
+`runtime_profiles` separates immutable distribution artifacts from the backend environment selected at runtime. The generator owns the typed Swift descriptors, Tuist build configurations and schemes, application configuration field, and the policy-aware AppConfig templates.
+
+Use the complete generic example at [`tuist-starter/testdata/runtime-profiles-config.json`](../tuist-starter/testdata/runtime-profiles-config.json). The machine-readable block schema is [`runtime-profiles.schema.json`](runtime-profiles.schema.json).
+
+## Model
+
+The schema has two independent typed axes:
+
+- `distribution_profiles`: `pilotTestFlight`, `appStore`, `internal`, and `tests` describe an artifact and its runtime policy.
+- `backend_environments`: `production`, `staging`, `development`, and `fixture` describe exact backend realms and public client-registration metadata.
+
+A distribution profile never contains an API URL. It refers to backend environment identifiers through `default_environment` and `allowed_environments`. A backend descriptor contains one exact `api_origin`; the generator never appends a path such as `/api/v1`.
+
+## Approved policy matrix
+
+| Profile | Build kind | Default | Allowed | Menu | Selection persistence | Non-production marker | Ephemeral injection |
+|---|---|---|---|---|---|---|---|
+| `pilotTestFlight` | `release` | `production` | exactly `production`, `staging` | `visible` | `enabled` | `persistent` | `forbidden` |
+| `appStore` | `release` | `production` | exactly `production` | `hidden` | `disabled` | `none` | `forbidden` |
+| `internal` | `debug` or `release` | `staging` | a subset of `development`, `staging`, `production` that includes `staging` | visible when more than one environment is allowed | configurable | `persistent` | `forbidden` |
+| `tests` | `debug` | `fixture` | exactly `fixture` | `hidden` | `disabled` | `persistent` | `allowed` |
+
+The `tests` profile accepts an explicit ephemeral `BackendEnvironmentDescriptor` only when its typed identifier is `fixture`. It never loads or writes a persisted environment choice, so a production selection cannot carry into tests.
+
+Every profile also declares a unique `build_configuration` name. These names become Tuist configurations and shared schemes; they are independent from the typed profile identifiers.
+
+## Backend descriptors
+
+Each configured environment declares:
+
+| Field | Contract |
+|---|---|
+| `api_origin` | Absolute origin only. Credentials, non-root paths, query strings, and fragments are rejected. HTTPS is required except that `fixture` may use HTTP on a loopback host. |
+| `auth_namespace` | Non-empty, path-safe authentication realm identifier; unique across environments. |
+| `storage_namespace` | Non-empty, path-safe client storage realm identifier; unique across environments. |
+| `grant_namespace` | Non-empty, path-safe access-grant realm identifier; unique across environments. |
+| `quota_namespace` | Non-empty, path-safe quota realm identifier; unique across environments. |
+| `firebase` | Required outside `fixture`; contains public registration metadata and a validation hook name. |
+
+An environment allowed by any profile must have a descriptor. The generated `BackendEnvironment` enum remains exhaustive even when optional `development` is not enabled in an internal profile.
+
+## Firebase public-client inputs
+
+The persisted Firebase block is deliberately limited to:
+
+- `project_id`
+- `google_app_id`
+- `bundle_id`
+- `resource_name`
+- `validation_input_environment_variable`
+
+`bundle_id` must match the project bundle identifier. `resource_name` is a filename such as `GoogleService-Info-staging.plist`, never a path. Secret- or path-bearing fields such as `api_key`, `credential`, and `plist_path` are rejected by the config loader.
+
+The value of `validation_input_environment_variable` is the name of an operator-provided process environment variable. Its value points to a local XML plist only for the current command:
+
+```bash
+export IOS_APP_MANAGER_FIREBASE_PRODUCTION_PLIST="$PWD/.local/firebase/production.plist"
+export IOS_APP_MANAGER_FIREBASE_STAGING_PLIST="$PWD/.local/firebase/staging.plist"
+export IOS_APP_MANAGER_FIREBASE_DEVELOPMENT_PLIST="$PWD/.local/firebase/development.plist"
+
+ios-app-manager generate runtime-profiles
+```
+
+The validation hook checks that the plist contains `PROJECT_ID`, `GOOGLE_APP_ID`, `BUNDLE_ID`, and `API_KEY`, then compares only the configured public identifiers. The generator does not serialize, copy, print, or retain the local path or API key. Supplying the runtime resource to the application bundle remains an explicit build/deployment responsibility under the declared public `resource_name`.
+
+## Generated output
+
+`ios-app-manager init` and `generate runtime-profiles` converge these owned slices:
+
+- `Targets/<AppName>/Sources/Configuration/Runtime/RuntimeProfiles.swift`
+  - typed distribution and backend enums;
+  - policy and backend descriptor types;
+  - deterministic dictionaries in canonical order;
+  - exact `URL` origins and public Firebase metadata.
+- `Tuist/ProjectDescriptionHelpers/RuntimeProfiles.swift`
+  - typed profile-to-configuration mapping;
+  - debug/release configurations with `DISTRIBUTION_PROFILE` settings;
+  - one shared scheme per distribution profile.
+- `Project.swift`
+  - managed configuration and scheme blocks;
+  - project configuration settings;
+  - the `ApplicationConfiguration.distributionProfile` build setting.
+- `Package.swift`
+  - the same configurations for Tuist-generated package projects, avoiding configuration mismatches.
+- `SharedConfig/Sources/ApplicationConfiguration.swift`
+  - typed reading of the selected distribution profile.
+
+When `app-config setup` runs with `runtime_profiles`, its managed templates use the generated allowlist, default, menu, persistence, marker, and ephemeral-injection policy. Existing handwritten AppConfig manager behavior is not overwritten: the command returns an actionable merge error unless the file is an unchanged legacy template or a managed runtime-profile template.
+
+## Commands and convergence
+
+Initialize a project with validation inputs present:
+
+```bash
+ios-app-manager init --config ios-app-manager.json --output .
+tuist install
+tuist generate --no-open
+```
+
+Regenerate only the runtime domain:
+
+```bash
+ios-app-manager generate runtime-profiles
+```
+
+Regenerate the full project configuration and the AppConfig consumer:
+
+```bash
+ios-app-manager generate project-config
+ios-app-manager app-config setup --yes
+```
+
+Rerunning either generator with unchanged config produces no file changes. Changes to allowed environments, configuration names, public metadata, or descriptors replace the managed output rather than appending another variant.
+
+## Removal and compatibility
+
+To remove runtime profiles, delete the `runtime_profiles` block and run:
+
+```bash
+ios-app-manager generate project-config
+ios-app-manager app-config setup --yes
+```
+
+Managed Swift and Tuist runtime files are removed, managed manifest blocks return to the legacy `configurations` list, `distributionProfile` is removed from application configuration, and managed AppConfig templates return to legacy behavior.
+
+Configs without `runtime_profiles` retain the previous `Debug`/`Release` and AppConfig behavior. The deprecated top-level `distribution_profiles` and `backend_environments` maps are read as a version-1 runtime block and converge to nested `runtime_profiles` the next time `WriteProjectConfig` writes the file. A config cannot combine the legacy aliases with the nested block.

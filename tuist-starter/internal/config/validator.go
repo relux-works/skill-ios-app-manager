@@ -115,6 +115,7 @@ func (c ProjectConfig) Validate() error {
 	for i, script := range c.Scripts.PreTuistGenerate {
 		validateScriptConfig(script, fmt.Sprintf("Scripts.PreTuistGenerate[%d]", i), &issues)
 	}
+	validateRuntimeProfiles(c, &issues)
 
 	if len(issues) == 0 {
 		return nil

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/relux-works/ios-app-manager/internal/config"
 	"github.com/relux-works/ios-app-manager/internal/scaffold"
 )
 
@@ -26,17 +27,18 @@ var setupTemplatesFS embed.FS
 
 // templateFile maps a template name to its output filename.
 type templateFile struct {
-	templateName string
-	outputFile   string
+	templateName        string
+	runtimeTemplateName string
+	outputFile          string
 }
 
 var appConfigFiles = []templateFile{
 	{templateName: "namespace.swift.tmpl", outputFile: "AppConfig.swift"},
-	{templateName: "env.swift.tmpl", outputFile: "AppConfig.Env.swift"},
-	{templateName: "configuration.swift.tmpl", outputFile: "AppConfig.Env+Configuration.swift"},
-	{templateName: "presets.swift.tmpl", outputFile: "AppConfig.Env+Configuration+Presets.swift"},
-	{templateName: "protocols.swift.tmpl", outputFile: "AppConfig.Manager+Protocols.swift"},
-	{templateName: "manager.swift.tmpl", outputFile: "AppConfig.Manager.swift"},
+	{templateName: "env.swift.tmpl", runtimeTemplateName: "runtime_env.swift.tmpl", outputFile: "AppConfig.Env.swift"},
+	{templateName: "configuration.swift.tmpl", runtimeTemplateName: "runtime_configuration.swift.tmpl", outputFile: "AppConfig.Env+Configuration.swift"},
+	{templateName: "presets.swift.tmpl", runtimeTemplateName: "runtime_presets.swift.tmpl", outputFile: "AppConfig.Env+Configuration+Presets.swift"},
+	{templateName: "protocols.swift.tmpl", runtimeTemplateName: "runtime_protocols.swift.tmpl", outputFile: "AppConfig.Manager+Protocols.swift"},
+	{templateName: "manager.swift.tmpl", runtimeTemplateName: "runtime_manager.swift.tmpl", outputFile: "AppConfig.Manager.swift"},
 	{templateName: "api_configurator.swift.tmpl", outputFile: "AppConfig.ApiConfigurator.swift"},
 	{templateName: "url_components.swift.tmpl", outputFile: "AppConfig.UrlComponents.swift"},
 }
@@ -45,6 +47,7 @@ var appConfigFiles = []templateFile{
 type SetupInput struct {
 	ProjectRoot string
 	AppName     string
+	Config      config.ProjectConfig
 }
 
 // Setup scaffolds AppConfig files and patches Registry.swift with IoC registration.
@@ -73,13 +76,30 @@ func Setup(input SetupInput) error {
 		return fmt.Errorf("SecureStore not found in Registry.swift — run 'secure-store setup' first")
 	}
 
-	// 3. Scaffold 8 Swift files into Targets/<AppName>/Sources/AppConfig/.
+	// 3. Sync typed runtime-profile output before the AppConfig manager that consumes it.
+	runtimeProfilesEnabled := input.Config.HasRuntimeProfiles()
+	if runtimeProfilesEnabled {
+		if err := input.Config.Validate(); err != nil {
+			return fmt.Errorf("validate runtime profile config: %w", err)
+		}
+		if err := scaffold.ValidateFirebaseClientConfigurationInputs(input.ProjectRoot, input.Config); err != nil {
+			return fmt.Errorf("validate Firebase client configuration inputs: %w", err)
+		}
+	}
+	if _, err := scaffold.SyncApplicationConfiguration(input.ProjectRoot, input.Config); err != nil {
+		return fmt.Errorf("sync application configuration: %w", err)
+	}
+	if _, err := scaffold.SyncRuntimeProfiles(input.ProjectRoot, input.Config); err != nil {
+		return fmt.Errorf("sync runtime profiles: %w", err)
+	}
+
+	// 4. Scaffold 8 Swift files into Targets/<AppName>/Sources/AppConfig/.
 	appConfigDir := filepath.Join(input.ProjectRoot, "Targets", input.AppName, "Sources", "AppConfig")
-	if err := scaffoldFiles(appConfigDir); err != nil {
+	if err := scaffoldFiles(appConfigDir, runtimeProfilesEnabled); err != nil {
 		return fmt.Errorf("scaffold AppConfig files: %w", err)
 	}
 
-	// 4. Patch Registry.swift with registration + builder.
+	// 5. Patch Registry.swift with registration + builder.
 	if err := patchRegistry(registryPath); err != nil {
 		return fmt.Errorf("patch Registry.swift: %w", err)
 	}
@@ -97,24 +117,49 @@ func validateInput(input SetupInput) error {
 	return nil
 }
 
-func scaffoldFiles(outputDir string) error {
+func scaffoldFiles(outputDir string, runtimeProfiles ...bool) error {
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("create directory %q: %w", outputDir, err)
 	}
 
+	runtimeProfilesEnabled := len(runtimeProfiles) > 0 && runtimeProfiles[0]
 	for _, tf := range appConfigFiles {
 		outputPath := filepath.Join(outputDir, tf.outputFile)
-
-		// Idempotent: skip files that already exist.
-		if _, err := os.Stat(outputPath); err == nil {
-			continue
+		templateName := tf.templateName
+		hasRuntimeVariant := tf.runtimeTemplateName != ""
+		if runtimeProfilesEnabled && hasRuntimeVariant {
+			templateName = tf.runtimeTemplateName
 		}
 
-		content, err := setupTemplatesFS.ReadFile("setup_templates/" + tf.templateName)
+		content, err := setupTemplatesFS.ReadFile("setup_templates/" + templateName)
 		if err != nil {
-			return fmt.Errorf("read template %q: %w", tf.templateName, err)
+			return fmt.Errorf("read template %q: %w", templateName, err)
 		}
 
+		existing, readErr := os.ReadFile(outputPath)
+		if readErr == nil {
+			if !hasRuntimeVariant {
+				continue
+			}
+			isManagedRuntimeFile := strings.Contains(string(existing), scaffold.GeneratedRuntimeProfilesHeader())
+			if runtimeProfilesEnabled && !isManagedRuntimeFile {
+				legacy, err := setupTemplatesFS.ReadFile("setup_templates/" + tf.templateName)
+				if err != nil {
+					return fmt.Errorf("read legacy template %q: %w", tf.templateName, err)
+				}
+				if string(existing) != string(legacy) {
+					return fmt.Errorf("%s contains custom AppConfig behavior; merge typed runtime-profile policy before rerunning setup", tf.outputFile)
+				}
+			}
+			if !runtimeProfilesEnabled && !isManagedRuntimeFile {
+				continue
+			}
+			if string(existing) == string(content) {
+				continue
+			}
+		} else if !os.IsNotExist(readErr) {
+			return fmt.Errorf("read %q: %w", tf.outputFile, readErr)
+		}
 		if err := os.WriteFile(outputPath, content, 0o644); err != nil {
 			return fmt.Errorf("write %q: %w", tf.outputFile, err)
 		}

@@ -189,6 +189,9 @@ func renderApplicationConfigurationInfoPlistLines(indent string, cfg config.Proj
 	if urlScheme := strings.TrimSpace(cfg.URLScheme); urlScheme != "" {
 		lines = append(lines, indent+"    "+strconv.Quote("urlScheme")+": .string("+strconv.Quote(urlScheme)+"),")
 	}
+	if cfg.HasRuntimeProfiles() {
+		lines = append(lines, indent+"    "+strconv.Quote("distributionProfile")+": .string("+strconv.Quote("$(DISTRIBUTION_PROFILE)")+"),")
+	}
 
 	lines = append(lines, indent+"]),")
 	return lines

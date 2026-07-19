@@ -445,7 +445,9 @@ func syncRootPackageSharedConfigurationDependencyContent(content string, cfg con
 	updated := content
 	refPath := filepath.ToSlash(filepath.Join(normalizeModulesPath(cfg.ModulesPath), moduleName))
 	dependencyLine := fmt.Sprintf(`.package(path: "%s")`, refPath)
+	alternateDependencyLine := fmt.Sprintf(`.package(path: "./%s")`, refPath)
 	var err error
+	updated = strings.ReplaceAll(updated, alternateDependencyLine, dependencyLine)
 	if !strings.Contains(updated, dependencyLine) {
 		updated, err = insertRootPackageDependency(updated, dependencyLine)
 		if err != nil {
@@ -586,6 +588,7 @@ func removeLineContaining(content string, value string) string {
 
 func syncProjectManifestExternalDependencyContent(content string, moduleName string) (string, bool, error) {
 	externalDependency := fmt.Sprintf(`.external(name: "%s")`, moduleName)
+	localPackageDependency := fmt.Sprintf(`.package(product: "%s")`, moduleName)
 	lines := strings.Split(content, "\n")
 	hasTrailingNewline := strings.HasSuffix(content, "\n")
 	if hasTrailingNewline && len(lines) > 0 {
@@ -593,6 +596,15 @@ func syncProjectManifestExternalDependencyContent(content string, moduleName str
 	}
 
 	changed := false
+	filtered := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if strings.Contains(line, localPackageDependency) {
+			changed = true
+			continue
+		}
+		filtered = append(filtered, line)
+	}
+	lines = filtered
 	for index := 0; index < len(lines); index++ {
 		line := lines[index]
 		if !strings.Contains(line, "dependencies:") {

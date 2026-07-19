@@ -1,0 +1,377 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ios-app-manager runtime_profiles",
+  "description": "Typed distribution-profile and backend-environment policy embedded at the runtime_profiles key of ios-app-manager.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "distribution_profiles",
+    "backend_environments"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "distribution_profiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pilotTestFlight",
+        "appStore",
+        "internal",
+        "tests"
+      ],
+      "properties": {
+        "pilotTestFlight": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profile"
+            },
+            {
+              "properties": {
+                "build_kind": {
+                  "const": "release"
+                },
+                "default_environment": {
+                  "const": "production"
+                },
+                "allowed_environments": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "uniqueItems": true,
+                  "items": {
+                    "enum": [
+                      "production",
+                      "staging"
+                    ]
+                  },
+                  "allOf": [
+                    {
+                      "contains": {
+                        "const": "production"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "staging"
+                      }
+                    }
+                  ]
+                },
+                "environment_menu": {
+                  "const": "visible"
+                },
+                "selection_persistence": {
+                  "const": "enabled"
+                },
+                "non_production_marker": {
+                  "const": "persistent"
+                },
+                "ephemeral_injection": {
+                  "const": "forbidden"
+                }
+              }
+            }
+          ]
+        },
+        "appStore": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profile"
+            },
+            {
+              "properties": {
+                "build_kind": {
+                  "const": "release"
+                },
+                "default_environment": {
+                  "const": "production"
+                },
+                "allowed_environments": {
+                  "const": [
+                    "production"
+                  ]
+                },
+                "environment_menu": {
+                  "const": "hidden"
+                },
+                "selection_persistence": {
+                  "const": "disabled"
+                },
+                "non_production_marker": {
+                  "const": "none"
+                },
+                "ephemeral_injection": {
+                  "const": "forbidden"
+                }
+              }
+            }
+          ]
+        },
+        "internal": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profile"
+            },
+            {
+              "properties": {
+                "default_environment": {
+                  "const": "staging"
+                },
+                "allowed_environments": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 3,
+                  "uniqueItems": true,
+                  "items": {
+                    "enum": [
+                      "production",
+                      "staging",
+                      "development"
+                    ]
+                  },
+                  "contains": {
+                    "const": "staging"
+                  }
+                },
+                "non_production_marker": {
+                  "const": "persistent"
+                },
+                "ephemeral_injection": {
+                  "const": "forbidden"
+                }
+              }
+            }
+          ]
+        },
+        "tests": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/profile"
+            },
+            {
+              "properties": {
+                "build_kind": {
+                  "const": "debug"
+                },
+                "default_environment": {
+                  "const": "fixture"
+                },
+                "allowed_environments": {
+                  "const": [
+                    "fixture"
+                  ]
+                },
+                "environment_menu": {
+                  "const": "hidden"
+                },
+                "selection_persistence": {
+                  "const": "disabled"
+                },
+                "non_production_marker": {
+                  "const": "persistent"
+                },
+                "ephemeral_injection": {
+                  "const": "allowed"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "backend_environments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "production",
+        "staging",
+        "fixture"
+      ],
+      "properties": {
+        "production": {
+          "$ref": "#/$defs/firebaseBackend"
+        },
+        "staging": {
+          "$ref": "#/$defs/firebaseBackend"
+        },
+        "development": {
+          "$ref": "#/$defs/firebaseBackend"
+        },
+        "fixture": {
+          "$ref": "#/$defs/fixtureBackend"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "build_configuration",
+        "build_kind",
+        "default_environment",
+        "allowed_environments",
+        "environment_menu",
+        "selection_persistence",
+        "non_production_marker",
+        "ephemeral_injection"
+      ],
+      "properties": {
+        "build_configuration": {
+          "type": "string",
+          "minLength": 1
+        },
+        "build_kind": {
+          "enum": [
+            "debug",
+            "release"
+          ]
+        },
+        "default_environment": {
+          "enum": [
+            "production",
+            "staging",
+            "development",
+            "fixture"
+          ]
+        },
+        "allowed_environments": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "production",
+              "staging",
+              "development",
+              "fixture"
+            ]
+          }
+        },
+        "environment_menu": {
+          "enum": [
+            "hidden",
+            "visible"
+          ]
+        },
+        "selection_persistence": {
+          "enum": [
+            "disabled",
+            "enabled"
+          ]
+        },
+        "non_production_marker": {
+          "enum": [
+            "none",
+            "persistent"
+          ]
+        },
+        "ephemeral_injection": {
+          "enum": [
+            "forbidden",
+            "allowed"
+          ]
+        }
+      }
+    },
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "api_origin",
+        "auth_namespace",
+        "storage_namespace",
+        "grant_namespace",
+        "quota_namespace"
+      ],
+      "properties": {
+        "api_origin": {
+          "type": "string",
+          "format": "uri"
+        },
+        "auth_namespace": {
+          "$ref": "#/$defs/namespace"
+        },
+        "storage_namespace": {
+          "$ref": "#/$defs/namespace"
+        },
+        "grant_namespace": {
+          "$ref": "#/$defs/namespace"
+        },
+        "quota_namespace": {
+          "$ref": "#/$defs/namespace"
+        },
+        "firebase": {
+          "$ref": "#/$defs/firebase"
+        }
+      }
+    },
+    "firebaseBackend": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/backend"
+        },
+        {
+          "type": "object",
+          "required": [
+            "firebase"
+          ],
+          "properties": {
+            "api_origin": {
+              "type": "string",
+              "pattern": "^https://[^/?#]+/?$"
+            },
+            "firebase": {
+              "$ref": "#/$defs/firebase"
+            }
+          }
+        }
+      ]
+    },
+    "fixtureBackend": {
+      "$ref": "#/$defs/backend"
+    },
+    "firebase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "google_app_id",
+        "bundle_id",
+        "resource_name",
+        "validation_input_environment_variable"
+      ],
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        },
+        "google_app_id": {
+          "type": "string",
+          "pattern": "^[0-9]+:[A-Za-z0-9-]+:ios:[A-Za-z0-9]+$"
+        },
+        "bundle_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]+(?:\\.[A-Za-z0-9][A-Za-z0-9-]*)+$"
+        },
+        "resource_name": {
+          "type": "string",
+          "pattern": "^[^/\\\\]+\\.plist$"
+        },
+        "validation_input_environment_variable": {
+          "type": "string",
+          "pattern": "^[A-Z_][A-Z0-9_]*$"
+        }
+      }
+    },
+    "namespace": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\s/\\\\]+$"
+    }
+  }
+}

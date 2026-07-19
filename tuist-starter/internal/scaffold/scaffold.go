@@ -129,6 +129,12 @@ func (s *Scaffolder) Scaffold(cfg config.ProjectConfig, outputDir string, force 
 }
 
 func (s *Scaffolder) planFiles(cfg config.ProjectConfig, root string, appName string) (map[string]string, error) {
+	if cfg.HasRuntimeProfiles() {
+		if err := ValidateFirebaseClientConfigurationInputs(root, cfg); err != nil {
+			return nil, fmt.Errorf("validate Firebase client configuration inputs: %w", err)
+		}
+	}
+
 	rendered, err := s.renderer.Render(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("render Tuist templates: %w", err)
@@ -174,12 +180,20 @@ func (s *Scaffolder) planFiles(cfg config.ProjectConfig, root string, appName st
 	files[sharedConfigurationPackageSwiftPath(root, cfg)] = packageSwift
 	files[sharedConfigurationInfoPlistReadingSourcePath(root, cfg)] = GenerateSharedConfigurationInfoPlistReadingSwift(cfg)
 	files[applicationConfigurationSharedConfigurationSourcePath(root, cfg)] = GenerateApplicationConfigurationSharedConfigurationSwift(cfg)
+	if cfg.HasRuntimeProfiles() {
+		files[runtimeProfilesSwiftPath(root, appName)] = GenerateRuntimeProfilesSwift(cfg)
+		files[runtimeProfilesProjectDescriptionPath(root)] = GenerateRuntimeProfilesProjectDescriptionSwift(cfg)
+	}
 
 	rootPackagePath := filepath.Join(root, "Package.swift")
 	if content, ok := files[rootPackagePath]; ok {
 		updated, _, err := syncRootPackageSharedConfigurationDependencyContent(content, cfg)
 		if err != nil {
 			return nil, err
+		}
+		updated, err = syncRuntimeProfilePackageManifestContent(updated, cfg, cfg.HasRuntimeProfiles())
+		if err != nil {
+			return nil, fmt.Errorf("sync runtime profiles in root Package.swift: %w", err)
 		}
 		files[rootPackagePath] = updated
 	}

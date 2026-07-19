@@ -7,11 +7,17 @@ let developmentTeam = {{ swiftLiteral .TeamID }}
 let marketingVersion = {{ swiftLiteral .MarketingVersion }}
 let currentProjectVersion = {{ swiftLiteral .ProjectVersion }}
 let minTarget = {{ swiftLiteral .MinTarget }}
+{{- if .RuntimeProfiles }}
+// ios-app-manager:runtime-profile-configurations:begin
+let configurations: [Configuration] = RuntimeProfilesProjectDescription.configurations
+// ios-app-manager:runtime-profile-configurations:end
+{{- else }}
 let configurations: [Configuration] = [
 {{- range .Configurations }}
     .{{ configKind . }}(name: {{ swiftLiteral . }}),
 {{- end }}
 ]
+{{- end }}
 
 let project = Project(
     name: appName,
@@ -58,6 +64,9 @@ let project = Project(
 {{- if .URLScheme }}
                         "urlScheme": .string({{ swiftLiteral .URLScheme }}),
 {{- end }}
+{{- if .RuntimeProfiles }}
+                        "distributionProfile": .string("$(DISTRIBUTION_PROFILE)"),
+{{- end }}
                     ]),
 {{- if .AppGroups }}
                     "AppGroups": .dictionary([
@@ -93,5 +102,9 @@ let project = Project(
                 ]
             )
         )
-    ]
+    ]{{ if .RuntimeProfiles }},
+    // ios-app-manager:runtime-profile-schemes:begin
+    schemes: RuntimeProfilesProjectDescription.schemes(appName: appName)
+    // ios-app-manager:runtime-profile-schemes:end
+{{- end }}
 )

@@ -38,6 +38,7 @@ ios-app-manager [command] [flags]
 | `generate team-id` | Generate or update app + extension signing team settings | `ios-app-manager generate team-id` |
 | `generate background-modes-config` | Generate or update host app background modes Info.plist key | `ios-app-manager generate background-modes-config` |
 | `generate application-configuration` | Generate or update product-level runtime app configuration | `ios-app-manager generate application-configuration` |
+| `generate runtime-profiles` | Generate typed distribution/backend runtime policy and Tuist profiles | `ios-app-manager generate runtime-profiles` |
 | `generate app-capabilities` | Generate or update host app capabilities from config | `ios-app-manager generate app-capabilities` |
 | `generate presentation-config` | Generate or update host app theme/orientation Info.plist keys | `ios-app-manager generate presentation-config` |
 | `generate export-compliance-config` | Generate or update host app export compliance Info.plist key | `ios-app-manager generate export-compliance-config` |
@@ -67,7 +68,7 @@ ios-app-manager [command] [flags]
 | `static-widget setup` | Create static timeline widget internals in WidgetCore | `ios-app-manager static-widget setup` |
 | `live-activity setup` | Create Live Activity + Dynamic Island scaffold with widget UI in WidgetCore | `ios-app-manager live-activity setup` |
 | `http-client setup` | Add HttpClient IoC registration with swift-httpclient | `ios-app-manager http-client setup` |
-| `app-config setup` | Scaffold AppConfig manager with env switching and ApiConfigurator | `ios-app-manager app-config setup` |
+| `app-config setup` | Scaffold AppConfig manager and consume typed runtime policy when configured | `ios-app-manager app-config setup` |
 | `status` | Project status placeholder command | `ios-app-manager status` |
 | `q '<query>'` | Run DSL query expression | `ios-app-manager q 'modules(type=feature) { operation params }'` |
 | `m '<mutation>'` | Run DSL mutation expression | `ios-app-manager m 'create_module(name=Auth,type=feature)'` |
@@ -565,6 +566,28 @@ Example:
 ios-app-manager generate application-configuration
 ```
 
+### `generate runtime-profiles`
+
+Syntax:
+```bash
+ios-app-manager generate runtime-profiles
+```
+
+Description:
+- Validates the versioned `runtime_profiles` schema and approved distribution-policy boundaries.
+- Validates environment-keyed Firebase public metadata against operator-supplied plist paths named by environment variables; local paths and API keys are not retained or printed.
+- Generates typed Swift backend/profile descriptors with exact API origins and no synthesized URL path.
+- Generates Tuist configurations and shared schemes for `pilotTestFlight`, `appStore`, `internal`, and `tests`, including matching package-project configurations.
+- Adds the selected profile to generated `ApplicationConfiguration` and converges managed output on update or removal.
+- Orchestrates schema, Firebase-input, runtime-descriptor, and Tuist-project subplugins in dependency order.
+
+Flags:
+- `--config <path>`: Optional command-level config override.
+
+Example and schema:
+- [`runtime-profiles.md`](runtime-profiles.md)
+- [`runtime-profiles.schema.json`](runtime-profiles.schema.json)
+
 ### `generate app-capabilities`
 
 Syntax:
@@ -627,6 +650,7 @@ Description:
   - `generate export-compliance-config`
   - `generate privacy-usage-descriptions-config`
   - `generate application-configuration`
+  - `generate runtime-profiles`
   - `generate app-capabilities`
   - `generate build-flags`
   - `generate package-strictness`

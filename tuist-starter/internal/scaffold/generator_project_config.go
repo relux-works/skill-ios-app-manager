@@ -15,6 +15,14 @@ func init() {
 }
 
 func runGenerateProjectConfig(input GenerateInput) (GenerateResult, error) {
+	if input.Config.HasRuntimeProfiles() {
+		if err := input.Config.Validate(); err != nil {
+			return GenerateResult{}, fmt.Errorf("runtime-profiles preflight: %w", err)
+		}
+		if err := ValidateFirebaseClientConfigurationInputs(input.ProjectRoot, input.Config); err != nil {
+			return GenerateResult{}, fmt.Errorf("runtime-profiles preflight: %w", err)
+		}
+	}
 	type leafRun struct {
 		name string
 		run  func(GenerateInput) (GenerateResult, error)
@@ -31,6 +39,7 @@ func runGenerateProjectConfig(input GenerateInput) (GenerateResult, error) {
 		{name: "export-compliance-config", run: runGenerateExportComplianceConfig},
 		{name: "privacy-usage-descriptions-config", run: runGeneratePrivacyUsageDescriptionsConfig},
 		{name: "application-configuration", run: runGenerateApplicationConfiguration},
+		{name: "runtime-profiles", run: runGenerateRuntimeProfiles},
 		{name: "app-capabilities", run: runGenerateAppCapabilities},
 		{name: "build-flags", run: runGenerateBuildFlags},
 		{name: "package-strictness", run: runGeneratePackageStrictness},

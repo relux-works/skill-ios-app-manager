@@ -1,0 +1,121 @@
+{
+  "app_name": "RuntimeExample",
+  "bundle_id": "com.example.runtimeapp",
+  "team_id": "ABCDE12345",
+  "organization_name": "Example Organization",
+  "marketing_version": "1.0.0",
+  "project_version": "1",
+  "swift_version": "6.2",
+  "min_target": "17.0",
+  "configurations": [
+    "Debug",
+    "Release"
+  ],
+  "runtime_profiles": {
+    "schema_version": 1,
+    "distribution_profiles": {
+      "pilotTestFlight": {
+        "build_configuration": "PilotTestFlight",
+        "build_kind": "release",
+        "default_environment": "production",
+        "allowed_environments": [
+          "production",
+          "staging"
+        ],
+        "environment_menu": "visible",
+        "selection_persistence": "enabled",
+        "non_production_marker": "persistent",
+        "ephemeral_injection": "forbidden"
+      },
+      "appStore": {
+        "build_configuration": "AppStore",
+        "build_kind": "release",
+        "default_environment": "production",
+        "allowed_environments": [
+          "production"
+        ],
+        "environment_menu": "hidden",
+        "selection_persistence": "disabled",
+        "non_production_marker": "none",
+        "ephemeral_injection": "forbidden"
+      },
+      "internal": {
+        "build_configuration": "Internal",
+        "build_kind": "debug",
+        "default_environment": "staging",
+        "allowed_environments": [
+          "production",
+          "staging",
+          "development"
+        ],
+        "environment_menu": "visible",
+        "selection_persistence": "enabled",
+        "non_production_marker": "persistent",
+        "ephemeral_injection": "forbidden"
+      },
+      "tests": {
+        "build_configuration": "Tests",
+        "build_kind": "debug",
+        "default_environment": "fixture",
+        "allowed_environments": [
+          "fixture"
+        ],
+        "environment_menu": "hidden",
+        "selection_persistence": "disabled",
+        "non_production_marker": "persistent",
+        "ephemeral_injection": "allowed"
+      }
+    },
+    "backend_environments": {
+      "production": {
+        "api_origin": "https://api.example.com",
+        "auth_namespace": "auth-production",
+        "storage_namespace": "storage-production",
+        "grant_namespace": "grants-production",
+        "quota_namespace": "quota-production",
+        "firebase": {
+          "project_id": "example-runtime-production",
+          "google_app_id": "1:100000000001:ios:0000000000000001",
+          "bundle_id": "com.example.runtimeapp",
+          "resource_name": "GoogleService-Info-production.plist",
+          "validation_input_environment_variable": "IOS_APP_MANAGER_FIREBASE_PRODUCTION_PLIST"
+        }
+      },
+      "staging": {
+        "api_origin": "https://staging-api.example.com",
+        "auth_namespace": "auth-staging",
+        "storage_namespace": "storage-staging",
+        "grant_namespace": "grants-staging",
+        "quota_namespace": "quota-staging",
+        "firebase": {
+          "project_id": "example-runtime-staging",
+          "google_app_id": "1:100000000002:ios:0000000000000002",
+          "bundle_id": "com.example.runtimeapp",
+          "resource_name": "GoogleService-Info-staging.plist",
+          "validation_input_environment_variable": "IOS_APP_MANAGER_FIREBASE_STAGING_PLIST"
+        }
+      },
+      "development": {
+        "api_origin": "https://development-api.example.com",
+        "auth_namespace": "auth-development",
+        "storage_namespace": "storage-development",
+        "grant_namespace": "grants-development",
+        "quota_namespace": "quota-development",
+        "firebase": {
+          "project_id": "example-runtime-development",
+          "google_app_id": "1:100000000003:ios:0000000000000003",
+          "bundle_id": "com.example.runtimeapp",
+          "resource_name": "GoogleService-Info-development.plist",
+          "validation_input_environment_variable": "IOS_APP_MANAGER_FIREBASE_DEVELOPMENT_PLIST"
+        }
+      },
+      "fixture": {
+        "api_origin": "http://127.0.0.1:8080",
+        "auth_namespace": "auth-fixture",
+        "storage_namespace": "storage-fixture",
+        "grant_namespace": "grants-fixture",
+        "quota_namespace": "quota-fixture"
+      }
+    }
+  }
+}

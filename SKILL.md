@@ -97,6 +97,7 @@ Scaffold plugins and subplugins must be idempotent. Re-running the same command 
 - Generate SwiftLint config: `ios-app-manager generate swiftlint`
 - Sync project manifest config: `ios-app-manager generate project-config`
 - Sync generic app runtime config: `ios-app-manager generate application-configuration`
+- Sync typed distribution/backend runtime policy: `ios-app-manager generate runtime-profiles`
 - Sync host app capabilities from config: `ios-app-manager generate app-capabilities`
 - Generate app/extension bundle ids: `ios-app-manager generate bundle-id`
 - Generate app/extension versions: `ios-app-manager generate versions`
@@ -122,7 +123,7 @@ Scaffold plugins and subplugins must be idempotent. Re-running the same command 
 Generate commands are scaffold generator plugins:
 - Each `generate <artifact>` entrypoint is a separate scaffold plugin with its own responsibility and dependency contract.
 - Use this pattern for scaffold-only sync tasks instead of overloading `init`.
-- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate bundle-id`, `generate versions`, `generate min-target`, `generate team-id`, `generate platform-destinations`, `generate background-modes-config`, `generate presentation-config`, `generate export-compliance-config`, `generate privacy-usage-descriptions-config`, `generate application-configuration`, `generate app-capabilities`, `generate build-flags`, and `generate package-strictness`.
+- `generate project-config` is the orchestration entrypoint for project manifest sync and currently runs `generate bundle-id`, `generate versions`, `generate min-target`, `generate team-id`, `generate platform-destinations`, `generate background-modes-config`, `generate presentation-config`, `generate export-compliance-config`, `generate privacy-usage-descriptions-config`, `generate application-configuration`, `generate runtime-profiles`, `generate app-capabilities`, `generate build-flags`, and `generate package-strictness`.
 - `generate bundle-id` depends on the `init` scaffold shape and syncs `bundle_id` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`. Extensions keep their own suffixes, while the containing host bundle root converges to the configured app bundle id.
 - `generate versions` depends on the `init` scaffold shape and syncs both `marketing_version` and `project_version` from `ios-app-manager.json` into the host app `Project.swift` and every `Extensions/*/Project.swift`.
 - `generate min-target` depends on the same scaffold shape and syncs `min_target` into both `deploymentTargets` and `IPHONEOS_DEPLOYMENT_TARGET` for the host app and extensions.
@@ -132,6 +133,7 @@ Generate commands are scaffold generator plugins:
 - `generate export-compliance-config` depends on the same scaffold shape and syncs host app export compliance from `uses_non_exempt_encryption` in `ios-app-manager.json`. An explicit `false` writes `ITSAppUsesNonExemptEncryption` as `.boolean(false)`; omitting the field removes the owned Info.plist key.
 - `generate privacy-usage-descriptions-config` depends on the same scaffold shape and syncs host app `privacy_usage_descriptions` values into Info.plist usage description strings such as `NSBluetoothAlwaysUsageDescription`, `NSBluetoothPeripheralUsageDescription`, `NSCameraUsageDescription`, `NSMicrophoneUsageDescription`, and `NSLocalNetworkUsageDescription`. Empty values remove scaffold-owned keys.
 - `generate application-configuration` depends on the same scaffold shape and syncs product-level runtime identity from `ios-app-manager.json` into an `ApplicationConfiguration` Info.plist dictionary for the host app, app-like targets, and extensions. It also generates the `SharedConfig` reader source and app-target `Configuration+ApplicationConfiguration.swift` facade. This dictionary is distinct from target identity keys such as `CFBundleIdentifier`.
+- `generate runtime-profiles` owns typed distribution/backend descriptors, Firebase public-input validation, Tuist configurations/schemes, and policy-aware AppConfig integration. Read [`references/runtime-profiles.md`](references/runtime-profiles.md) before adding or changing runtime-profile config.
 - `generate app-capabilities` depends on the same scaffold shape and orchestrates host app capability subplugins.
 - `app-groups` is an app capability subplugin with `init` dependency; it syncs configured `app_groups` into `Tuist/ProjectDescriptionHelpers/AppCapabilities.swift`, host/test target `Project.swift` Info.plist `AppGroups` dictionaries, generated `SharedConfig`, and `Configuration+AppGroups.swift`. Generated app-group code reads product-level service identity through `Configuration.ApplicationConfiguration`, so prefer `generate project-config` when syncing app groups.
 - `generate build-flags` depends on the same scaffold shape and syncs Swift language, strict memory safety, strict concurrency, approachable concurrency, default actor isolation, and upcoming-feature restriction settings from `project_settings.swift` into the host app and extensions.
@@ -192,6 +194,7 @@ ios-app-manager generate presentation-config
 ios-app-manager generate export-compliance-config
 ios-app-manager generate privacy-usage-descriptions-config
 ios-app-manager generate application-configuration
+ios-app-manager generate runtime-profiles
 ios-app-manager generate app-capabilities
 ios-app-manager generate build-flags
 ios-app-manager generate package-strictness

@@ -154,6 +154,7 @@ Leaf sync commands remain available when you only want one slice:
 ios-app-manager generate versions
 ios-app-manager generate min-target
 ios-app-manager generate team-id
+ios-app-manager generate runtime-profiles
 ios-app-manager generate app-capabilities
 ios-app-manager generate build-flags
 ios-app-manager generate package-strictness
@@ -163,7 +164,23 @@ Each leaf sync is a scaffold generator plugin. Do not patch generated scaffold-o
 For broad domains, keep the leaf plugin as an orchestrator and add concrete subplugins. App groups, for example, are handled by the `app-groups` subplugin under `generate app-capabilities`, not by hardcoding every capability into one function.
 All scaffold plugins and subplugins must be idempotent: repeated runs with the same config should report no changes and must not duplicate generated declarations, manifest entries, files, dependencies, entitlements, or package settings.
 
-## 7) Common troubleshooting
+## 7) Configure typed runtime profiles
+
+Start from the generic config in `tuist-starter/testdata/runtime-profiles-config.json`, then provide Firebase plist paths only through the hook environment variables named in that config:
+
+```bash
+export IOS_APP_MANAGER_FIREBASE_PRODUCTION_PLIST="$PWD/.local/firebase/production.plist"
+export IOS_APP_MANAGER_FIREBASE_STAGING_PLIST="$PWD/.local/firebase/staging.plist"
+export IOS_APP_MANAGER_FIREBASE_DEVELOPMENT_PLIST="$PWD/.local/firebase/development.plist"
+
+ios-app-manager generate project-config
+ios-app-manager app-config setup --yes
+tuist install && tuist generate --no-open
+```
+
+Run `generate project-config` again to verify convergence. To remove the feature, delete `runtime_profiles`, rerun the same generator, and rerun `app-config setup` to restore managed legacy templates. See [`runtime-profiles.md`](runtime-profiles.md) for the policy matrix, validation constraints, safe Firebase input contract, and migration behavior.
+
+## 8) Common troubleshooting
 
 ### Invalid or missing config
 

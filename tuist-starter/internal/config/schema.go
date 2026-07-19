@@ -76,10 +76,16 @@ type ProjectConfig struct {
 	BackgroundModes []string `json:"background_modes,omitempty"`
 
 	// Build
-	ProductName     string          `json:"product_name,omitempty"`   // defaults to AppName
-	Configurations  []string        `json:"configurations,omitempty"` // e.g. ["Debug", "Release"]
-	ProjectSettings ProjectSettings `json:"project_settings,omitempty"`
-	Scripts         ScriptsConfig   `json:"scripts,omitempty"`
+	ProductName     string                 `json:"product_name,omitempty"`   // defaults to AppName
+	Configurations  []string               `json:"configurations,omitempty"` // legacy/default build configurations
+	RuntimeProfiles *RuntimeProfilesConfig `json:"runtime_profiles,omitempty"`
+	ProjectSettings ProjectSettings        `json:"project_settings,omitempty"`
+	Scripts         ScriptsConfig          `json:"scripts,omitempty"`
+
+	// Deprecated runtime-profile aliases. LoadConfig migrates these top-level
+	// maps into RuntimeProfiles so older configuration files remain readable.
+	LegacyDistributionProfiles map[DistributionProfile]DistributionProfileConfig `json:"distribution_profiles,omitempty"`
+	LegacyBackendEnvironments  map[BackendEnvironment]BackendEnvironmentConfig   `json:"backend_environments,omitempty"`
 
 	// Modules
 	ModulesPath  string             `json:"modules_path,omitempty"` // default: "Packages"
@@ -145,6 +151,7 @@ func (c *ProjectConfig) applyDefaults() {
 	}
 
 	c.applySwiftDefaults()
+	c.applyRuntimeProfileDefaults()
 }
 
 func (c *ProjectConfig) applyPlatformDefaults() {

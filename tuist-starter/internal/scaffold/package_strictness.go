@@ -56,7 +56,7 @@ func SyncPackageStrictness(projectRoot string, cfg config.ProjectConfig) (Manife
 			changed bool
 		)
 		if manifestPath == rootPackagePath {
-			updated, changed, err = syncRootPackageStrictnessManifest(string(payload), effectiveSwift, rootPackageTargets)
+			updated, changed, err = syncRootPackageStrictnessManifest(string(payload), cfg, effectiveSwift, rootPackageTargets)
 		} else {
 			updated, changed, err = syncModulePackageStrictnessManifest(string(payload), effectiveSwift)
 		}
@@ -202,7 +202,7 @@ func discoverPackageManifestPaths(projectRoot, modulesPath string) ([]string, er
 	return paths, nil
 }
 
-func syncRootPackageStrictnessManifest(content string, swift config.EffectiveSwiftSettings, packageTargetNames []string) (string, bool, error) {
+func syncRootPackageStrictnessManifest(content string, cfg config.ProjectConfig, swift config.EffectiveSwiftSettings, packageTargetNames []string) (string, bool, error) {
 	updated, changed, err := ensureSwiftToolsVersionLine(content, swift.ToolsVersion)
 	if err != nil {
 		return "", false, err
@@ -218,7 +218,12 @@ func syncRootPackageStrictnessManifest(content string, swift config.EffectiveSwi
 		return "", false, err
 	}
 
-	return next, changed || stripped || targetSettingsChanged, nil
+	runtimeUpdated, err := syncRuntimeProfilePackageManifestContent(next, cfg, cfg.HasRuntimeProfiles())
+	if err != nil {
+		return "", false, err
+	}
+
+	return runtimeUpdated, changed || stripped || targetSettingsChanged || runtimeUpdated != next, nil
 }
 
 func syncModulePackageStrictnessManifest(content string, swift config.EffectiveSwiftSettings) (string, bool, error) {
@@ -266,35 +271,38 @@ func ensureSwiftToolsVersionLine(content, toolsVersion string) (string, bool, er
 func removeGeneratedRootPackageStrictnessBlock(content string) (string, bool, error) {
 	const strictSettingsAnchor = "let strictPackageBaseSettings: SettingsDictionary = ["
 
-	strictIndex := strings.Index(content, strictSettingsAnchor)
-	if strictIndex < 0 {
+	if !strings.Contains(content, strictSettingsAnchor) {
 		return content, false, nil
 	}
 
-	start := strings.LastIndex(content[:strictIndex], "#if TUIST")
-	if start < 0 {
-		return "", false, fmt.Errorf("generated root strictness block start not found")
+	lines := strings.Split(content, "\n")
+	hasTrailingNewline := strings.HasSuffix(content, "\n")
+	strictStart := findLineContaining(lines, strictSettingsAnchor)
+	strictEnd, err := findDelimitedBlockEnd(lines, strictStart, "[", "]")
+	if err != nil {
+		return "", false, fmt.Errorf("generated root strictness settings are unterminated")
+	}
+	lines = append(append([]string(nil), lines[:strictStart]...), lines[strictEnd+1:]...)
+
+	baseSettingsLine := -1
+	for index, line := range lines {
+		if strings.Contains(line, "baseSettings:") && strings.Contains(line, "strictPackageBaseSettings") {
+			baseSettingsLine = index
+			break
+		}
+	}
+	if baseSettingsLine >= 0 {
+		baseSettingsEnd := baseSettingsLine
+		if strings.Count(lines[baseSettingsLine], "(") > strings.Count(lines[baseSettingsLine], ")") {
+			baseSettingsEnd, err = findDelimitedBlockEnd(lines, baseSettingsLine, "(", ")")
+			if err != nil {
+				return "", false, fmt.Errorf("generated root baseSettings are unterminated")
+			}
+		}
+		lines = append(append([]string(nil), lines[:baseSettingsLine]...), lines[baseSettingsEnd+1:]...)
 	}
 
-	endRelative := strings.Index(content[strictIndex:], "#endif")
-	if endRelative < 0 {
-		return "", false, fmt.Errorf("generated root strictness block end not found")
-	}
-	end := strictIndex + endRelative + len("#endif")
-
-	prefix := strings.TrimRight(content[:start], "\n")
-	suffix := strings.TrimLeft(content[end:], "\n")
-
-	switch {
-	case prefix == "" && suffix == "":
-		return "", true, nil
-	case prefix == "":
-		return suffix, true, nil
-	case suffix == "":
-		return prefix + "\n", true, nil
-	default:
-		return prefix + "\n\n" + suffix, true, nil
-	}
+	return joinSyncLines(lines, hasTrailingNewline), true, nil
 }
 
 func ensureRootPackageSettingsBlock(content string, settings []config.SwiftBuildSetting) (string, bool, error) {
@@ -488,7 +496,10 @@ func ensureRootPackageSettingsTargetEntries(lines []string, packageSettingsIndex
 
 	entries := renderRootPackageTargetSettingsEntries(targetNames)
 	if targetSettingsIndex < 0 {
-		insertIndex := packageSettingsIndex + 1
+		insertIndex := packageSettingsEnd
+		if projectOptionsIndex := findLineContainingInRange(lines, packageSettingsIndex+1, packageSettingsEnd, "projectOptions:"); projectOptionsIndex >= 0 {
+			insertIndex = projectOptionsIndex
+		}
 		blockLines := append([]string{"    targetSettings: ["}, entries...)
 		blockLines = append(blockLines, "    ],")
 		updated := insertSyncLines(lines, insertIndex, blockLines)

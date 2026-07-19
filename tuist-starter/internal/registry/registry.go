@@ -45,6 +45,7 @@ type SetupInput struct {
 	ProjectRoot string            // required — absolute path to iOS project root
 	AppName     string            // required — from config (e.g. "XFlow")
 	ModulesPath string            // optional — defaults to "Packages"
+	ConfigPath  string            // optional — selected ios-app-manager config path
 	ExtraArgs   map[string]string // module-specific params
 }
 

@@ -3,6 +3,17 @@
 > Institutional memory. Concise, factual, high-signal.
 > Newest entries first. One block per insight.
 
+## 2026-07-20
+
+### 0105 — Typed Runtime Profiles And Package Configuration Convergence
+- DECISION: Distribution profiles and backend environments are independent fixed enums; generated policy validates the approved profile matrix and never synthesizes an API path.
+- DECISION: Firebase config persists public registration metadata plus an environment-variable hook name only; plist paths and API keys remain process-local validation inputs.
+- ROOT CAUSE: Custom app configurations must also be applied to Tuist-generated package projects, and the Swift profile case `internal` must be escaped. Forced scaffold reruns also exposed duplicate local/external SharedConfig dependencies; real Tuist validation caught generated `PackageSettings` arguments outside initializer order.
+- ROOT CAUSE: The SecureStore builder still referenced the removed Info.plist-shaped app-group accessor (`GROUP_*`), while current shared configuration generates canonical lower-camel properties such as `main`; the real Swift build exposed the mismatch.
+- FIX: Added typed runtime schema/subplugins, package configuration sync, escaped Swift enum output, canonical SharedConfig dependency convergence, one-run migration to `productTypes` → `baseSettings` → `targetSettings` ordering, and canonical SecureStore app-group property derivation.
+- SCOPE: `tuist-starter/internal/config`, `tuist-starter/internal/scaffold`, `tuist-starter/internal/appconfig`, runtime-profile docs/examples/tests.
+- STATUS: Unit/golden tests, JSON Schema validation, Tuist generation, Swift 6 typecheck, and simulator builds for all four generated profile schemes passed in a generic fixture.
+
 ## 2026-07-02
 
 ### 1252 — Remote Notification Background Mode

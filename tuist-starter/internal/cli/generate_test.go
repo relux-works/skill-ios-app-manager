@@ -24,7 +24,7 @@ func TestGenerateHelpShowsMakefileSubcommand(t *testing.T) {
 		}
 	}
 
-	for _, expected := range []string{"background-modes-config", "bundle-id", "versions", "min-target", "team-id", "application-configuration", "app-capabilities", "build-flags", "project-config"} {
+	for _, expected := range []string{"background-modes-config", "bundle-id", "versions", "min-target", "team-id", "application-configuration", "runtime-profiles", "app-capabilities", "build-flags", "project-config"} {
 		if !strings.Contains(output, expected) {
 			t.Fatalf("generate --help output missing %q:\n%s", expected, output)
 		}
@@ -818,6 +818,7 @@ let package = Package(
 		"- export-compliance-config: export compliance config already up to date",
 		"- privacy-usage-descriptions-config: privacy usage descriptions config already up to date",
 		"- application-configuration: regenerated application configuration in 7 file(s)",
+		"- runtime-profiles: runtime profiles already up to date",
 		"- app-capabilities: regenerated app capabilities via 1 enabled subplugin(s), updated 5 file(s)",
 		"- build-flags: regenerated build flag manifests in 2 file(s)",
 		"- package-strictness: regenerated package strictness manifests in 2 file(s)",
