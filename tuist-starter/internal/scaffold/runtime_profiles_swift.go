@@ -128,11 +128,19 @@ func GenerateRuntimeProfilesSwift(cfg config.ProjectConfig) string {
 	b.WriteString("    case forbidden\n")
 	b.WriteString("    case allowed\n")
 	b.WriteString("}\n\n")
+	b.WriteString("/// An explicit Firebase public-client trust boundary. Backend API and runtime-state namespaces remain environment-specific.\n")
+	b.WriteString("public struct FirebaseIdentitySharingGroup: RawRepresentable, Equatable, Hashable, Sendable {\n")
+	b.WriteString("    public let rawValue: String\n\n")
+	b.WriteString("    public init(rawValue: String) {\n")
+	b.WriteString("        self.rawValue = rawValue\n")
+	b.WriteString("    }\n")
+	b.WriteString("}\n\n")
 	b.WriteString("public struct FirebaseClientConfiguration: Equatable, Sendable {\n")
 	b.WriteString("    public let projectID: String\n")
 	b.WriteString("    public let googleAppID: String\n")
 	b.WriteString("    public let bundleID: String\n")
 	b.WriteString("    public let resourceName: String\n")
+	b.WriteString("    public let identitySharingGroup: FirebaseIdentitySharingGroup?\n")
 	b.WriteString("}\n\n")
 	b.WriteString("public struct BackendEnvironmentDescriptor: Equatable, Sendable {\n")
 	b.WriteString("    public let id: BackendEnvironment\n")
@@ -189,7 +197,12 @@ func GenerateRuntimeProfilesSwift(cfg config.ProjectConfig) string {
 			b.WriteString("                projectID: " + strconv.Quote(firebase.ProjectID) + ",\n")
 			b.WriteString("                googleAppID: " + strconv.Quote(firebase.GoogleAppID) + ",\n")
 			b.WriteString("                bundleID: " + strconv.Quote(firebase.BundleID) + ",\n")
-			b.WriteString("                resourceName: " + strconv.Quote(firebase.ResourceName) + "\n")
+			b.WriteString("                resourceName: " + strconv.Quote(firebase.ResourceName) + ",\n")
+			if firebase.IdentitySharingGroup == "" {
+				b.WriteString("                identitySharingGroup: nil\n")
+			} else {
+				b.WriteString("                identitySharingGroup: .init(rawValue: " + strconv.Quote(string(firebase.IdentitySharingGroup)) + ")\n")
+			}
 			b.WriteString("            )\n")
 		}
 		b.WriteString("        ),\n")

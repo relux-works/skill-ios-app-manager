@@ -74,11 +74,12 @@
         "grant_namespace": "grants-production",
         "quota_namespace": "quota-production",
         "firebase": {
-          "project_id": "example-runtime-production",
+          "project_id": "example-runtime-shared",
           "google_app_id": "1:100000000001:ios:0000000000000001",
           "bundle_id": "com.example.runtimeapp",
-          "resource_name": "GoogleService-Info-production.plist",
-          "validation_input_environment_variable": "IOS_APP_MANAGER_FIREBASE_PRODUCTION_PLIST"
+          "resource_name": "GoogleService-Info-shared.plist",
+          "validation_input_environment_variable": "IOS_APP_MANAGER_FIREBASE_SHARED_PLIST",
+          "identity_sharing_group": "shared-public-client"
         }
       },
       "staging": {
@@ -88,11 +89,12 @@
         "grant_namespace": "grants-staging",
         "quota_namespace": "quota-staging",
         "firebase": {
-          "project_id": "example-runtime-staging",
-          "google_app_id": "1:100000000002:ios:0000000000000002",
+          "project_id": "example-runtime-shared",
+          "google_app_id": "1:100000000001:ios:0000000000000001",
           "bundle_id": "com.example.runtimeapp",
-          "resource_name": "GoogleService-Info-staging.plist",
-          "validation_input_environment_variable": "IOS_APP_MANAGER_FIREBASE_STAGING_PLIST"
+          "resource_name": "GoogleService-Info-shared.plist",
+          "validation_input_environment_variable": "IOS_APP_MANAGER_FIREBASE_SHARED_PLIST",
+          "identity_sharing_group": "shared-public-client"
         }
       },
       "development": {

@@ -42,6 +42,14 @@ func TestLoadRuntimeProfilesGenericExample(t *testing.T) {
 	if got := cfg.RuntimeProfiles.DistributionProfiles[DistributionProfileTests].SelectionPersistence; got != SelectionPersistenceDisabled {
 		t.Fatalf("tests selection persistence = %q, want disabled", got)
 	}
+	production := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentProduction]
+	staging := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging]
+	if production.Firebase.IdentitySharingGroup == "" || production.Firebase.IdentitySharingGroup != staging.Firebase.IdentitySharingGroup {
+		t.Fatalf("generic example sharing groups = production %q staging %q, want one explicit shared group", production.Firebase.IdentitySharingGroup, staging.Firebase.IdentitySharingGroup)
+	}
+	if differences := firebaseIdentityDifferences(*production.Firebase, *staging.Firebase); len(differences) != 0 {
+		t.Fatalf("generic example shared Firebase metadata differs: %v", differences)
+	}
 }
 
 func TestRuntimeProfilesJSONSchemaIsWellFormed(t *testing.T) {
@@ -58,6 +66,9 @@ func TestRuntimeProfilesJSONSchemaIsWellFormed(t *testing.T) {
 	}
 	if schema["$schema"] != "https://json-schema.org/draft/2020-12/schema" {
 		t.Fatalf("$schema = %#v, want draft 2020-12", schema["$schema"])
+	}
+	if !strings.Contains(string(payload), `"identity_sharing_group"`) {
+		t.Fatal("runtime profile schema does not expose identity_sharing_group")
 	}
 }
 
@@ -202,6 +213,33 @@ func TestRuntimeProfilesRejectInvalidEnvironmentDescriptors(t *testing.T) {
 			wantErr: "exact origin without credentials, path, query, or fragment",
 		},
 		{
+			name: "API origin collision",
+			mutate: func(cfg *ProjectConfig) {
+				environment := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging]
+				environment.APIOrigin = "https://api.example.com/"
+				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging] = environment
+			},
+			wantErr: "APIOrigin \"https://api.example.com\" collides with production",
+		},
+		{
+			name: "API origin default HTTPS port collision",
+			mutate: func(cfg *ProjectConfig) {
+				environment := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging]
+				environment.APIOrigin = "https://api.example.com:443"
+				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging] = environment
+			},
+			wantErr: "APIOrigin \"https://api.example.com\" collides with production",
+		},
+		{
+			name: "API origin zero-padded default HTTPS port collision",
+			mutate: func(cfg *ProjectConfig) {
+				environment := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging]
+				environment.APIOrigin = "https://api.example.com:0443"
+				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging] = environment
+			},
+			wantErr: "APIOrigin \"https://api.example.com\" collides with production",
+		},
+		{
 			name: "namespace collision",
 			mutate: func(cfg *ProjectConfig) {
 				environment := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging]
@@ -227,6 +265,228 @@ func TestRuntimeProfilesRejectInvalidEnvironmentDescriptors(t *testing.T) {
 				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging] = environment
 			},
 			wantErr: "ValidationInputEnvironmentVariable",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := validRuntimeProjectConfig()
+			tt.mutate(&cfg)
+			err := cfg.Validate()
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("Validate() error = %v, want %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRuntimeProfilesFirebaseDuplicatesRemainRejectedWithoutSharingGroup(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		mutate func(staging *FirebaseClientConfig, production FirebaseClientConfig)
+		field  string
+	}{
+		{
+			name: "project ID",
+			mutate: func(staging *FirebaseClientConfig, production FirebaseClientConfig) {
+				staging.ProjectID = production.ProjectID
+			},
+			field: "ProjectID",
+		},
+		{
+			name: "Google App ID",
+			mutate: func(staging *FirebaseClientConfig, production FirebaseClientConfig) {
+				staging.GoogleAppID = production.GoogleAppID
+			},
+			field: "GoogleAppID",
+		},
+		{
+			name: "resource name",
+			mutate: func(staging *FirebaseClientConfig, production FirebaseClientConfig) {
+				staging.ResourceName = production.ResourceName
+			},
+			field: "ResourceName",
+		},
+		{
+			name: "validation hook",
+			mutate: func(staging *FirebaseClientConfig, production FirebaseClientConfig) {
+				staging.ValidationInputEnvironmentVar = production.ValidationInputEnvironmentVar
+			},
+			field: "ValidationInputEnvironmentVariable",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := validRuntimeProjectConfig()
+			production := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentProduction]
+			staging := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging]
+			tt.mutate(staging.Firebase, *production.Firebase)
+			cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging] = staging
+
+			err := cfg.Validate()
+			if err == nil || !strings.Contains(err.Error(), tt.field) || !strings.Contains(err.Error(), "identity_sharing_group") {
+				t.Fatalf("Validate() error = %v, want fail-closed %s collision with sharing guidance", err, tt.field)
+			}
+		})
+	}
+}
+
+func TestRuntimeProfilesAllowsExplicitSharedFirebaseIdentity(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name    string
+		targets []BackendEnvironment
+	}{
+		{name: "two participants", targets: []BackendEnvironment{BackendEnvironmentStaging}},
+		{name: "three participants", targets: []BackendEnvironment{BackendEnvironmentStaging, BackendEnvironmentDevelopment}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := validRuntimeProjectConfig()
+			for _, target := range tt.targets {
+				shareFirebaseIdentity(&cfg, BackendEnvironmentProduction, target, "shared-public-client")
+			}
+			if err := cfg.Validate(); err != nil {
+				t.Fatalf("Validate() shared Firebase identity error = %v", err)
+			}
+
+			production := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentProduction]
+			for _, targetEnvironment := range tt.targets {
+				target := cfg.RuntimeProfiles.BackendEnvironments[targetEnvironment]
+				if production.APIOrigin == target.APIOrigin {
+					t.Fatalf("shared identity API origins = %q, want environment-specific origins", production.APIOrigin)
+				}
+				for name, values := range map[string][2]string{
+					"auth":    {production.AuthNamespace, target.AuthNamespace},
+					"storage": {production.StorageNamespace, target.StorageNamespace},
+					"grant":   {production.GrantNamespace, target.GrantNamespace},
+					"quota":   {production.QuotaNamespace, target.QuotaNamespace},
+				} {
+					if values[0] == values[1] {
+						t.Fatalf("shared identity %s namespaces = %q, want environment-specific namespaces", name, values[0])
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestCanonicalAPIOriginNormalizesEffectivePorts(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{name: "HTTPS omitted port", raw: "https://API.Example.COM", want: "https://api.example.com"},
+		{name: "HTTPS uppercase scheme", raw: "HTTPS://API.Example.COM", want: "https://api.example.com"},
+		{name: "HTTPS default port", raw: "https://API.Example.COM:443", want: "https://api.example.com"},
+		{name: "HTTPS zero-padded default port", raw: "https://API.Example.COM:0443", want: "https://api.example.com"},
+		{name: "HTTPS zero-padded non-default port", raw: "https://API.Example.COM:08443", want: "https://api.example.com:8443"},
+		{name: "HTTP omitted port", raw: "http://127.0.0.1", want: "http://127.0.0.1"},
+		{name: "HTTP default port", raw: "http://127.0.0.1:80", want: "http://127.0.0.1"},
+		{name: "HTTP zero-padded default port", raw: "http://127.0.0.1:0080", want: "http://127.0.0.1"},
+		{name: "IPv6 HTTPS default port", raw: "https://[::1]:0443", want: "https://[::1]"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := canonicalAPIOrigin(tt.raw); got != tt.want {
+				t.Fatalf("canonicalAPIOrigin(%q) = %q, want %q", tt.raw, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRuntimeProfilesRejectsInvalidFirebaseIdentitySharing(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		mutate  func(*ProjectConfig)
+		wantErr string
+	}{
+		{
+			name: "partial metadata match",
+			mutate: func(cfg *ProjectConfig) {
+				production := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentProduction]
+				staging := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging]
+				production.Firebase.IdentitySharingGroup = "shared-public-client"
+				staging.Firebase.IdentitySharingGroup = "shared-public-client"
+				staging.Firebase.ProjectID = production.Firebase.ProjectID
+				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentProduction] = production
+				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging] = staging
+			},
+			wantErr: "conflicting public registration metadata",
+		},
+		{
+			name: "cross-group collision",
+			mutate: func(cfg *ProjectConfig) {
+				shareFirebaseIdentity(cfg, BackendEnvironmentProduction, BackendEnvironmentStaging, "group-one")
+				staging := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging]
+				staging.Firebase.IdentitySharingGroup = "group-two"
+				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging] = staging
+			},
+			wantErr: "same non-empty identity_sharing_group",
+		},
+		{
+			name: "missing participant declaration",
+			mutate: func(cfg *ProjectConfig) {
+				shareFirebaseIdentity(cfg, BackendEnvironmentProduction, BackendEnvironmentStaging, "shared-public-client")
+				staging := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging]
+				staging.Firebase.IdentitySharingGroup = ""
+				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging] = staging
+			},
+			wantErr: "every participant",
+		},
+		{
+			name: "conflicting metadata within group",
+			mutate: func(cfg *ProjectConfig) {
+				shareFirebaseIdentity(cfg, BackendEnvironmentProduction, BackendEnvironmentStaging, "shared-public-client")
+				staging := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging]
+				staging.Firebase.ResourceName = "GoogleService-Info-conflict.plist"
+				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging] = staging
+			},
+			wantErr: "resource_name must match exactly",
+		},
+		{
+			name: "singleton declaration",
+			mutate: func(cfg *ProjectConfig) {
+				production := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentProduction]
+				production.Firebase.IdentitySharingGroup = "shared-public-client"
+				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentProduction] = production
+			},
+			wantErr: "must include at least two non-fixture backend environments",
+		},
+		{
+			name: "invalid group identifier",
+			mutate: func(cfg *ProjectConfig) {
+				production := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentProduction]
+				production.Firebase.IdentitySharingGroup = "Shared Group"
+				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentProduction] = production
+			},
+			wantErr: "must be a lowercase kebab-case identifier",
+		},
+		{
+			name: "fixture participant",
+			mutate: func(cfg *ProjectConfig) {
+				production := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentProduction]
+				production.Firebase.IdentitySharingGroup = "shared-public-client"
+				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentProduction] = production
+				fixture := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentFixture]
+				firebase := *production.Firebase
+				fixture.Firebase = &firebase
+				cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentFixture] = fixture
+			},
+			wantErr: "IdentitySharingGroup is forbidden for fixture",
 		},
 	}
 
@@ -416,4 +676,20 @@ func runtimeBackendEnvironment(name string, origin string, inputEnvironmentVaria
 			ValidationInputEnvironmentVar: inputEnvironmentVariable,
 		},
 	}
+}
+
+func shareFirebaseIdentity(
+	cfg *ProjectConfig,
+	sourceEnvironment BackendEnvironment,
+	targetEnvironment BackendEnvironment,
+	group FirebaseIdentitySharingGroup,
+) {
+	source := cfg.RuntimeProfiles.BackendEnvironments[sourceEnvironment]
+	target := cfg.RuntimeProfiles.BackendEnvironments[targetEnvironment]
+	shared := *source.Firebase
+	shared.IdentitySharingGroup = group
+	source.Firebase.IdentitySharingGroup = group
+	target.Firebase = &shared
+	cfg.RuntimeProfiles.BackendEnvironments[sourceEnvironment] = source
+	cfg.RuntimeProfiles.BackendEnvironments[targetEnvironment] = target
 }

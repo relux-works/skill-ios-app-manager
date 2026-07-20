@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -35,6 +36,10 @@ const (
 	BackendEnvironmentDevelopment BackendEnvironment = "development"
 	BackendEnvironmentFixture     BackendEnvironment = "fixture"
 )
+
+// FirebaseIdentitySharingGroup names an explicit Firebase public-client trust
+// boundary. It never changes backend API or runtime-state namespaces.
+type FirebaseIdentitySharingGroup string
 
 type BuildConfigurationKind string
 
@@ -84,9 +89,10 @@ var (
 		BackendEnvironmentDevelopment,
 		BackendEnvironmentFixture,
 	}
-	firebaseProjectIDPattern   = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*[a-z0-9]$`)
-	googleAppIDPattern         = regexp.MustCompile(`^\d+:[A-Za-z0-9-]+:ios:[A-Za-z0-9]+$`)
-	environmentVariablePattern = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*$`)
+	firebaseProjectIDPattern            = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*[a-z0-9]$`)
+	googleAppIDPattern                  = regexp.MustCompile(`^\d+:[A-Za-z0-9-]+:ios:[A-Za-z0-9]+$`)
+	environmentVariablePattern          = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*$`)
+	firebaseIdentitySharingGroupPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
 )
 
 type RuntimeProfilesConfig struct {
@@ -119,11 +125,12 @@ type BackendEnvironmentConfig struct {
 // name. The hook value is an environment variable whose value points at the
 // operator-supplied plist; neither that path nor the plist is serialized.
 type FirebaseClientConfig struct {
-	ProjectID                     string `json:"project_id"`
-	GoogleAppID                   string `json:"google_app_id"`
-	BundleID                      string `json:"bundle_id"`
-	ResourceName                  string `json:"resource_name"`
-	ValidationInputEnvironmentVar string `json:"validation_input_environment_variable"`
+	ProjectID                     string                       `json:"project_id"`
+	GoogleAppID                   string                       `json:"google_app_id"`
+	BundleID                      string                       `json:"bundle_id"`
+	ResourceName                  string                       `json:"resource_name"`
+	ValidationInputEnvironmentVar string                       `json:"validation_input_environment_variable"`
+	IdentitySharingGroup          FirebaseIdentitySharingGroup `json:"identity_sharing_group,omitempty"`
 }
 
 // UnmarshalJSON rejects accidental secret/path material in Firebase config
@@ -141,6 +148,7 @@ func (c *FirebaseClientConfig) UnmarshalJSON(data []byte) error {
 		"bundle_id":                             {},
 		"resource_name":                         {},
 		"validation_input_environment_variable": {},
+		"identity_sharing_group":                {},
 	}
 	for field := range fields {
 		if _, ok := allowed[field]; ok {
@@ -205,6 +213,7 @@ func (c *ProjectConfig) applyRuntimeProfileDefaults() {
 			raw.Firebase.BundleID = strings.TrimSpace(raw.Firebase.BundleID)
 			raw.Firebase.ResourceName = strings.TrimSpace(raw.Firebase.ResourceName)
 			raw.Firebase.ValidationInputEnvironmentVar = strings.TrimSpace(raw.Firebase.ValidationInputEnvironmentVar)
+			raw.Firebase.IdentitySharingGroup = FirebaseIdentitySharingGroup(strings.TrimSpace(string(raw.Firebase.IdentitySharingGroup)))
 		}
 		c.RuntimeProfiles.BackendEnvironments[environment] = raw
 	}
@@ -441,18 +450,20 @@ func validateBackendEnvironments(
 	environments map[BackendEnvironment]BackendEnvironmentConfig,
 	issues *[]string,
 ) {
+	apiOriginOwners := map[string]BackendEnvironment{}
 	namespaceOwners := map[string]map[string]BackendEnvironment{
 		"AuthNamespace":    {},
 		"StorageNamespace": {},
 		"GrantNamespace":   {},
 		"QuotaNamespace":   {},
 	}
-	firebaseOwners := map[string]map[string]BackendEnvironment{
+	firebaseOwners := map[string]map[string]firebaseIdentityParticipant{
 		"ProjectID":                          {},
 		"GoogleAppID":                        {},
 		"ResourceName":                       {},
 		"ValidationInputEnvironmentVariable": {},
 	}
+	firebaseParticipants := make([]firebaseIdentityParticipant, 0, len(environments))
 	for _, environment := range allBackendEnvironments {
 		descriptor, ok := environments[environment]
 		if !ok {
@@ -460,6 +471,7 @@ func validateBackendEnvironments(
 		}
 		field := "RuntimeProfiles.BackendEnvironments." + string(environment)
 		validateAPIOrigin(environment, descriptor.APIOrigin, field+".APIOrigin", issues)
+		validateEnvironmentScopedValue(field+".APIOrigin", canonicalAPIOrigin(descriptor.APIOrigin), environment, apiOriginOwners, issues)
 		validateNamespace(field+".AuthNamespace", descriptor.AuthNamespace, environment, namespaceOwners["AuthNamespace"], issues)
 		validateNamespace(field+".StorageNamespace", descriptor.StorageNamespace, environment, namespaceOwners["StorageNamespace"], issues)
 		validateNamespace(field+".GrantNamespace", descriptor.GrantNamespace, environment, namespaceOwners["GrantNamespace"], issues)
@@ -473,11 +485,17 @@ func validateBackendEnvironments(
 			continue
 		}
 		validateFirebaseClientConfig(appBundleID, field+".Firebase", *descriptor.Firebase, issues)
-		validateEnvironmentScopedValue(field+".Firebase.ProjectID", descriptor.Firebase.ProjectID, environment, firebaseOwners["ProjectID"], issues)
-		validateEnvironmentScopedValue(field+".Firebase.GoogleAppID", descriptor.Firebase.GoogleAppID, environment, firebaseOwners["GoogleAppID"], issues)
-		validateEnvironmentScopedValue(field+".Firebase.ResourceName", descriptor.Firebase.ResourceName, environment, firebaseOwners["ResourceName"], issues)
-		validateEnvironmentScopedValue(field+".Firebase.ValidationInputEnvironmentVariable", descriptor.Firebase.ValidationInputEnvironmentVar, environment, firebaseOwners["ValidationInputEnvironmentVariable"], issues)
+		if environment == BackendEnvironmentFixture && descriptor.Firebase.IdentitySharingGroup != "" {
+			*issues = append(*issues, field+".Firebase.IdentitySharingGroup is forbidden for fixture")
+		}
+		participant := firebaseIdentityParticipant{Environment: environment, Firebase: *descriptor.Firebase}
+		firebaseParticipants = append(firebaseParticipants, participant)
+		validateFirebaseEnvironmentScopedValue(field+".Firebase.ProjectID", descriptor.Firebase.ProjectID, participant, firebaseOwners["ProjectID"], issues)
+		validateFirebaseEnvironmentScopedValue(field+".Firebase.GoogleAppID", descriptor.Firebase.GoogleAppID, participant, firebaseOwners["GoogleAppID"], issues)
+		validateFirebaseEnvironmentScopedValue(field+".Firebase.ResourceName", descriptor.Firebase.ResourceName, participant, firebaseOwners["ResourceName"], issues)
+		validateFirebaseEnvironmentScopedValue(field+".Firebase.ValidationInputEnvironmentVariable", descriptor.Firebase.ValidationInputEnvironmentVar, participant, firebaseOwners["ValidationInputEnvironmentVariable"], issues)
 	}
+	validateFirebaseIdentitySharingGroups(firebaseParticipants, issues)
 }
 
 func validateAPIOrigin(environment BackendEnvironment, raw string, field string, issues *[]string) {
@@ -516,6 +534,31 @@ func isLoopbackHost(host string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
+func canonicalAPIOrigin(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return strings.TrimSpace(raw)
+	}
+
+	scheme := strings.ToLower(parsed.Scheme)
+	hostname := strings.ToLower(parsed.Hostname())
+	port := parsed.Port()
+	if numericPort, err := strconv.ParseUint(port, 10, 64); err == nil {
+		port = strconv.FormatUint(numericPort, 10)
+	}
+	if (scheme == "https" && port == "443") || (scheme == "http" && port == "80") {
+		port = ""
+	}
+
+	host := hostname
+	if port != "" {
+		host = net.JoinHostPort(hostname, port)
+	} else if strings.Contains(hostname, ":") {
+		host = "[" + hostname + "]"
+	}
+	return scheme + "://" + host
+}
+
 func validateNamespace(field string, value string, environment BackendEnvironment, owners map[string]BackendEnvironment, issues *[]string) {
 	if value == "" {
 		*issues = append(*issues, field+" is required")
@@ -542,6 +585,108 @@ func validateEnvironmentScopedValue(field string, value string, environment Back
 	owners[value] = environment
 }
 
+type firebaseIdentityParticipant struct {
+	Environment BackendEnvironment
+	Firebase    FirebaseClientConfig
+}
+
+func validateFirebaseEnvironmentScopedValue(
+	field string,
+	value string,
+	participant firebaseIdentityParticipant,
+	owners map[string]firebaseIdentityParticipant,
+	issues *[]string,
+) {
+	if strings.TrimSpace(value) == "" {
+		return
+	}
+	owner, exists := owners[value]
+	if !exists {
+		owners[value] = participant
+		return
+	}
+	if owner.Environment == participant.Environment {
+		return
+	}
+	if firebaseIdentityGroupsMatch(owner.Firebase, participant.Firebase) {
+		return
+	}
+	*issues = append(*issues, fmt.Sprintf(
+		"%s %q collides with %s; duplicate Firebase public identity values require every participant to declare the same non-empty identity_sharing_group and all public registration metadata to match exactly",
+		field,
+		value,
+		owner.Environment,
+	))
+}
+
+func firebaseIdentityGroupsMatch(left FirebaseClientConfig, right FirebaseClientConfig) bool {
+	return left.IdentitySharingGroup != "" &&
+		left.IdentitySharingGroup == right.IdentitySharingGroup
+}
+
+func validateFirebaseIdentitySharingGroups(participants []firebaseIdentityParticipant, issues *[]string) {
+	groups := make(map[FirebaseIdentitySharingGroup][]firebaseIdentityParticipant)
+	for _, participant := range participants {
+		group := participant.Firebase.IdentitySharingGroup
+		if group == "" || participant.Environment == BackendEnvironmentFixture {
+			continue
+		}
+		groups[group] = append(groups[group], participant)
+	}
+
+	groupNames := make([]string, 0, len(groups))
+	for group := range groups {
+		groupNames = append(groupNames, string(group))
+	}
+	sort.Strings(groupNames)
+	for _, rawGroup := range groupNames {
+		group := FirebaseIdentitySharingGroup(rawGroup)
+		members := groups[group]
+		if len(members) < 2 {
+			*issues = append(*issues, fmt.Sprintf(
+				"RuntimeProfiles Firebase identity_sharing_group %q must include at least two non-fixture backend environments; found only %s",
+				group,
+				members[0].Environment,
+			))
+			continue
+		}
+		canonical := members[0]
+		for _, member := range members[1:] {
+			differences := firebaseIdentityDifferences(canonical.Firebase, member.Firebase)
+			if len(differences) == 0 {
+				continue
+			}
+			*issues = append(*issues, fmt.Sprintf(
+				"RuntimeProfiles Firebase identity_sharing_group %q has conflicting public registration metadata between %s and %s: %s must match exactly",
+				group,
+				canonical.Environment,
+				member.Environment,
+				strings.Join(differences, ", "),
+			))
+		}
+	}
+}
+
+func firebaseIdentityDifferences(left FirebaseClientConfig, right FirebaseClientConfig) []string {
+	differences := make([]string, 0, 5)
+	if left.ProjectID != right.ProjectID {
+		differences = append(differences, "project_id")
+	}
+	if left.GoogleAppID != right.GoogleAppID {
+		differences = append(differences, "google_app_id")
+	}
+	if left.BundleID != right.BundleID {
+		differences = append(differences, "bundle_id")
+	}
+	if left.ResourceName != right.ResourceName {
+		differences = append(differences, "resource_name")
+	}
+	if left.ValidationInputEnvironmentVar != right.ValidationInputEnvironmentVar {
+		differences = append(differences, "validation_input_environment_variable")
+	}
+	return differences
+}
+
 func validateFirebaseClientConfig(appBundleID string, field string, firebase FirebaseClientConfig, issues *[]string) {
 	if firebase.ProjectID == "" || !firebaseProjectIDPattern.MatchString(firebase.ProjectID) {
 		*issues = append(*issues, field+".ProjectID must be a Firebase project identifier")
@@ -559,6 +704,9 @@ func validateFirebaseClientConfig(appBundleID string, field string, firebase Fir
 	}
 	if !environmentVariablePattern.MatchString(firebase.ValidationInputEnvironmentVar) {
 		*issues = append(*issues, field+".ValidationInputEnvironmentVariable must be an uppercase environment variable name")
+	}
+	if firebase.IdentitySharingGroup != "" && !firebaseIdentitySharingGroupPattern.MatchString(string(firebase.IdentitySharingGroup)) {
+		*issues = append(*issues, field+".IdentitySharingGroup must be a lowercase kebab-case identifier")
 	}
 }
 

@@ -90,14 +90,14 @@ Current generators:
 - `generate export-compliance-config`: syncs host app `uses_non_exempt_encryption` into `ITSAppUsesNonExemptEncryption`
 - `generate privacy-usage-descriptions-config`: syncs host app `privacy_usage_descriptions` into Info.plist usage description keys
 - `generate application-configuration`: syncs product-level runtime identity into app manifests and generated shared config
-- `generate runtime-profiles`: validates and syncs typed distribution profiles, backend descriptors, Firebase public-client inputs, Tuist configurations/schemes, and generated Swift policy
+- `generate runtime-profiles`: validates and syncs typed distribution profiles, backend descriptors, fail-closed Firebase public-client inputs and explicit identity-sharing groups, Tuist configurations/schemes, and generated Swift policy
 - `generate app-capabilities`: syncs host app capabilities from config
 - `generate build-flags`: syncs app/extension Swift language, strict memory safety, and concurrency restriction settings from `project_settings.swift`
 - `generate package-strictness`: syncs root/module `Package.swift` strictness from the same `project_settings.swift`
 
 These generators depend on the `init` scaffold shape. `bundle-id`, `versions`, `min-target`, `team-id`, and `build-flags` update the host app `Project.swift` plus every `Extensions/*/Project.swift`; extension bundle ids are derived from the configured host `bundle_id` plus each extension's existing suffix. `platform-destinations` updates the host app target destination expression and matching entitlements factory argument. `background-modes-config`, `presentation-config`, `export-compliance-config`, and `privacy-usage-descriptions-config` update host app Info.plist keys only. `app-capabilities` syncs capability-owned manifest slices. `package-strictness` updates root `Package.swift` plus every module `Packages/*/Package.swift`.
 
-Runtime profiles are optional and backward compatible. They keep `pilotTestFlight`, `appStore`, `internal`, and `tests` artifacts independent from typed `production`, `staging`, `development`, and `fixture` backends. See [Runtime profiles](references/runtime-profiles.md) for the schema, approved policy matrix, Firebase validation hook, generated files, migration, and removal workflow.
+Runtime profiles are optional and backward compatible. They keep `pilotTestFlight`, `appStore`, `internal`, and `tests` artifacts independent from typed `production`, `staging`, `development`, and `fixture` backends. Firebase public identity is unique per environment unless every participant opts into one exact typed sharing group; API and runtime-state namespaces always remain environment-specific. See [Runtime profiles](references/runtime-profiles.md) for the schema, approved policy matrix, Firebase validation hook and sharing boundary, generated files, migration, and removal workflow.
 
 Platform destinations are optional. Configs without `platforms` keep the legacy `destinations: .iOS` output. Configs with `platforms` use explicit destinations:
 

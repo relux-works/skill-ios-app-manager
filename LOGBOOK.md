@@ -5,6 +5,17 @@
 
 ## 2026-07-20
 
+### 0335 — API Origin Default-Port Isolation
+- ROOT CAUSE: Backend origin ownership lowercased the full host string but did not normalize an omitted port, an explicit scheme-default port, or zero-padded numeric port spelling. Equivalent HTTPS origins such as `https://api.example.com` and `https://api.example.com:443` could therefore evade the environment-isolation collision check.
+- FIX: Canonical ownership keys now compare lowercase scheme/hostname plus normalized numeric ports, omit the effective HTTPS `443` and HTTP `80` defaults, and preserve IPv6 host brackets. Generated Swift continues to serialize each configured exact origin without rewriting it.
+- STATUS: Regression coverage includes omitted, explicit-default, zero-padded default/non-default, HTTP, HTTPS, and IPv6 forms; full generator validation follows before review handoff.
+
+### 0310 — Explicit Shared Firebase Public Identity
+- DECISION: Duplicate Firebase project IDs, Google App IDs, resource names, and validation hooks remain rejected unless every non-fixture participant declares the same `identity_sharing_group` and the complete five-field public registration tuple matches exactly.
+- DECISION: The generated Swift group is a Firebase public-client trust boundary only. Firebase tokens carry no backend-environment claim; API origins plus auth, storage, grant, and quota namespaces remain unique and environment-owned.
+- DECISION: The runtime-profile schema remains version 1 because `identity_sharing_group` is optional and existing configs retain their prior fail-closed behavior.
+- SCOPE: Runtime-profile config/schema validation, Swift descriptors, generic fixture, documentation, and Go/golden/integration coverage.
+
 ### 0105 — Typed Runtime Profiles And Package Configuration Convergence
 - DECISION: Distribution profiles and backend environments are independent fixed enums; generated policy validates the approved profile matrix and never synthesizes an API path.
 - DECISION: Firebase config persists public registration metadata plus an environment-variable hook name only; plist paths and API keys remain process-local validation inputs.

@@ -32,7 +32,7 @@ Each configured environment declares:
 
 | Field | Contract |
 |---|---|
-| `api_origin` | Absolute origin only. Credentials, non-root paths, query strings, and fragments are rejected. HTTPS is required except that `fixture` may use HTTP on a loopback host. |
+| `api_origin` | Absolute origin only and unique across environments. Credentials, non-root paths, query strings, and fragments are rejected. HTTPS is required except that `fixture` may use HTTP on a loopback host. Ownership comparison lowercases scheme/hostname and normalizes the effective numeric port, so omitted and explicit default ports collide; generated Swift preserves the exact configured origin. |
 | `auth_namespace` | Non-empty, path-safe authentication realm identifier; unique across environments. |
 | `storage_namespace` | Non-empty, path-safe client storage realm identifier; unique across environments. |
 | `grant_namespace` | Non-empty, path-safe access-grant realm identifier; unique across environments. |
@@ -50,14 +50,28 @@ The persisted Firebase block is deliberately limited to:
 - `bundle_id`
 - `resource_name`
 - `validation_input_environment_variable`
+- optional `identity_sharing_group`
 
 `bundle_id` must match the project bundle identifier. `resource_name` is a filename such as `GoogleService-Info-staging.plist`, never a path. Secret- or path-bearing fields such as `api_key`, `credential`, and `plist_path` are rejected by the config loader.
+
+### Explicit identity sharing
+
+Firebase identifiers stay environment-scoped and duplicate project IDs, Google App IDs, resource names, and validation hooks are rejected by default. Two or more non-fixture backend environments may intentionally reuse one public-client identity only when every participant declares the same lowercase kebab-case `identity_sharing_group` and these values match exactly across the whole group:
+
+- `project_id`
+- `google_app_id`
+- `bundle_id`
+- `resource_name`
+- `validation_input_environment_variable`
+
+Partial matches, different groups, an undeclared participant, a singleton group, conflicting group metadata, and fixture participation fail validation with the involved environments and fields. API origins and auth, storage, grant, and quota namespaces remain unique per backend environment.
+
+The generated `FirebaseIdentitySharingGroup` value exposes this public-client trust boundary to Swift consumers. It does not merge backend realms or runtime state. Firebase tokens identify the configured Firebase project/app and carry no backend-environment claim, so the active `BackendEnvironmentDescriptor` still chooses the trusted identity and isolates API, auth, storage, grant, and quota state through its own exact origin and namespaces.
 
 The value of `validation_input_environment_variable` is the name of an operator-provided process environment variable. Its value points to a local XML plist only for the current command:
 
 ```bash
-export IOS_APP_MANAGER_FIREBASE_PRODUCTION_PLIST="$PWD/.local/firebase/production.plist"
-export IOS_APP_MANAGER_FIREBASE_STAGING_PLIST="$PWD/.local/firebase/staging.plist"
+export IOS_APP_MANAGER_FIREBASE_SHARED_PLIST="$PWD/.local/firebase/shared.plist"
 export IOS_APP_MANAGER_FIREBASE_DEVELOPMENT_PLIST="$PWD/.local/firebase/development.plist"
 
 ios-app-manager generate runtime-profiles
@@ -73,7 +87,7 @@ The validation hook checks that the plist contains `PROJECT_ID`, `GOOGLE_APP_ID`
   - typed distribution and backend enums;
   - policy and backend descriptor types;
   - deterministic dictionaries in canonical order;
-  - exact `URL` origins and public Firebase metadata.
+  - exact `URL` origins, public Firebase metadata, and an optional typed identity-sharing group that does not alter environment-specific namespaces.
 - `Tuist/ProjectDescriptionHelpers/RuntimeProfiles.swift`
   - typed profile-to-configuration mapping;
   - debug/release configurations with `DISTRIBUTION_PROFILE` settings;

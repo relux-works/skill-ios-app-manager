@@ -36,11 +36,21 @@ public enum EphemeralInjectionPolicy: String, Sendable {
     case allowed
 }
 
+/// An explicit Firebase public-client trust boundary. Backend API and runtime-state namespaces remain environment-specific.
+public struct FirebaseIdentitySharingGroup: RawRepresentable, Equatable, Hashable, Sendable {
+    public let rawValue: String
+
+    public init(rawValue: String) {
+        self.rawValue = rawValue
+    }
+}
+
 public struct FirebaseClientConfiguration: Equatable, Sendable {
     public let projectID: String
     public let googleAppID: String
     public let bundleID: String
     public let resourceName: String
+    public let identitySharingGroup: FirebaseIdentitySharingGroup?
 }
 
 public struct BackendEnvironmentDescriptor: Equatable, Sendable {
@@ -92,10 +102,11 @@ public enum GeneratedRuntimeProfiles {
             grantNamespace: "grants-production",
             quotaNamespace: "quota-production",
             firebase: .init(
-                projectID: "example-runtime-production",
+                projectID: "example-runtime-shared",
                 googleAppID: "1:100000000001:ios:0000000000000001",
                 bundleID: "com.example.runtimeapp",
-                resourceName: "GoogleService-Info-production.plist"
+                resourceName: "GoogleService-Info-shared.plist",
+                identitySharingGroup: .init(rawValue: "shared-public-client")
             )
         ),
         .staging: .init(
@@ -106,10 +117,11 @@ public enum GeneratedRuntimeProfiles {
             grantNamespace: "grants-staging",
             quotaNamespace: "quota-staging",
             firebase: .init(
-                projectID: "example-runtime-staging",
-                googleAppID: "1:100000000002:ios:0000000000000002",
+                projectID: "example-runtime-shared",
+                googleAppID: "1:100000000001:ios:0000000000000001",
                 bundleID: "com.example.runtimeapp",
-                resourceName: "GoogleService-Info-staging.plist"
+                resourceName: "GoogleService-Info-shared.plist",
+                identitySharingGroup: .init(rawValue: "shared-public-client")
             )
         ),
         .development: .init(
@@ -123,7 +135,8 @@ public enum GeneratedRuntimeProfiles {
                 projectID: "example-runtime-development",
                 googleAppID: "1:100000000003:ios:0000000000000003",
                 bundleID: "com.example.runtimeapp",
-                resourceName: "GoogleService-Info-development.plist"
+                resourceName: "GoogleService-Info-development.plist",
+                identitySharingGroup: nil
             )
         ),
         .fixture: .init(

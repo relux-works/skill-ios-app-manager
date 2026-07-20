@@ -576,7 +576,8 @@ ios-app-manager generate runtime-profiles
 Description:
 - Validates the versioned `runtime_profiles` schema and approved distribution-policy boundaries.
 - Validates environment-keyed Firebase public metadata against operator-supplied plist paths named by environment variables; local paths and API keys are not retained or printed.
-- Generates typed Swift backend/profile descriptors with exact API origins and no synthesized URL path.
+- Rejects duplicate Firebase identity values by default and permits them only through an explicit same-group declaration with an exact five-field public metadata match.
+- Generates typed Swift backend/profile descriptors with exact unique API origins, environment-specific auth/storage/grant/quota namespaces, and explicit Firebase identity-sharing metadata; no URL path is synthesized.
 - Generates Tuist configurations and shared schemes for `pilotTestFlight`, `appStore`, `internal`, and `tests`, including matching package-project configurations.
 - Adds the selected profile to generated `ApplicationConfiguration` and converges managed output on update or removal.
 - Orchestrates schema, Firebase-input, runtime-descriptor, and Tuist-project subplugins in dependency order.

@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file.
 
 - Added versioned runtime-profile config, typed Swift backend/profile descriptors, Tuist configurations and schemes, Firebase public-client input validation, and policy-aware AppConfig templates.
 - Added generic runtime-profile schema, example configuration, migration/removal guidance, and creation/update/removal/invalid-config golden tests.
+- Added explicit typed Firebase identity-sharing groups that preserve fail-closed duplicate rejection and environment-specific API/auth/storage/grant/quota realms.
 
 ### Fixed
 

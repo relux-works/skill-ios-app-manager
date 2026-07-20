@@ -365,6 +365,11 @@
         "validation_input_environment_variable": {
           "type": "string",
           "pattern": "^[A-Z_][A-Z0-9_]*$"
+        },
+        "identity_sharing_group": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+          "description": "Explicit non-secret Firebase public-client trust boundary. Cross-environment reuse is accepted only when every participant declares the same group and all public registration metadata match exactly."
         }
       }
     },

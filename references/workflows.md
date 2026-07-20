@@ -169,8 +169,7 @@ All scaffold plugins and subplugins must be idempotent: repeated runs with the s
 Start from the generic config in `tuist-starter/testdata/runtime-profiles-config.json`, then provide Firebase plist paths only through the hook environment variables named in that config:
 
 ```bash
-export IOS_APP_MANAGER_FIREBASE_PRODUCTION_PLIST="$PWD/.local/firebase/production.plist"
-export IOS_APP_MANAGER_FIREBASE_STAGING_PLIST="$PWD/.local/firebase/staging.plist"
+export IOS_APP_MANAGER_FIREBASE_SHARED_PLIST="$PWD/.local/firebase/shared.plist"
 export IOS_APP_MANAGER_FIREBASE_DEVELOPMENT_PLIST="$PWD/.local/firebase/development.plist"
 
 ios-app-manager generate project-config
@@ -178,7 +177,7 @@ ios-app-manager app-config setup --yes
 tuist install && tuist generate --no-open
 ```
 
-Run `generate project-config` again to verify convergence. To remove the feature, delete `runtime_profiles`, rerun the same generator, and rerun `app-config setup` to restore managed legacy templates. See [`runtime-profiles.md`](runtime-profiles.md) for the policy matrix, validation constraints, safe Firebase input contract, and migration behavior.
+The generic fixture demonstrates an explicit `shared-public-client` Firebase identity group for production and staging while their API origins and auth/storage/grant/quota namespaces remain distinct. Run `generate project-config` again to verify convergence. To remove the feature, delete `runtime_profiles`, rerun the same generator, and rerun `app-config setup` to restore managed legacy templates. See [`runtime-profiles.md`](runtime-profiles.md) for the policy matrix, validation constraints, safe Firebase input and sharing contract, and migration behavior.
 
 ## 8) Common troubleshooting
 

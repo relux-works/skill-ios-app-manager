@@ -61,6 +61,12 @@ func TestGenerateRuntimeProfilesIsTypedDeterministicAndUsesExactOrigins(t *testi
 	t.Parallel()
 
 	cfg := loadRuntimeProfilesFixture(t)
+	staging := cfg.RuntimeProfiles.BackendEnvironments[config.BackendEnvironmentStaging]
+	staging.APIOrigin = "https://staging-api.example.com:0443"
+	cfg.RuntimeProfiles.BackendEnvironments[config.BackendEnvironmentStaging] = staging
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate() exact configured origin error = %v", err)
+	}
 	first := GenerateRuntimeProfilesSwift(cfg)
 	second := GenerateRuntimeProfilesSwift(cfg)
 	if first != second {
@@ -69,21 +75,36 @@ func TestGenerateRuntimeProfilesIsTypedDeterministicAndUsesExactOrigins(t *testi
 	for _, want := range []string{
 		"public enum DistributionProfile: String",
 		"public enum BackendEnvironment: String",
+		"public struct FirebaseIdentitySharingGroup: RawRepresentable",
 		"import SharedConfig",
 		"case pilotTestFlight",
 		"case `internal`",
 		"case production",
 		`apiOrigin: URL(string: "https://api.example.com")!`,
+		`apiOrigin: URL(string: "https://staging-api.example.com:0443")!`,
+		`authNamespace: "auth-production"`,
+		`authNamespace: "auth-staging"`,
+		`identitySharingGroup: .init(rawValue: "shared-public-client")`,
 		"Configuration.ApplicationConfiguration.current.distributionProfile",
 	} {
 		if !strings.Contains(first, want) {
 			t.Fatalf("RuntimeProfiles.swift missing %q:\n%s", want, first)
 		}
 	}
-	for _, forbidden := range []string{"/api/v1", "apiKey", "API_KEY", "validation_input_environment_variable"} {
+	for _, forbidden := range []string{
+		"/api/v1",
+		"apiKey",
+		"API_KEY",
+		"validation_input_environment_variable",
+		"IOS_APP_MANAGER_FIREBASE_SHARED_PLIST",
+		".firebase-validation-inputs",
+	} {
 		if strings.Contains(first, forbidden) {
 			t.Fatalf("RuntimeProfiles.swift contains forbidden generated value %q:\n%s", forbidden, first)
 		}
+	}
+	if count := strings.Count(first, `identitySharingGroup: .init(rawValue: "shared-public-client")`); count != 2 {
+		t.Fatalf("shared identity group descriptor count = %d, want 2:\n%s", count, first)
 	}
 }
 
