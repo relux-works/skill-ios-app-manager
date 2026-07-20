@@ -94,14 +94,24 @@ func GenerateAppCapabilitiesForConfig(cfg config.ProjectConfig) string {
 }
 
 func generateAppCapabilities(lines []string) string {
+	normalizedLines := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimRight(line, " \t")
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		normalizedLines = append(normalizedLines, line)
+	}
+	if len(normalizedLines) > 0 {
+		last := len(normalizedLines) - 1
+		normalizedLines[last] = strings.TrimSuffix(normalizedLines[last], ",")
+	}
+
 	var appLines strings.Builder
-	if len(lines) == 0 {
+	if len(normalizedLines) == 0 {
 		appLines.WriteString("        // capabilities are added by module setup commands\n")
 	} else {
-		for _, line := range lines {
-			if strings.TrimSpace(line) == "" {
-				continue
-			}
+		for _, line := range normalizedLines {
 			appLines.WriteString(line)
 			appLines.WriteString("\n")
 		}
@@ -166,8 +176,11 @@ func SyncAppCapabilityDeclarations(projectRoot string, declarations []string) (b
 	}
 
 	content := string(data)
-	updated := content
-	changed := false
+	updated, err := normalizeAppCapabilitiesContent(content)
+	if err != nil {
+		return false, err
+	}
+	changed := updated != content
 	for _, line := range declarations {
 		if strings.TrimSpace(line) == "" || containsCapabilityLine(updated, line) {
 			continue
@@ -217,10 +230,20 @@ func swiftStringLiteralValue(value string) string {
 }
 
 func containsCapabilityLine(content string, line string) bool {
-	return strings.Contains(content, strings.TrimSpace(line))
+	needle := strings.TrimSuffix(strings.TrimSpace(line), ",")
+	return needle != "" && strings.Contains(content, needle)
 }
 
 func insertCapabilityLine(content string, line string) (string, error) {
+	content, err := normalizeAppCapabilitiesContent(content)
+	if err != nil {
+		return "", err
+	}
+	content, err = terminateLastAppCapability(content)
+	if err != nil {
+		return "", err
+	}
+
 	// Find the closing bracket of the app array.
 	marker := "static let app: [Capability] = ["
 	idx := strings.Index(content, marker)
@@ -236,9 +259,62 @@ func insertCapabilityLine(content string, line string) (string, error) {
 	}
 
 	insertPos := idx + len(marker) + closingIdx
-	updated := content[:insertPos] + "\n" + line + "\n    " + content[insertPos:]
+	lineStart := strings.LastIndex(content[:insertPos], "\n") + 1
+	closingIndent := content[lineStart:insertPos]
+	if strings.TrimSpace(closingIndent) != "" {
+		return "", fmt.Errorf("AppCapabilities.swift app array closing bracket must be on its own line")
+	}
+	line = strings.TrimSuffix(strings.TrimRight(line, " \t"), ",")
+	updated := content[:lineStart] + line + "\n" + closingIndent + content[insertPos:]
 
-	return updated, nil
+	return normalizeAppCapabilitiesContent(updated)
+}
+
+func normalizeAppCapabilitiesContent(content string) (string, error) {
+	lines := strings.Split(content, "\n")
+	for index, line := range lines {
+		lines[index] = strings.TrimRight(line, " \t")
+	}
+	content = strings.Join(lines, "\n")
+
+	return rewriteLastAppCapabilityLine(content, func(line string) string {
+		return strings.TrimSuffix(line, ",")
+	})
+}
+
+func terminateLastAppCapability(content string) (string, error) {
+	return rewriteLastAppCapabilityLine(content, func(line string) string {
+		if strings.HasSuffix(line, ",") {
+			return line
+		}
+		return line + ","
+	})
+}
+
+func rewriteLastAppCapabilityLine(content string, transform func(string) string) (string, error) {
+	marker := "static let app: [Capability] = ["
+	markerIndex := strings.Index(content, marker)
+	if markerIndex < 0 {
+		return "", fmt.Errorf("AppCapabilities.swift missing %q marker", marker)
+	}
+
+	blockStart := markerIndex + len(marker)
+	closingOffset := strings.Index(content[blockStart:], "]")
+	if closingOffset < 0 {
+		return "", fmt.Errorf("AppCapabilities.swift missing closing ] for app array")
+	}
+	blockEnd := blockStart + closingOffset
+	blockLines := strings.Split(content[blockStart:blockEnd], "\n")
+	for index := len(blockLines) - 1; index >= 0; index-- {
+		trimmed := strings.TrimSpace(blockLines[index])
+		if trimmed == "" || strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		blockLines[index] = transform(blockLines[index])
+		break
+	}
+
+	return content[:blockStart] + strings.Join(blockLines, "\n") + content[blockEnd:], nil
 }
 
 // capabilitySwiftLine maps a Capability type + args to a Swift DSL expression.
@@ -275,13 +351,18 @@ func AddToAppCapabilities(projectRoot string, capType string, args map[string]st
 		return fmt.Errorf("unknown capability type: %s", capType)
 	}
 
-	if containsCapabilityLine(content, line) {
-		return nil
-	}
-
-	updated, err := insertCapabilityLine(content, line)
+	updated, err := normalizeAppCapabilitiesContent(content)
 	if err != nil {
 		return err
+	}
+	if !containsCapabilityLine(updated, line) {
+		updated, err = insertCapabilityLine(updated, line)
+		if err != nil {
+			return err
+		}
+	}
+	if updated == content {
+		return nil
 	}
 
 	return os.WriteFile(path, []byte(updated), 0o644)

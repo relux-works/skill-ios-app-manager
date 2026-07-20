@@ -3,6 +3,11 @@ import ProjectDescriptionHelpers
 
 let appName = "DemoApp"
 let bundleID = "com.example.demo"
+let hostedTestRuntimeArguments = Arguments.arguments(
+    launchArguments: [
+        .launchArgument(name: "--demo-hosted-tests", isEnabled: true),
+    ]
+)
 let configurations: [Configuration] = [
     .debug(name: "Debug"),
     .debug(
@@ -37,6 +42,17 @@ let project = Project(
             ]
         ),
         .target(
+            name: "DemoAppTests",
+            destinations: .iOS,
+            product: .unitTests,
+            bundleId: "\(bundleID).tests",
+            sources: ["Targets/DemoAppTests/Sources/**"],
+            dependencies: [
+                .target(name: appName),
+                .external(name: "MatureFeature")
+            ]
+        ),
+        .target(
             name: "DemoAppUITests",
             destinations: .iOS,
             product: .uiTests,
@@ -53,6 +69,15 @@ let project = Project(
             name: appName,
             shared: true,
             buildAction: .buildAction(targets: [.target(appName)]),
+            testAction: .targets(
+                [
+                    .testableTarget(target: .target("DemoAppTests")),
+                    .testableTarget(target: .target("DemoAppUITests")),
+                ],
+                arguments: hostedTestRuntimeArguments,
+                configuration: .debug,
+                expandVariableFromTarget: .target(appName)
+            ),
             runAction: .runAction(configuration: .debug, executable: .target(appName))
         ),
     ]

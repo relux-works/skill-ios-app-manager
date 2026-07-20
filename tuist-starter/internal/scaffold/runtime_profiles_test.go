@@ -54,7 +54,30 @@ func TestGenerateRuntimeProfilesGoldenOutput(t *testing.T) {
 
 	cfg := loadRuntimeProfilesFixture(t)
 	testutil.AssertGoldenFile(t, "runtimeprofiles/runtime-profiles-swift", GenerateRuntimeProfilesSwift(cfg))
-	testutil.AssertGoldenFile(t, "runtimeprofiles/runtime-profiles-project-description-swift", GenerateRuntimeProfilesProjectDescriptionSwift(cfg))
+	projectDescription := GenerateRuntimeProfilesProjectDescriptionSwift(cfg)
+	testutil.AssertGoldenFile(t, "runtimeprofiles/runtime-profiles-project-description-swift", projectDescription)
+	for _, want := range []string{
+		`.testableTarget(target: .target("RuntimeExampleTests"))`,
+		`.testableTarget(target: .target("RuntimeExampleUITests"))`,
+		`.launchArgument(name: "--runtime-example-hosted-tests", isEnabled: true)`,
+		"configuration: configuration",
+	} {
+		if !strings.Contains(projectDescription, want) {
+			t.Fatalf("RuntimeProfiles ProjectDescription helper missing %q:\n%s", want, projectDescription)
+		}
+	}
+	if strings.Contains(projectDescription, ".targets([]") {
+		t.Fatalf("RuntimeProfiles ProjectDescription helper contains an empty test action:\n%s", projectDescription)
+	}
+	for _, forbidden := range []string{
+		"        ),\n    ]",
+		`.testableTarget(target: .target("RuntimeExampleUITests")),`,
+		`.launchArgument(name: "--runtime-example-hosted-tests", isEnabled: true),`,
+	} {
+		if strings.Contains(projectDescription, forbidden) {
+			t.Fatalf("RuntimeProfiles ProjectDescription helper contains lint-unsafe trailing comma %q:\n%s", forbidden, projectDescription)
+		}
+	}
 }
 
 func TestGenerateRuntimeProfilesIsTypedDeterministicAndUsesExactOrigins(t *testing.T) {
@@ -80,11 +103,13 @@ func TestGenerateRuntimeProfilesIsTypedDeterministicAndUsesExactOrigins(t *testi
 		"case pilotTestFlight",
 		"case `internal`",
 		"case production",
-		`apiOrigin: URL(string: "https://api.example.com")!`,
-		`apiOrigin: URL(string: "https://staging-api.example.com:0443")!`,
+		`apiOrigin: apiOrigin("https://api.example.com")`,
+		`apiOrigin: apiOrigin("https://staging-api.example.com:0443")`,
 		`authNamespace: "auth-production"`,
 		`authNamespace: "auth-staging"`,
 		`identitySharingGroup: .init(rawValue: "shared-public-client")`,
+		"private static func apiOrigin(_ rawValue: String) -> URL",
+		"guard let url = URL(string: rawValue) else",
 		"Configuration.ApplicationConfiguration.current.distributionProfile",
 	} {
 		if !strings.Contains(first, want) {
@@ -95,6 +120,8 @@ func TestGenerateRuntimeProfilesIsTypedDeterministicAndUsesExactOrigins(t *testi
 		"/api/v1",
 		"apiKey",
 		"API_KEY",
+		`)!,`,
+		"        ),\n    ]",
 		"validation_input_environment_variable",
 		"IOS_APP_MANAGER_FIREBASE_SHARED_PLIST",
 		".firebase-validation-inputs",

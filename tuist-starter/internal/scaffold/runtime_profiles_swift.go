@@ -180,11 +180,12 @@ func GenerateRuntimeProfilesSwift(cfg config.ProjectConfig) string {
 	b.WriteString("}\n\n")
 	b.WriteString("public enum GeneratedRuntimeProfiles {\n")
 	b.WriteString("    public static let backendEnvironments: [BackendEnvironment: BackendEnvironmentDescriptor] = [\n")
-	for _, environment := range cfg.OrderedBackendEnvironments() {
+	orderedEnvironments := cfg.OrderedBackendEnvironments()
+	for index, environment := range orderedEnvironments {
 		descriptor := cfg.RuntimeProfiles.BackendEnvironments[environment]
 		b.WriteString("        ." + string(environment) + ": .init(\n")
 		b.WriteString("            id: ." + string(environment) + ",\n")
-		b.WriteString("            apiOrigin: URL(string: " + strconv.Quote(descriptor.APIOrigin) + ")!,\n")
+		b.WriteString("            apiOrigin: apiOrigin(" + strconv.Quote(descriptor.APIOrigin) + "),\n")
 		b.WriteString("            authNamespace: " + strconv.Quote(descriptor.AuthNamespace) + ",\n")
 		b.WriteString("            storageNamespace: " + strconv.Quote(descriptor.StorageNamespace) + ",\n")
 		b.WriteString("            grantNamespace: " + strconv.Quote(descriptor.GrantNamespace) + ",\n")
@@ -205,11 +206,16 @@ func GenerateRuntimeProfilesSwift(cfg config.ProjectConfig) string {
 			}
 			b.WriteString("            )\n")
 		}
-		b.WriteString("        ),\n")
+		b.WriteString("        )")
+		if index < len(orderedEnvironments)-1 {
+			b.WriteString(",")
+		}
+		b.WriteString("\n")
 	}
 	b.WriteString("    ]\n\n")
 	b.WriteString("    public static let distributionProfiles: [DistributionProfile: DistributionProfileDescriptor] = [\n")
-	for _, profile := range cfg.OrderedDistributionProfiles() {
+	orderedProfiles := cfg.OrderedDistributionProfiles()
+	for index, profile := range orderedProfiles {
 		descriptor := cfg.RuntimeProfiles.DistributionProfiles[profile]
 		profileCase := swiftRuntimeEnumCase(string(profile))
 		b.WriteString("        ." + profileCase + ": .init(\n")
@@ -228,9 +234,19 @@ func GenerateRuntimeProfilesSwift(cfg config.ProjectConfig) string {
 		b.WriteString("            selectionPersistence: ." + string(descriptor.SelectionPersistence) + ",\n")
 		b.WriteString("            nonProductionMarker: ." + string(descriptor.NonProductionMarker) + ",\n")
 		b.WriteString("            ephemeralInjection: ." + string(descriptor.EphemeralInjection) + "\n")
-		b.WriteString("        ),\n")
+		b.WriteString("        )")
+		if index < len(orderedProfiles)-1 {
+			b.WriteString(",")
+		}
+		b.WriteString("\n")
 	}
 	b.WriteString("    ]\n\n")
+	b.WriteString("    private static func apiOrigin(_ rawValue: String) -> URL {\n")
+	b.WriteString("        guard let url = URL(string: rawValue) else {\n")
+	b.WriteString("            preconditionFailure(\"Invalid generated API origin: \\(rawValue)\")\n")
+	b.WriteString("        }\n")
+	b.WriteString("        return url\n")
+	b.WriteString("    }\n\n")
 	b.WriteString("    public static let currentDistributionProfile: DistributionProfile = {\n")
 	b.WriteString("        let rawValue = Configuration.ApplicationConfiguration.current.distributionProfile\n")
 	b.WriteString("        guard let profile = DistributionProfile(rawValue: rawValue) else {\n")

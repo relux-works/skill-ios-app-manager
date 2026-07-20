@@ -6,12 +6,16 @@
   "additionalProperties": false,
   "required": [
     "schema_version",
+    "test_action",
     "distribution_profiles",
     "backend_environments"
   ],
   "properties": {
     "schema_version": {
       "const": 1
+    },
+    "test_action": {
+      "$ref": "#/$defs/testAction"
     },
     "distribution_profiles": {
       "type": "object",
@@ -207,6 +211,34 @@
     }
   },
   "$defs": {
+    "testAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targets"
+      ],
+      "properties": {
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
+          }
+        },
+        "launch_arguments": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
+          }
+        }
+      }
+    },
     "profile": {
       "type": "object",
       "additionalProperties": false,

@@ -97,8 +97,16 @@ var (
 
 type RuntimeProfilesConfig struct {
 	SchemaVersion        int                                               `json:"schema_version,omitempty"`
+	TestAction           RuntimeProfileTestActionConfig                    `json:"test_action"`
 	DistributionProfiles map[DistributionProfile]DistributionProfileConfig `json:"distribution_profiles"`
 	BackendEnvironments  map[BackendEnvironment]BackendEnvironmentConfig   `json:"backend_environments"`
+}
+
+// RuntimeProfileTestActionConfig maps the Tests distribution profile to
+// concrete Tuist test targets and optional non-secret launch flags.
+type RuntimeProfileTestActionConfig struct {
+	Targets         []string `json:"targets"`
+	LaunchArguments []string `json:"launch_arguments,omitempty"`
 }
 
 type DistributionProfileConfig struct {
@@ -169,7 +177,10 @@ func (c *ProjectConfig) applyRuntimeProfileDefaults() {
 	legacyConfigured := len(c.LegacyDistributionProfiles) > 0 || len(c.LegacyBackendEnvironments) > 0
 	if c.RuntimeProfiles == nil && legacyConfigured {
 		c.RuntimeProfiles = &RuntimeProfilesConfig{
-			SchemaVersion:        RuntimeProfilesSchemaVersion,
+			SchemaVersion: RuntimeProfilesSchemaVersion,
+			TestAction: RuntimeProfileTestActionConfig{
+				Targets: []string{strings.TrimSpace(c.AppName) + "Tests", strings.TrimSpace(c.AppName) + "UITests"},
+			},
 			DistributionProfiles: c.LegacyDistributionProfiles,
 			BackendEnvironments:  c.LegacyBackendEnvironments,
 		}
@@ -182,6 +193,12 @@ func (c *ProjectConfig) applyRuntimeProfileDefaults() {
 
 	if c.RuntimeProfiles.SchemaVersion == 0 {
 		c.RuntimeProfiles.SchemaVersion = RuntimeProfilesSchemaVersion
+	}
+	for index, target := range c.RuntimeProfiles.TestAction.Targets {
+		c.RuntimeProfiles.TestAction.Targets[index] = strings.TrimSpace(target)
+	}
+	for index, argument := range c.RuntimeProfiles.TestAction.LaunchArguments {
+		c.RuntimeProfiles.TestAction.LaunchArguments[index] = strings.TrimSpace(argument)
 	}
 
 	for profile, raw := range c.RuntimeProfiles.DistributionProfiles {
@@ -270,6 +287,7 @@ func validateRuntimeProfiles(c ProjectConfig, issues *[]string) {
 	if runtime.SchemaVersion != RuntimeProfilesSchemaVersion {
 		*issues = append(*issues, fmt.Sprintf("RuntimeProfiles.SchemaVersion must be %d", RuntimeProfilesSchemaVersion))
 	}
+	validateRuntimeProfileTestAction(runtime.TestAction, issues)
 
 	for profile := range runtime.DistributionProfiles {
 		if !isDistributionProfile(profile) {
@@ -292,6 +310,47 @@ func validateRuntimeProfiles(c ProjectConfig, issues *[]string) {
 	}
 	validateBackendEnvironments(c.BundleID, runtime.BackendEnvironments, issues)
 	validateUniqueBuildConfigurations(runtime.DistributionProfiles, issues)
+}
+
+func validateRuntimeProfileTestAction(testAction RuntimeProfileTestActionConfig, issues *[]string) {
+	const field = "RuntimeProfiles.TestAction"
+	if len(testAction.Targets) == 0 {
+		*issues = append(*issues, field+".Targets must not be empty")
+	}
+
+	seenTargets := make(map[string]struct{}, len(testAction.Targets))
+	for index, rawTarget := range testAction.Targets {
+		target := strings.TrimSpace(rawTarget)
+		if target == "" {
+			*issues = append(*issues, fmt.Sprintf("%s.Targets[%d] must not be empty", field, index))
+			continue
+		}
+		if strings.ContainsAny(target, "\x00\r\n") {
+			*issues = append(*issues, fmt.Sprintf("%s.Targets[%d] must be a single-line value", field, index))
+		}
+		if _, exists := seenTargets[target]; exists {
+			*issues = append(*issues, fmt.Sprintf("%s.Targets contains duplicate target %q", field, target))
+			continue
+		}
+		seenTargets[target] = struct{}{}
+	}
+
+	seenArguments := make(map[string]struct{}, len(testAction.LaunchArguments))
+	for index, rawArgument := range testAction.LaunchArguments {
+		argument := strings.TrimSpace(rawArgument)
+		if argument == "" {
+			*issues = append(*issues, fmt.Sprintf("%s.LaunchArguments[%d] must not be empty", field, index))
+			continue
+		}
+		if strings.ContainsAny(argument, "\x00\r\n") {
+			*issues = append(*issues, fmt.Sprintf("%s.LaunchArguments[%d] must be a single-line value", field, index))
+		}
+		if _, exists := seenArguments[argument]; exists {
+			*issues = append(*issues, fmt.Sprintf("%s.LaunchArguments contains duplicate argument %q", field, argument))
+			continue
+		}
+		seenArguments[argument] = struct{}{}
+	}
 }
 
 func validateDistributionProfile(

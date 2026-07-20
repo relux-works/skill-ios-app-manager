@@ -5,6 +5,15 @@
 
 ## 2026-07-20
 
+### 0620 — Executable Tests Profile And Generated-Source Hygiene
+- ROOT CAUSE: Runtime-profile generation hardcoded the Tests action as `.targets([])` and discarded the mature app scheme that carried its testables and hosted-test launch argument. Supported reruns therefore produced a shared Tests scheme that `xcodebuild test` refused to execute.
+- ROOT CAUSE: Capability insertion wrote indentation before a newly inserted newline, leaving a whitespace-only line, while SharedConfig emitted every Info.plist read on one line and exceeded the generated SwiftLint error threshold for mature type names.
+- ROOT CAUSE: The app-groups convergence path could report an existing capability as up to date without normalizing legacy whitespace or the final collection comma, so supported mature-project reruns preserved generator-owned lint failures.
+- DECISION: `runtime_profiles.test_action` is the durable, organization-agnostic ownership boundary. It requires at least one explicit test target and optionally carries static non-secret launch flags used only by the Tests action; missing or empty target metadata fails closed.
+- FIX: Generate typed testables/arguments into the Tests scheme, normalize both insertion and converged capability paths at the closing line boundary, and wrap SharedConfig read arguments deterministically.
+- VALIDATION: Mature Converter unit and fixture UI bundles execute through the generated Tests scheme on their canonical iOS 26.5 simulators; an iOS 26.3 snapshot mismatch was runtime drift, not accepted as generator evidence.
+- SCOPE: Runtime schema/config/golden output, Converter-shaped mature-project fixtures, app capability and SharedConfig regressions, public docs, and supported generation convergence.
+
 ### 0457 — Non-Destructive Mature Runtime Adoption
 - ROOT CAUSE: Runtime-profile migration treated the `[Configuration]` type annotation as the legacy initializer, appended a second `PackageSettings.configurations` argument, inserted SharedConfig after an unterminated dependency item, and left Converter's Debug/Release app scheme active after replacing those configurations.
 - ROOT CAUSE: SecureStore setup delegated to full IoC Registry regeneration, which would erase mature custom registrations and builders before AppConfig adoption.

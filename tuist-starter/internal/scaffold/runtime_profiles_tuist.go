@@ -530,14 +530,50 @@ func GenerateRuntimeProfilesProjectDescriptionSwift(cfg config.ProjectConfig) st
 	b.WriteString("}\n\n")
 	b.WriteString("public enum RuntimeProfilesProjectDescription {\n")
 	b.WriteString("    public static let configurations: [Configuration] = [\n")
-	for _, profile := range cfg.OrderedDistributionProfiles() {
+	orderedProfiles := cfg.OrderedDistributionProfiles()
+	for index, profile := range orderedProfiles {
 		descriptor := cfg.RuntimeProfiles.DistributionProfiles[profile]
 		b.WriteString("        ." + string(descriptor.BuildKind) + "(\n")
 		b.WriteString("            name: " + strconv.Quote(descriptor.BuildConfiguration) + ",\n")
 		b.WriteString("            settings: [\"DISTRIBUTION_PROFILE\": " + strconv.Quote(string(profile)) + "]\n")
-		b.WriteString("        ),\n")
+		b.WriteString("        )")
+		if index < len(orderedProfiles)-1 {
+			b.WriteString(",")
+		}
+		b.WriteString("\n")
 	}
 	b.WriteString("    ]\n\n")
+	b.WriteString("    private static func testsAction(\n")
+	b.WriteString("        configuration: ConfigurationName,\n")
+	b.WriteString("        appName: String\n")
+	b.WriteString("    ) -> TestAction {\n")
+	b.WriteString("        .targets(\n")
+	b.WriteString("            [\n")
+	for index, target := range cfg.RuntimeProfiles.TestAction.Targets {
+		b.WriteString("                .testableTarget(target: .target(" + strconv.Quote(strings.TrimSpace(target)) + "))")
+		if index < len(cfg.RuntimeProfiles.TestAction.Targets)-1 {
+			b.WriteString(",")
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("            ],\n")
+	if len(cfg.RuntimeProfiles.TestAction.LaunchArguments) > 0 {
+		b.WriteString("            arguments: .arguments(\n")
+		b.WriteString("                launchArguments: [\n")
+		for index, argument := range cfg.RuntimeProfiles.TestAction.LaunchArguments {
+			b.WriteString("                    .launchArgument(name: " + strconv.Quote(strings.TrimSpace(argument)) + ", isEnabled: true)")
+			if index < len(cfg.RuntimeProfiles.TestAction.LaunchArguments)-1 {
+				b.WriteString(",")
+			}
+			b.WriteString("\n")
+		}
+		b.WriteString("                ]\n")
+		b.WriteString("            ),\n")
+	}
+	b.WriteString("            configuration: configuration,\n")
+	b.WriteString("            expandVariableFromTarget: .target(appName)\n")
+	b.WriteString("        )\n")
+	b.WriteString("    }\n\n")
 	b.WriteString("    public static func schemes(appName: String) -> [Scheme] {\n")
 	b.WriteString("        RuntimeDistributionProfile.allCases.map { scheme(for: $0, appName: appName) }\n")
 	b.WriteString("    }\n\n")
@@ -548,7 +584,7 @@ func GenerateRuntimeProfilesProjectDescriptionSwift(cfg config.ProjectConfig) st
 	b.WriteString("            shared: true,\n")
 	b.WriteString("            buildAction: .buildAction(targets: [.target(appName)]),\n")
 	b.WriteString("            testAction: profile == .tests\n")
-	b.WriteString("                ? .targets([], configuration: configuration, expandVariableFromTarget: .target(appName))\n")
+	b.WriteString("                ? testsAction(configuration: configuration, appName: appName)\n")
 	b.WriteString("                : nil,\n")
 	b.WriteString("            runAction: .runAction(configuration: configuration, executable: .target(appName)),\n")
 	b.WriteString("            archiveAction: profile == .tests ? nil : .archiveAction(configuration: configuration),\n")

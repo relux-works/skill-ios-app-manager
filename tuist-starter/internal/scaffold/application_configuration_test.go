@@ -143,6 +143,11 @@ let project = Project(
 			t.Fatalf("ApplicationConfiguration.swift missing %q:\n%s", want, sharedConfiguration)
 		}
 	}
+	for lineNumber, line := range strings.Split(sharedConfiguration, "\n") {
+		if len(line) > 160 {
+			t.Fatalf("ApplicationConfiguration.swift line %d is %d characters, want at most 160:\n%s", lineNumber+1, len(line), line)
+		}
+	}
 	infoPlistReading := readFile(t, filepath.Join(projectRoot, "Packages", "SharedConfig", "Sources", "InfoPlistReading.swift"))
 	if !strings.Contains(infoPlistReading, "missingInfoPlistDictionary") {
 		t.Fatalf("InfoPlistReading.swift missing typed error:\n%s", infoPlistReading)
@@ -179,6 +184,29 @@ func TestSyncApplicationConfigurationValidationReturnsActionableError(t *testing
 		if !strings.Contains(msg, want) {
 			t.Fatalf("SyncApplicationConfiguration() error = %q, want %q", msg, want)
 		}
+	}
+}
+
+func TestGenerateApplicationConfigurationSuppressesDerivedTypeNameLint(t *testing.T) {
+	t.Parallel()
+
+	got := GenerateApplicationConfigurationSharedConfigurationSwift(config.ProjectConfig{
+		AppName: "RuntimeExample",
+	})
+	want := "// swiftlint:disable:next type_name\npublic enum RuntimeExampleApplicationConfigurationField"
+	if !strings.Contains(got, want) {
+		t.Fatalf("ApplicationConfiguration.swift missing scoped type_name suppression:\n%s", got)
+	}
+	if strings.Contains(got, "// swiftlint:disable:next type_name\npublic struct RuntimeExampleApplicationConfiguration") {
+		t.Fatalf("ApplicationConfiguration.swift contains superfluous struct type_name suppression:\n%s", got)
+	}
+
+	longName := GenerateApplicationConfigurationSharedConfigurationSwift(config.ProjectConfig{
+		AppName: "ExtraordinaryRuntimeExample",
+	})
+	want = "// swiftlint:disable:next type_name\npublic struct ExtraordinaryRuntimeExampleApplicationConfiguration"
+	if !strings.Contains(longName, want) {
+		t.Fatalf("long ApplicationConfiguration.swift missing scoped struct type_name suppression:\n%s", longName)
 	}
 }
 

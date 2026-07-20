@@ -132,6 +132,10 @@ func TestAppConfigSetupOrchestratesRuntimeProfilesAndRemoval(t *testing.T) {
 	cfg.ProductName = "DemoApp"
 	cfg.BundleID = "com.example.demo"
 	cfg.AppGroups = []string{"group.com.example.demo"}
+	cfg.RuntimeProfiles.TestAction = config.RuntimeProfileTestActionConfig{
+		Targets:         []string{"DemoAppTests", "DemoAppUITests"},
+		LaunchArguments: []string{"--demo-hosted-tests"},
+	}
 	for environment, descriptor := range cfg.RuntimeProfiles.BackendEnvironments {
 		if descriptor.Firebase != nil {
 			descriptor.Firebase.BundleID = cfg.BundleID
@@ -216,6 +220,10 @@ func TestMatureProjectRuntimeAdoptionPreservesCustomCompositionAndConverges(t *t
 	cfg.ProductName = "DemoApp"
 	cfg.BundleID = "com.example.demo"
 	cfg.AppGroups = []string{"group.com.example.demo"}
+	cfg.RuntimeProfiles.TestAction = config.RuntimeProfileTestActionConfig{
+		Targets:         []string{"DemoAppTests", "DemoAppUITests"},
+		LaunchArguments: []string{"--demo-hosted-tests"},
+	}
 	for environment, descriptor := range cfg.RuntimeProfiles.BackendEnvironments {
 		if descriptor.Firebase != nil {
 			descriptor.Firebase.BundleID = cfg.BundleID
@@ -255,8 +263,10 @@ func TestMatureProjectRuntimeAdoptionPreservesCustomCompositionAndConverges(t *t
 
 	projectManifestPath := filepath.Join(projectRoot, "Project.swift")
 	packageManifestPath := filepath.Join(projectRoot, "Package.swift")
+	runtimeHelperPath := filepath.Join(projectRoot, "Tuist", "ProjectDescriptionHelpers", "RuntimeProfiles.swift")
 	projectManifest := readTestFile(t, projectManifestPath)
 	packageManifest := readTestFile(t, packageManifestPath)
+	runtimeHelper := readTestFile(t, runtimeHelperPath)
 	registry := readTestFile(t, registryPath)
 
 	for _, orphaned := range []string{
@@ -278,6 +288,18 @@ func TestMatureProjectRuntimeAdoptionPreservesCustomCompositionAndConverges(t *t
 	}
 	if strings.Contains(projectManifest, "configuration: .debug") {
 		t.Fatalf("Project.swift retained the legacy app scheme after runtime-profile adoption:\n%s", projectManifest)
+	}
+	for _, want := range []string{
+		`.testableTarget(target: .target("DemoAppTests"))`,
+		`.testableTarget(target: .target("DemoAppUITests"))`,
+		`.launchArgument(name: "--demo-hosted-tests", isEnabled: true)`,
+	} {
+		if !strings.Contains(runtimeHelper, want) {
+			t.Fatalf("RuntimeProfiles.swift missing mature test action value %q:\n%s", want, runtimeHelper)
+		}
+	}
+	if strings.Contains(runtimeHelper, ".targets([]") {
+		t.Fatalf("RuntimeProfiles.swift retained an empty test action:\n%s", runtimeHelper)
 	}
 
 	baseSettingsLine := ""
@@ -321,6 +343,7 @@ func TestMatureProjectRuntimeAdoptionPreservesCustomCompositionAndConverges(t *t
 	trackedPaths := []string{
 		projectManifestPath,
 		packageManifestPath,
+		runtimeHelperPath,
 		registryPath,
 		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "AppConfig", "AppConfig.Manager.swift"),
 		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Configuration", "Runtime", "RuntimeProfiles.swift"),

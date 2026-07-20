@@ -34,8 +34,27 @@ public enum RuntimeProfilesProjectDescription {
         .debug(
             name: "Tests",
             settings: ["DISTRIBUTION_PROFILE": "tests"]
-        ),
+        )
     ]
+
+    private static func testsAction(
+        configuration: ConfigurationName,
+        appName: String
+    ) -> TestAction {
+        .targets(
+            [
+                .testableTarget(target: .target("RuntimeExampleTests")),
+                .testableTarget(target: .target("RuntimeExampleUITests"))
+            ],
+            arguments: .arguments(
+                launchArguments: [
+                    .launchArgument(name: "--runtime-example-hosted-tests", isEnabled: true)
+                ]
+            ),
+            configuration: configuration,
+            expandVariableFromTarget: .target(appName)
+        )
+    }
 
     public static func schemes(appName: String) -> [Scheme] {
         RuntimeDistributionProfile.allCases.map { scheme(for: $0, appName: appName) }
@@ -48,7 +67,7 @@ public enum RuntimeProfilesProjectDescription {
             shared: true,
             buildAction: .buildAction(targets: [.target(appName)]),
             testAction: profile == .tests
-                ? .targets([], configuration: configuration, expandVariableFromTarget: .target(appName))
+                ? testsAction(configuration: configuration, appName: appName)
                 : nil,
             runAction: .runAction(configuration: configuration, executable: .target(appName)),
             archiveAction: profile == .tests ? nil : .archiveAction(configuration: configuration),

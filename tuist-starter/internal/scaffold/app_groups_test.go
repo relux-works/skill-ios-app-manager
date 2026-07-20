@@ -95,6 +95,14 @@ let project = Project(
 			t.Fatalf("AppCapabilities.swift missing %q:\n%s", want, appCapabilities)
 		}
 	}
+	for lineNumber, line := range strings.Split(appCapabilities, "\n") {
+		if strings.TrimRight(line, " \t") != line {
+			t.Fatalf("AppCapabilities.swift line %d has trailing whitespace: %q", lineNumber+1, line)
+		}
+	}
+	if strings.Contains(appCapabilities, ".appGroups(group: .custom(id: \"group.com.example-demo.app.sso\")),\n    ]") {
+		t.Fatalf("AppCapabilities.swift leaves a trailing collection comma:\n%s", appCapabilities)
+	}
 
 	configuration := readFile(t, filepath.Join(projectRoot, "Targets", "DemoApp", "Sources", "Configuration", "Configuration+AppGroups.swift"))
 	if !strings.Contains(configuration, "static let shared: String") {
@@ -175,6 +183,49 @@ let project = Project(
 	infoPlistReading := readFile(t, filepath.Join(projectRoot, "Packages", "SharedConfig", "Sources", "InfoPlistReading.swift"))
 	if !strings.Contains(infoPlistReading, "public enum DemoAppSharedConfigError") {
 		t.Fatalf("InfoPlistReading.swift missing shared error type:\n%s", infoPlistReading)
+	}
+}
+
+func TestSyncAppGroupCapabilityDeclarationsRepairsLegacyFormatting(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	helpersDir := filepath.Join(projectRoot, "Tuist", "ProjectDescriptionHelpers")
+	if err := os.MkdirAll(helpersDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(helpersDir, "AppCapabilities.swift")
+	legacy := `import ProjectDescription
+
+public enum AppCapabilities {
+    public static let app: [Capability] = [
+        // capabilities are added by module setup commands
+` + "    \n" + `        .keychainSharing(),
+        .appGroups(group: .custom(id: "group.com.example.app")),
+    ]
+}
+`
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	declarations := []string{`        .appGroups(group: .custom(id: "group.com.example.app")),`}
+	updated, err := syncAppGroupCapabilityDeclarations(projectRoot, declarations)
+	if err != nil {
+		t.Fatalf("syncAppGroupCapabilityDeclarations() error = %v", err)
+	}
+	if !updated {
+		t.Fatal("syncAppGroupCapabilityDeclarations() updated = false, want legacy formatting repair")
+	}
+
+	content := readFile(t, path)
+	for lineNumber, line := range strings.Split(content, "\n") {
+		if strings.TrimRight(line, " \t") != line {
+			t.Fatalf("AppCapabilities.swift line %d has trailing whitespace: %q", lineNumber+1, line)
+		}
+	}
+	if strings.Contains(content, ".appGroups(group: .custom(id: \"group.com.example.app\")),\n    ]") {
+		t.Fatalf("AppCapabilities.swift leaves a trailing collection comma:\n%s", content)
 	}
 }
 

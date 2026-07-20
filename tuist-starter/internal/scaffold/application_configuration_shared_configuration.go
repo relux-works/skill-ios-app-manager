@@ -18,10 +18,15 @@ func GenerateApplicationConfigurationSharedConfigurationSwift(cfg config.Project
 	appName := normalizeAppName(cfg.AppName)
 	typePrefix := appGroupSharedConfigurationTypePrefix(appName)
 	lowerTypePrefix := lowerFirst(typePrefix)
+	fieldTypeName := typePrefix + "ApplicationConfigurationField"
+	configurationTypeName := typePrefix + "ApplicationConfiguration"
 
 	var b strings.Builder
 	b.WriteString("import Foundation\n\n")
-	b.WriteString("public enum " + typePrefix + "ApplicationConfigurationField: String, Sendable {\n")
+	if len(fieldTypeName) > 40 {
+		b.WriteString("// swiftlint:disable:next type_name\n")
+	}
+	b.WriteString("public enum " + fieldTypeName + ": String, Sendable {\n")
 	b.WriteString("    case appName\n")
 	b.WriteString("    case applicationBundleIdentifier\n")
 	b.WriteString("    case developmentTeamID\n")
@@ -36,7 +41,10 @@ func GenerateApplicationConfigurationSharedConfigurationSwift(cfg config.Project
 	b.WriteString("        rawValue\n")
 	b.WriteString("    }\n")
 	b.WriteString("}\n\n")
-	b.WriteString("public struct " + typePrefix + "ApplicationConfiguration: Equatable, Sendable {\n")
+	if len(configurationTypeName) > 40 {
+		b.WriteString("// swiftlint:disable:next type_name\n")
+	}
+	b.WriteString("public struct " + configurationTypeName + ": Equatable, Sendable {\n")
 	b.WriteString("    public let appName: String\n")
 	b.WriteString("    public let applicationBundleIdentifier: String\n")
 	b.WriteString("    public let developmentTeamID: String\n")
@@ -63,17 +71,32 @@ func GenerateApplicationConfigurationSharedConfigurationSwift(cfg config.Project
 	b.WriteString("    }\n\n")
 	b.WriteString("    public static func read(from bundle: Bundle = .main) throws -> Self {\n")
 	b.WriteString("        try Self(\n")
-	b.WriteString("            appName: bundle." + lowerTypePrefix + "String(for: Field.appName.infoPlistKey, dictionaryKey: Field.appName.dictionaryKey),\n")
-	b.WriteString("            applicationBundleIdentifier: bundle." + lowerTypePrefix + "String(for: Field.applicationBundleIdentifier.infoPlistKey, dictionaryKey: Field.applicationBundleIdentifier.dictionaryKey),\n")
-	b.WriteString("            developmentTeamID: bundle." + lowerTypePrefix + "String(for: Field.developmentTeamID.infoPlistKey, dictionaryKey: Field.developmentTeamID.dictionaryKey),\n")
-	if cfg.HasRuntimeProfiles() {
-		b.WriteString("            distributionProfile: bundle." + lowerTypePrefix + "String(for: Field.distributionProfile.infoPlistKey, dictionaryKey: Field.distributionProfile.dictionaryKey),\n")
+	writeReadArgument := func(label string, method string, field string, trailingComma bool) {
+		b.WriteString("            " + label + ": bundle." + method + "(\n")
+		b.WriteString("                for: Field." + field + ".infoPlistKey,\n")
+		b.WriteString("                dictionaryKey: Field." + field + ".dictionaryKey\n")
+		b.WriteString("            )")
+		if trailingComma {
+			b.WriteString(",")
+		}
+		b.WriteString("\n")
 	}
-	b.WriteString("            urlScheme: bundle." + lowerTypePrefix + "OptionalString(for: Field.urlScheme.infoPlistKey, dictionaryKey: Field.urlScheme.dictionaryKey)\n")
+	writeReadArgument("appName", lowerTypePrefix+"String", "appName", true)
+	writeReadArgument(
+		"applicationBundleIdentifier",
+		lowerTypePrefix+"String",
+		"applicationBundleIdentifier",
+		true,
+	)
+	writeReadArgument("developmentTeamID", lowerTypePrefix+"String", "developmentTeamID", true)
+	if cfg.HasRuntimeProfiles() {
+		writeReadArgument("distributionProfile", lowerTypePrefix+"String", "distributionProfile", true)
+	}
+	writeReadArgument("urlScheme", lowerTypePrefix+"OptionalString", "urlScheme", false)
 	b.WriteString("        )\n")
 	b.WriteString("    }\n")
 	b.WriteString("}\n\n")
-	b.WriteString("private typealias Field = " + typePrefix + "ApplicationConfigurationField\n")
+	b.WriteString("private typealias Field = " + fieldTypeName + "\n")
 
 	return b.String()
 }

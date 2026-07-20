@@ -42,6 +42,12 @@ func TestLoadRuntimeProfilesGenericExample(t *testing.T) {
 	if got := cfg.RuntimeProfiles.DistributionProfiles[DistributionProfileTests].SelectionPersistence; got != SelectionPersistenceDisabled {
 		t.Fatalf("tests selection persistence = %q, want disabled", got)
 	}
+	if got, want := cfg.RuntimeProfiles.TestAction.Targets, []string{"RuntimeExampleTests", "RuntimeExampleUITests"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("tests action targets = %#v, want %#v", got, want)
+	}
+	if got, want := cfg.RuntimeProfiles.TestAction.LaunchArguments, []string{"--runtime-example-hosted-tests"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("tests action launch arguments = %#v, want %#v", got, want)
+	}
 	production := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentProduction]
 	staging := cfg.RuntimeProfiles.BackendEnvironments[BackendEnvironmentStaging]
 	if production.Firebase.IdentitySharingGroup == "" || production.Firebase.IdentitySharingGroup != staging.Firebase.IdentitySharingGroup {
@@ -69,6 +75,84 @@ func TestRuntimeProfilesJSONSchemaIsWellFormed(t *testing.T) {
 	}
 	if !strings.Contains(string(payload), `"identity_sharing_group"`) {
 		t.Fatal("runtime profile schema does not expose identity_sharing_group")
+	}
+	if !strings.Contains(string(payload), `"test_action"`) {
+		t.Fatal("runtime profile schema does not expose test_action")
+	}
+}
+
+func TestRuntimeProfilesRejectInvalidTestActionMetadata(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		mutate  func(*ProjectConfig)
+		wantErr string
+	}{
+		{
+			name: "missing test action",
+			mutate: func(cfg *ProjectConfig) {
+				cfg.RuntimeProfiles.TestAction = RuntimeProfileTestActionConfig{}
+			},
+			wantErr: "RuntimeProfiles.TestAction.Targets must not be empty",
+		},
+		{
+			name: "empty target",
+			mutate: func(cfg *ProjectConfig) {
+				cfg.RuntimeProfiles.TestAction.Targets = []string{"DemoAppTests", ""}
+			},
+			wantErr: "RuntimeProfiles.TestAction.Targets[1] must not be empty",
+		},
+		{
+			name: "multiline target",
+			mutate: func(cfg *ProjectConfig) {
+				cfg.RuntimeProfiles.TestAction.Targets = []string{"DemoAppTests\nUnexpected"}
+			},
+			wantErr: "RuntimeProfiles.TestAction.Targets[0] must be a single-line value",
+		},
+		{
+			name: "duplicate target",
+			mutate: func(cfg *ProjectConfig) {
+				cfg.RuntimeProfiles.TestAction.Targets = []string{"DemoAppTests", "DemoAppTests"}
+			},
+			wantErr: `contains duplicate target "DemoAppTests"`,
+		},
+		{
+			name: "empty launch argument",
+			mutate: func(cfg *ProjectConfig) {
+				cfg.RuntimeProfiles.TestAction.LaunchArguments = []string{"--hosted-tests", ""}
+			},
+			wantErr: "RuntimeProfiles.TestAction.LaunchArguments[1] must not be empty",
+		},
+		{
+			name: "duplicate launch argument",
+			mutate: func(cfg *ProjectConfig) {
+				cfg.RuntimeProfiles.TestAction.LaunchArguments = []string{"--hosted-tests", "--hosted-tests"}
+			},
+			wantErr: `contains duplicate argument "--hosted-tests"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := validRuntimeProjectConfig()
+			tt.mutate(&cfg)
+			err := cfg.Validate()
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("Validate() error = %v, want %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRuntimeProfilesAcceptCustomTestTargetNames(t *testing.T) {
+	t.Parallel()
+
+	cfg := validRuntimeProjectConfig()
+	cfg.RuntimeProfiles.TestAction.Targets = []string{"Demo App Tests", "Demo-App-UITests"}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate() custom test target names error = %v", err)
 	}
 }
 
@@ -603,6 +687,10 @@ func validRuntimeProjectConfig() ProjectConfig {
 	cfg := validProjectConfig()
 	cfg.RuntimeProfiles = &RuntimeProfilesConfig{
 		SchemaVersion: RuntimeProfilesSchemaVersion,
+		TestAction: RuntimeProfileTestActionConfig{
+			Targets:         []string{"DemoAppTests", "DemoAppUITests"},
+			LaunchArguments: []string{"--demo-hosted-tests"},
+		},
 		DistributionProfiles: map[DistributionProfile]DistributionProfileConfig{
 			DistributionProfilePilotTestFlight: {
 				BuildConfiguration:   "PilotTestFlight",

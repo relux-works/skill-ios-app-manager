@@ -256,6 +256,10 @@ func syncAppGroupCapabilityDeclarations(projectRoot string, declarations []strin
 	nextLines = append(nextLines, filtered[insertIndex:]...)
 
 	updated := joinSyncLines(nextLines, hasTrailingNewline)
+	updated, err = normalizeAppCapabilitiesContent(updated)
+	if err != nil {
+		return false, err
+	}
 	if updated == string(payload) {
 		return false, nil
 	}

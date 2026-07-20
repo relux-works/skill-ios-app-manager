@@ -172,12 +172,16 @@ Start from the generic config in `tuist-starter/testdata/runtime-profiles-config
 export IOS_APP_MANAGER_FIREBASE_SHARED_PLIST="$PWD/.local/firebase/shared.plist"
 export IOS_APP_MANAGER_FIREBASE_DEVELOPMENT_PLIST="$PWD/.local/firebase/development.plist"
 
+ios-app-manager test-targets setup \
+  --unit-target RuntimeExampleTests \
+  --ui-target RuntimeExampleUITests \
+  --yes
 ios-app-manager generate project-config
 ios-app-manager app-config setup --yes
 tuist install && tuist generate --no-open
 ```
 
-The generic fixture demonstrates an explicit `shared-public-client` Firebase identity group for production and staging while their API origins and auth/storage/grant/quota namespaces remain distinct. Run `generate project-config` again to verify convergence. To remove the feature, delete `runtime_profiles`, rerun the same generator, and rerun `app-config setup` to restore managed legacy templates. See [`runtime-profiles.md`](runtime-profiles.md) for the policy matrix, validation constraints, safe Firebase input and sharing contract, and migration behavior.
+The generic fixture maps `RuntimeExampleTests` and `RuntimeExampleUITests` into the Tests profile and scopes `--runtime-example-hosted-tests` to that action. It also demonstrates an explicit `shared-public-client` Firebase identity group for production and staging while their API origins and auth/storage/grant/quota namespaces remain distinct. Run `generate project-config` again to verify convergence. To remove the feature, delete `runtime_profiles`, rerun the same generator, and rerun `app-config setup` to restore managed legacy templates. See [`runtime-profiles.md`](runtime-profiles.md) for the policy matrix, validation constraints, safe Firebase input and sharing contract, and migration behavior.
 
 ## 8) Common troubleshooting
 

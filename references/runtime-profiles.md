@@ -13,6 +13,27 @@ The schema has two independent typed axes:
 
 A distribution profile never contains an API URL. It refers to backend environment identifiers through `default_environment` and `allowed_environments`. A backend descriptor contains one exact `api_origin`; the generator never appends a path such as `/api/v1`.
 
+`test_action` maps the `tests` profile to one or more existing Tuist unit/UI test target names. `targets` is required and must not be empty; invalid, empty, or duplicate Swift target identifiers fail validation rather than generating an unusable empty Test action. Optional `launch_arguments` are static, non-secret flags applied only to the generated Tests action. They are not inherited by Run, Profile, or Archive actions.
+
+```json
+{
+  "runtime_profiles": {
+    "schema_version": 1,
+    "test_action": {
+      "targets": [
+        "DemoAppTests",
+        "DemoAppUITests"
+      ],
+      "launch_arguments": [
+        "--demo-hosted-tests"
+      ]
+    }
+  }
+}
+```
+
+The mapped targets must exist in the root Tuist project. For generated targets, use the same names with `ios-app-manager test-targets setup --unit-target DemoAppTests --ui-target DemoAppUITests --yes` before running `tuist generate`.
+
 ## Approved policy matrix
 
 | Profile | Build kind | Default | Allowed | Menu | Selection persistence | Non-production marker | Ephemeral injection |
@@ -91,7 +112,8 @@ The validation hook checks that the plist contains `PROJECT_ID`, `GOOGLE_APP_ID`
 - `Tuist/ProjectDescriptionHelpers/RuntimeProfiles.swift`
   - typed profile-to-configuration mapping;
   - debug/release configurations with `DISTRIBUTION_PROFILE` settings;
-  - one shared scheme per distribution profile.
+  - one shared scheme per distribution profile;
+  - a non-empty Tests action containing the configured testables and optional hosted-test launch flags.
 - `Project.swift`
   - managed configuration and scheme blocks;
   - replacement of the legacy app scheme when its Debug/Release actions no longer name generated configurations; unrelated custom schemes remain intact;
@@ -110,6 +132,7 @@ Initialize a project with validation inputs present:
 
 ```bash
 ios-app-manager init --config ios-app-manager.json --output .
+ios-app-manager test-targets setup --unit-target DemoAppTests --ui-target DemoAppUITests --yes
 tuist install
 tuist generate --no-open
 ```
@@ -143,4 +166,4 @@ ios-app-manager app-config setup --yes
 
 Managed Swift and Tuist runtime files are removed, managed manifest blocks return to the legacy `configurations` list, `distributionProfile` is removed from application configuration, and managed AppConfig templates return to legacy behavior.
 
-Configs without `runtime_profiles` retain the previous `Debug`/`Release` and AppConfig behavior. The deprecated top-level `distribution_profiles` and `backend_environments` maps are read as a version-1 runtime block and converge to nested `runtime_profiles` the next time `WriteProjectConfig` writes the file. A config cannot combine the legacy aliases with the nested block.
+Configs without `runtime_profiles` retain the previous `Debug`/`Release` and AppConfig behavior. Nested runtime-profile configs require explicit `test_action.targets`. The deprecated top-level `distribution_profiles` and `backend_environments` maps are read as a version-1 runtime block, receive conventional `<AppName>Tests` and `<AppName>UITests` mappings for compatibility, and converge to nested `runtime_profiles` the next time `WriteProjectConfig` writes the file. A config cannot combine the legacy aliases with the nested block.

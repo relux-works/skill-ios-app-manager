@@ -96,7 +96,7 @@ public enum GeneratedRuntimeProfiles {
     public static let backendEnvironments: [BackendEnvironment: BackendEnvironmentDescriptor] = [
         .production: .init(
             id: .production,
-            apiOrigin: URL(string: "https://api.example.com")!,
+            apiOrigin: apiOrigin("https://api.example.com"),
             authNamespace: "auth-production",
             storageNamespace: "storage-production",
             grantNamespace: "grants-production",
@@ -111,7 +111,7 @@ public enum GeneratedRuntimeProfiles {
         ),
         .staging: .init(
             id: .staging,
-            apiOrigin: URL(string: "https://staging-api.example.com")!,
+            apiOrigin: apiOrigin("https://staging-api.example.com"),
             authNamespace: "auth-staging",
             storageNamespace: "storage-staging",
             grantNamespace: "grants-staging",
@@ -126,7 +126,7 @@ public enum GeneratedRuntimeProfiles {
         ),
         .development: .init(
             id: .development,
-            apiOrigin: URL(string: "https://development-api.example.com")!,
+            apiOrigin: apiOrigin("https://development-api.example.com"),
             authNamespace: "auth-development",
             storageNamespace: "storage-development",
             grantNamespace: "grants-development",
@@ -141,13 +141,13 @@ public enum GeneratedRuntimeProfiles {
         ),
         .fixture: .init(
             id: .fixture,
-            apiOrigin: URL(string: "http://127.0.0.1:8080")!,
+            apiOrigin: apiOrigin("http://127.0.0.1:8080"),
             authNamespace: "auth-fixture",
             storageNamespace: "storage-fixture",
             grantNamespace: "grants-fixture",
             quotaNamespace: "quota-fixture",
             firebase: nil
-        ),
+        )
     ]
 
     public static let distributionProfiles: [DistributionProfile: DistributionProfileDescriptor] = [
@@ -190,8 +190,15 @@ public enum GeneratedRuntimeProfiles {
             selectionPersistence: .disabled,
             nonProductionMarker: .persistent,
             ephemeralInjection: .allowed
-        ),
+        )
     ]
+
+    private static func apiOrigin(_ rawValue: String) -> URL {
+        guard let url = URL(string: rawValue) else {
+            preconditionFailure("Invalid generated API origin: \(rawValue)")
+        }
+        return url
+    }
 
     public static let currentDistributionProfile: DistributionProfile = {
         let rawValue = Configuration.ApplicationConfiguration.current.distributionProfile

@@ -43,6 +43,9 @@ func TestGenerateAppCapabilitiesForConfigIncludesAppGroups(t *testing.T) {
 			t.Errorf("GenerateAppCapabilitiesForConfig() missing %q:\n%s", want, content)
 		}
 	}
+	if strings.Contains(content, `.appGroups(group: .custom(id: "group.com.example.shared")),`) {
+		t.Fatalf("GenerateAppCapabilitiesForConfig() leaves a trailing collection comma:\n%s", content)
+	}
 }
 
 func TestAddToAppCapabilities_KeychainSharing(t *testing.T) {
@@ -140,6 +143,14 @@ func TestSyncAppCapabilityDeclarationsAddsConfiguredLines(t *testing.T) {
 			t.Errorf("expected app group %q in content:\n%s", want, content)
 		}
 	}
+	for lineNumber, line := range strings.Split(content, "\n") {
+		if strings.TrimRight(line, " \t") != line {
+			t.Fatalf("AppCapabilities.swift line %d has trailing whitespace: %q", lineNumber+1, line)
+		}
+	}
+	if strings.Contains(content, ".appGroups(group: .custom(id: \"group.com.example.shared\")),\n    ]") {
+		t.Fatalf("AppCapabilities.swift leaves a trailing collection comma:\n%s", content)
+	}
 
 	secondUpdated, err := SyncAppCapabilityDeclarations(dir, appGroupCapabilityDeclarations(cfg))
 	if err != nil {
@@ -155,6 +166,70 @@ func TestSyncAppCapabilityDeclarationsAddsConfiguredLines(t *testing.T) {
 	if count := strings.Count(string(afterSecond), ".appGroups("); count != 2 {
 		t.Fatalf("app group capability count = %d, want 2:\n%s", count, string(afterSecond))
 	}
+}
+
+func TestSyncAppCapabilityDeclarationsRepairsConvergedLegacyFormatting(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	helpersDir := filepath.Join(dir, "Tuist", "ProjectDescriptionHelpers")
+	if err := os.MkdirAll(helpersDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	legacy := `import ProjectDescription
+
+public enum AppCapabilities {
+    public static let app: [Capability] = [
+        // capabilities are added by module setup commands
+` + "    \n" + `        .keychainSharing(),
+        .appGroups(group: .custom(id: "group.com.example.app")),
+    ]
+}
+`
+	path := filepath.Join(helpersDir, "AppCapabilities.swift")
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	declarations := []string{
+		"        .keychainSharing(),",
+		`        .appGroups(group: .custom(id: "group.com.example.app")),`,
+	}
+	updated, err := SyncAppCapabilityDeclarations(dir, declarations)
+	if err != nil {
+		t.Fatalf("SyncAppCapabilityDeclarations() error = %v", err)
+	}
+	if !updated {
+		t.Fatal("SyncAppCapabilityDeclarations() updated = false, want legacy formatting repair")
+	}
+
+	content := string(mustReadAppCapabilities(t, path))
+	for lineNumber, line := range strings.Split(content, "\n") {
+		if strings.TrimRight(line, " \t") != line {
+			t.Fatalf("AppCapabilities.swift line %d has trailing whitespace: %q", lineNumber+1, line)
+		}
+	}
+	if strings.Contains(content, ".appGroups(group: .custom(id: \"group.com.example.app\")),\n    ]") {
+		t.Fatalf("AppCapabilities.swift leaves a trailing collection comma:\n%s", content)
+	}
+
+	secondUpdated, err := SyncAppCapabilityDeclarations(dir, declarations)
+	if err != nil {
+		t.Fatalf("second SyncAppCapabilityDeclarations() error = %v", err)
+	}
+	if secondUpdated {
+		t.Fatal("second SyncAppCapabilityDeclarations() updated = true, want converged output")
+	}
+}
+
+func mustReadAppCapabilities(t *testing.T, path string) []byte {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
 }
 
 func TestAddToAppCapabilities_PushNotifications(t *testing.T) {
