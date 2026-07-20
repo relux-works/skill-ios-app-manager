@@ -224,7 +224,7 @@ func TestPatchRegistry(t *testing.T) {
 		t.Fatalf("WriteFile error = %v", err)
 	}
 
-	if err := patchRegistry(registryPath); err != nil {
+	if err := patchRegistry(registryPath, "DemoApp"); err != nil {
 		t.Fatalf("patchRegistry() error = %v", err)
 	}
 
@@ -277,10 +277,10 @@ func TestPatchRegistryIdempotent(t *testing.T) {
 	}
 
 	// Patch twice.
-	if err := patchRegistry(registryPath); err != nil {
+	if err := patchRegistry(registryPath, "DemoApp"); err != nil {
 		t.Fatalf("first patchRegistry() error = %v", err)
 	}
-	if err := patchRegistry(registryPath); err != nil {
+	if err := patchRegistry(registryPath, "DemoApp"); err != nil {
 		t.Fatalf("second patchRegistry() error = %v", err)
 	}
 

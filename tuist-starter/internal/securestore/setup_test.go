@@ -504,6 +504,115 @@ func TestSetupIdempotentContentUnchanged(t *testing.T) {
 	}
 }
 
+func TestSetupPatchesExistingCustomRegistryWithoutRegeneration(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	setupProjectFiles(t, projectRoot, "Packages")
+	writeTestFile(t, filepath.Join(projectRoot, "ios-app-manager.json"), `{
+  "app_name": "DemoApp",
+  "bundle_id": "com.example.demo",
+  "team_id": "ABCDE12345",
+  "swift_version": "6.2",
+  "min_target": "17.0",
+  "marketing_version": "1.0.0",
+  "project_version": "1",
+  "app_groups": ["group.com.example.demo"]
+}`)
+
+	registryPath := filepath.Join(projectRoot, "Targets", "DemoApp", "Sources", "App", "DemoApp.Registry.swift")
+	customRegistry := `import CustomRuntime
+import SwiftIoC
+
+extension DemoApp {
+    @MainActor
+    enum Registry {
+        static let ioc = IoC()
+        private(set) static var runtimeMode = CustomRuntimeMode.application
+
+        static func configure(runtimeMode: CustomRuntimeMode = .current()) {
+            self.runtimeMode = runtimeMode
+
+            // MARK: - Infrastructure (scaffolding anchor: infra)
+            ioc.register(CustomRuntime.self, lifecycle: .container, resolver: buildCustomRuntime)
+
+            // MARK: - Foundation (scaffolding anchor: foundation)
+            ioc.register(CustomPersistence.self, lifecycle: .container, resolver: buildCustomPersistence)
+
+            // MARK: - Features (scaffolding anchor: features)
+
+            // MARK: - Network (scaffolding anchor: network)
+            ioc.register(CustomAPIClient.self, lifecycle: .container, resolver: buildCustomAPIClient)
+
+            // MARK: - Utils (scaffolding anchor: utils)
+        }
+
+        static func resolve<T>(_ type: T.Type) -> T {
+            guard let value = ioc.get(by: type) else {
+                preconditionFailure("custom resolve")
+            }
+            return value
+        }
+    }
+}
+
+// MARK: - Infrastructure Builders (scaffolding anchor: infra-builders)
+extension DemoApp.Registry {
+    private static func buildCustomRuntime() -> CustomRuntime { .init() }
+    private static func buildCustomPersistence() -> CustomPersistence { .init() }
+    private static func buildCustomAPIClient() -> CustomAPIClient { .init() }
+}
+`
+	writeTestFile(t, registryPath, customRegistry)
+
+	input := SetupInput{
+		ProjectRoot: projectRoot,
+		AppName:     "DemoApp",
+		ModulesPath: "Packages",
+		AccessGroup: testAccessGroup,
+	}
+	if err := Setup(input); err != nil {
+		t.Fatalf("Setup() custom Registry error = %v", err)
+	}
+	first := readFile(t, registryPath)
+	for _, preserved := range []string{
+		"import CustomRuntime",
+		"private(set) static var runtimeMode",
+		"ioc.register(CustomRuntime.self",
+		"ioc.register(CustomPersistence.self",
+		"ioc.register(CustomAPIClient.self",
+		"preconditionFailure(\"custom resolve\")",
+		"func buildCustomRuntime()",
+	} {
+		if !strings.Contains(first, preserved) {
+			t.Fatalf("custom Registry composition lost %q:\n%s", preserved, first)
+		}
+	}
+	for _, integrated := range []string{
+		"import SecureStore",
+		"import SecureStoreImpl",
+		"SecureStore.Module.Interface.self",
+		"func buildSecureStore()",
+		"Configuration.AppGroups.main",
+		"// MARK: - Foundation Builders (scaffolding anchor: foundation-builders)",
+	} {
+		if !strings.Contains(first, integrated) {
+			t.Fatalf("custom Registry missing SecureStore integration %q:\n%s", integrated, first)
+		}
+	}
+
+	if err := Setup(input); err != nil {
+		t.Fatalf("second Setup() custom Registry error = %v", err)
+	}
+	second := readFile(t, registryPath)
+	if second != first {
+		t.Fatalf("second SecureStore setup changed custom Registry:\n%s", second)
+	}
+	if count := strings.Count(second, "SecureStore.Module.Interface.self"); count != 1 {
+		t.Fatalf("SecureStore registration count = %d, want 1:\n%s", count, second)
+	}
+}
+
 // --- helpers ---
 
 func setupProjectFiles(t *testing.T, projectRoot, modulesPath string) {

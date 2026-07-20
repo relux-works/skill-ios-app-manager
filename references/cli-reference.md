@@ -55,7 +55,7 @@ ios-app-manager [command] [flags]
 | `push token` | Print latest device token from logs/fallback file | `ios-app-manager push token` |
 | `ioc setup` | Set up SwiftIoC container and Registry.swift | `ios-app-manager ioc setup` |
 | `relux setup` | Set up Relux state management scaffolding | `ios-app-manager relux setup` |
-| `secure-store setup --access-group <group>` | Create SecureStore keychain wrapper module | `ios-app-manager secure-store setup --access-group group.org.xflow.app` |
+| `secure-store setup --access-group <group>` | Create SecureStore and patch its Registry slice without replacing custom composition | `ios-app-manager secure-store setup --access-group group.org.xflow.app` |
 | `token-provider setup` | Create TokenProvider module | `ios-app-manager token-provider setup` |
 | `utilities setup` | Create Utilities module | `ios-app-manager utilities setup` |
 | `foundation-plus setup` | Create FoundationPlus utility module | `ios-app-manager foundation-plus setup` |

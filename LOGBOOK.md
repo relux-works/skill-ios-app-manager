@@ -5,6 +5,14 @@
 
 ## 2026-07-20
 
+### 0457 — Non-Destructive Mature Runtime Adoption
+- ROOT CAUSE: Runtime-profile migration treated the `[Configuration]` type annotation as the legacy initializer, appended a second `PackageSettings.configurations` argument, inserted SharedConfig after an unterminated dependency item, and left Converter's Debug/Release app scheme active after replacing those configurations.
+- ROOT CAUSE: SecureStore setup delegated to full IoC Registry regeneration, which would erase mature custom registrations and builders before AppConfig adoption.
+- FIX: Added syntax-aware configuration/argument/scheme migration, comma-safe dependency insertion, and focused SecureStore/AppConfig Registry patches that preserve unrelated composition.
+- SCOPE: Converter-shaped fixtures cover custom Registry preservation, typed Tuist manifests, legacy app-scheme replacement, second-run convergence, and validation-output secrecy.
+- REVIEW: Independent review found that a preserved final custom scheme also needed comma termination before managed schemes; the shared comma-safe insertion helper and regression now cover it.
+- STATUS: Full Go tests/vet/build, second-run byte convergence, real Converter-shaped Tuist generation, and the PilotTestFlight simulator build pass; final independent source re-review follows.
+
 ### 0335 — API Origin Default-Port Isolation
 - ROOT CAUSE: Backend origin ownership lowercased the full host string but did not normalize an omitted port, an explicit scheme-default port, or zero-padded numeric port spelling. Equivalent HTTPS origins such as `https://api.example.com` and `https://api.example.com:443` could therefore evade the environment-isolation collision check.
 - FIX: Canonical ownership keys now compare lowercase scheme/hostname plus normalized numeric ports, omit the effective HTTPS `443` and HTTP `80` defaults, and preserve IPv6 host brackets. Generated Swift continues to serialize each configured exact origin without rewriting it.

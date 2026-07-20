@@ -99,6 +99,8 @@ These generators depend on the `init` scaffold shape. `bundle-id`, `versions`, `
 
 Runtime profiles are optional and backward compatible. They keep `pilotTestFlight`, `appStore`, `internal`, and `tests` artifacts independent from typed `production`, `staging`, `development`, and `fixture` backends. Firebase public identity is unique per environment unless every participant opts into one exact typed sharing group; API and runtime-state namespaces always remain environment-specific. See [Runtime profiles](references/runtime-profiles.md) for the schema, approved policy matrix, Firebase validation hook and sharing boundary, generated files, migration, and removal workflow.
 
+Mature-project adoption replaces the legacy app scheme and its obsolete Debug/Release actions with the generated runtime-profile schemes while preserving unrelated custom schemes. It also replaces existing typed configuration declarations and `PackageSettings` configuration arguments in place. Run `secure-store setup` before `app-config setup`; both commands patch only their owned Registry imports, registrations, and builders when a custom Registry already exists.
+
 Platform destinations are optional. Configs without `platforms` keep the legacy `destinations: .iOS` output. Configs with `platforms` use explicit destinations:
 
 ```json

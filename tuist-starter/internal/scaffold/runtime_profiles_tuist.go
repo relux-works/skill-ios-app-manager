@@ -123,19 +123,13 @@ func syncRuntimeProfilePackageManifestContent(content string, _ config.ProjectCo
 			filtered = append(filtered, line)
 			continue
 		}
-
-		trimmed := strings.TrimSpace(line)
-		insertedPrefix := "baseSettings: .settings(configurations: RuntimeProfilesProjectDescription.configurations)"
-		if strings.HasPrefix(trimmed, insertedPrefix) {
-			continue
+		restored, keep, err := restoreRuntimeProfilePackageConfigLine(line)
+		if err != nil {
+			return "", err
 		}
-		restored := strings.ReplaceAll(
-			line,
-			", configurations: RuntimeProfilesProjectDescription.configurations",
-			"",
-		)
-		restored = strings.ReplaceAll(restored, " "+runtimeProfilePackageConfigMarker, "")
-		filtered = append(filtered, strings.TrimRight(restored, " \t"))
+		if keep {
+			filtered = append(filtered, restored)
+		}
 	}
 	lines = filtered
 	if !enabled {
@@ -184,7 +178,8 @@ func syncRuntimeProfilePackageManifestContent(content string, _ config.ProjectCo
 		if err != nil {
 			return "", err
 		}
-		managedLine := "    baseSettings: .settings(configurations: RuntimeProfilesProjectDescription.configurations), " + runtimeProfilePackageConfigMarker
+		managedLine := "    baseSettings: .settings(configurations: RuntimeProfilesProjectDescription.configurations), " +
+			runtimeProfilePackageConfigMarker + " inserted"
 		lines = insertRuntimeProfileLines(lines, insertAt, []string{managedLine})
 
 		if len(targetSettingsBlock) > 0 {
@@ -201,21 +196,275 @@ func syncRuntimeProfilePackageManifestContent(content string, _ config.ProjectCo
 		return joinSyncLines(lines, hasTrailingNewline), nil
 	}
 
-	line := lines[baseSettingsLine]
-	settingsCall := strings.Index(line, ".settings(")
-	closeCall := strings.LastIndex(line, ")")
-	if settingsCall < 0 || closeCall < settingsCall || strings.Count(line[settingsCall:closeCall+1], "(") != strings.Count(line[settingsCall:closeCall+1], ")") {
-		return "", fmt.Errorf("Package.swift baseSettings must use a single-line .settings(...) call for runtime-profile convergence")
+	line, originalConfigurations, err := replaceRuntimeProfilePackageConfigurations(lines[baseSettingsLine])
+	if err != nil {
+		return "", err
 	}
-	beforeClose := strings.TrimSpace(line[settingsCall+len(".settings(") : closeCall])
-	separator := ""
-	if beforeClose != "" {
-		separator = ", "
-	}
-	line = line[:closeCall] + separator + "configurations: RuntimeProfilesProjectDescription.configurations" + line[closeCall:]
-	line = strings.TrimRight(line, " \t") + " " + runtimeProfilePackageConfigMarker
+	line = strings.TrimRight(line, " \t") + " " + runtimeProfilePackageConfigMarker +
+		" original=" + strconv.Quote(originalConfigurations)
 	lines[baseSettingsLine] = line
 	return joinSyncLines(lines, hasTrailingNewline), nil
+}
+
+func restoreRuntimeProfilePackageConfigLine(line string) (string, bool, error) {
+	markerIndex := strings.Index(line, runtimeProfilePackageConfigMarker)
+	if markerIndex < 0 {
+		return line, true, nil
+	}
+	code := strings.TrimRight(line[:markerIndex], " \t")
+	metadata := strings.TrimSpace(line[markerIndex+len(runtimeProfilePackageConfigMarker):])
+	if metadata == "inserted" {
+		return "", false, nil
+	}
+	if strings.HasPrefix(metadata, "original=") {
+		original, err := strconv.Unquote(strings.TrimPrefix(metadata, "original="))
+		if err != nil {
+			return "", false, fmt.Errorf("invalid Package.swift runtime-profile configurations marker: %w", err)
+		}
+		restored, err := restoreRuntimeProfilePackageConfigurations(code, original)
+		if err != nil {
+			return "", false, err
+		}
+		return strings.TrimRight(restored, " \t"), true, nil
+	}
+
+	// Backward compatibility for output produced before original argument
+	// metadata was recorded.
+	trimmed := strings.TrimSpace(code)
+	insertedPrefix := "baseSettings: .settings(configurations: RuntimeProfilesProjectDescription.configurations)"
+	if strings.HasPrefix(trimmed, insertedPrefix) {
+		return "", false, nil
+	}
+	restored := strings.ReplaceAll(
+		code,
+		", configurations: RuntimeProfilesProjectDescription.configurations",
+		"",
+	)
+	return strings.TrimRight(restored, " \t"), true, nil
+}
+
+func replaceRuntimeProfilePackageConfigurations(line string) (string, string, error) {
+	argsStart, argsEnd, err := settingsCallArgumentBounds(line)
+	if err != nil {
+		return "", "", fmt.Errorf("Package.swift baseSettings must use a single-line .settings(...) call for runtime-profile convergence")
+	}
+	args := line[argsStart:argsEnd]
+	updatedArgs, original, found, err := replaceSwiftNamedArgument(
+		args,
+		"configurations",
+		"RuntimeProfilesProjectDescription.configurations",
+	)
+	if err != nil {
+		return "", "", fmt.Errorf("replace Package.swift baseSettings configurations: %w", err)
+	}
+	if !found {
+		separator := ""
+		if strings.TrimSpace(args) != "" {
+			separator = ", "
+		}
+		updatedArgs = args + separator + "configurations: RuntimeProfilesProjectDescription.configurations"
+	}
+	return line[:argsStart] + updatedArgs + line[argsEnd:], original, nil
+}
+
+func restoreRuntimeProfilePackageConfigurations(line string, original string) (string, error) {
+	argsStart, argsEnd, err := settingsCallArgumentBounds(line)
+	if err != nil {
+		return "", fmt.Errorf("restore Package.swift baseSettings configurations: %w", err)
+	}
+	args := line[argsStart:argsEnd]
+	if original != "" {
+		updatedArgs, _, found, err := replaceSwiftNamedArgument(args, "configurations", original)
+		if err != nil {
+			return "", err
+		}
+		if !found {
+			return "", fmt.Errorf("managed Package.swift baseSettings configurations argument not found")
+		}
+		return line[:argsStart] + updatedArgs + line[argsEnd:], nil
+	}
+
+	updatedArgs, found, err := removeSwiftNamedArgument(args, "configurations")
+	if err != nil {
+		return "", err
+	}
+	if !found {
+		return "", fmt.Errorf("managed Package.swift baseSettings configurations argument not found")
+	}
+	return line[:argsStart] + updatedArgs + line[argsEnd:], nil
+}
+
+func settingsCallArgumentBounds(line string) (int, int, error) {
+	settingsCall := strings.Index(line, ".settings(")
+	if settingsCall < 0 {
+		return 0, 0, fmt.Errorf(".settings call not found")
+	}
+	openIndex := settingsCall + len(".settings")
+	closeIndex := matchingSwiftDelimiterInLine(line, openIndex, '(', ')')
+	if closeIndex < 0 {
+		return 0, 0, fmt.Errorf("unterminated .settings call")
+	}
+	return openIndex + 1, closeIndex, nil
+}
+
+type swiftArgumentRange struct {
+	start int
+	end   int
+}
+
+func replaceSwiftNamedArgument(args string, name string, replacement string) (string, string, bool, error) {
+	ranges, err := splitTopLevelSwiftArguments(args)
+	if err != nil {
+		return "", "", false, err
+	}
+	for _, argumentRange := range ranges {
+		segment := args[argumentRange.start:argumentRange.end]
+		leading := len(segment) - len(strings.TrimLeft(segment, " \t"))
+		trimmed := strings.TrimSpace(segment)
+		prefix := name + ":"
+		if !strings.HasPrefix(trimmed, prefix) {
+			continue
+		}
+		valueOffset := leading + len(prefix)
+		for valueOffset < len(segment) && (segment[valueOffset] == ' ' || segment[valueOffset] == '\t') {
+			valueOffset++
+		}
+		valueEnd := len(segment)
+		for valueEnd > valueOffset && (segment[valueEnd-1] == ' ' || segment[valueEnd-1] == '\t') {
+			valueEnd--
+		}
+		original := segment[valueOffset:valueEnd]
+		updatedSegment := segment[:valueOffset] + replacement + segment[valueEnd:]
+		return args[:argumentRange.start] + updatedSegment + args[argumentRange.end:], original, true, nil
+	}
+	return args, "", false, nil
+}
+
+func removeSwiftNamedArgument(args string, name string) (string, bool, error) {
+	ranges, err := splitTopLevelSwiftArguments(args)
+	if err != nil {
+		return "", false, err
+	}
+	for index, argumentRange := range ranges {
+		segment := strings.TrimSpace(args[argumentRange.start:argumentRange.end])
+		if !strings.HasPrefix(segment, name+":") {
+			continue
+		}
+		switch {
+		case len(ranges) == 1:
+			return "", true, nil
+		case index > 0:
+			removeStart := ranges[index-1].end
+			return strings.TrimRight(args[:removeStart], " \t") + args[argumentRange.end:], true, nil
+		default:
+			removeEnd := ranges[index+1].start
+			return strings.TrimLeft(args[removeEnd:], " \t"), true, nil
+		}
+	}
+	return args, false, nil
+}
+
+func splitTopLevelSwiftArguments(args string) ([]swiftArgumentRange, error) {
+	ranges := make([]swiftArgumentRange, 0, 4)
+	start := 0
+	parentheses := 0
+	brackets := 0
+	braces := 0
+	inString := false
+	escaped := false
+	for index := 0; index < len(args); index++ {
+		ch := args[index]
+		if inString {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			if ch == '"' {
+				inString = false
+			}
+			continue
+		}
+		if ch == '"' {
+			inString = true
+			continue
+		}
+		switch ch {
+		case '(':
+			parentheses++
+		case ')':
+			parentheses--
+		case '[':
+			brackets++
+		case ']':
+			brackets--
+		case '{':
+			braces++
+		case '}':
+			braces--
+		case ',':
+			if parentheses == 0 && brackets == 0 && braces == 0 {
+				ranges = append(ranges, swiftArgumentRange{start: start, end: index})
+				start = index + 1
+			}
+		}
+		if parentheses < 0 || brackets < 0 || braces < 0 {
+			return nil, fmt.Errorf("unbalanced Swift argument delimiters")
+		}
+	}
+	if inString || parentheses != 0 || brackets != 0 || braces != 0 {
+		return nil, fmt.Errorf("unterminated Swift argument")
+	}
+	if strings.TrimSpace(args[start:]) != "" || len(ranges) > 0 {
+		ranges = append(ranges, swiftArgumentRange{start: start, end: len(args)})
+	}
+	return ranges, nil
+}
+
+func matchingSwiftDelimiterInLine(line string, openingIndex int, opening byte, closing byte) int {
+	if openingIndex < 0 || openingIndex >= len(line) || line[openingIndex] != opening {
+		return -1
+	}
+	depth := 0
+	inString := false
+	escaped := false
+	for index := openingIndex; index < len(line); index++ {
+		ch := line[index]
+		if inString {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			if ch == '"' {
+				inString = false
+			}
+			continue
+		}
+		if ch == '/' && index+1 < len(line) && line[index+1] == '/' {
+			return -1
+		}
+		if ch == '"' {
+			inString = true
+			continue
+		}
+		if ch == opening {
+			depth++
+		}
+		if ch == closing {
+			depth--
+			if depth == 0 {
+				return index
+			}
+		}
+	}
+	return -1
 }
 
 func runtimeProfileBaseSettingsInsertionIndex(lines []string, packageSettingsLine, packageSettingsEnd int) (int, error) {
@@ -417,8 +666,9 @@ func removeLegacyConfigurationDeclaration(lines []string, before int) ([]string,
 			continue
 		}
 		end := index
-		if strings.Contains(lines[index], "[") {
-			closeLine, ok := findArrayCloseLine(lines, index)
+		initializerLine, initializerColumn, hasArrayInitializer := configurationArrayInitializer(lines, index)
+		if hasArrayInitializer {
+			closeLine, ok := findArrayCloseLineFrom(lines, initializerLine, initializerColumn)
 			if !ok {
 				return nil, fmt.Errorf("configurations array opened on line %d has no closing bracket", index+1)
 			}
@@ -430,6 +680,80 @@ func removeLegacyConfigurationDeclaration(lines []string, before int) ([]string,
 		return append(append([]string(nil), lines[:index]...), lines[end+1:]...), nil
 	}
 	return lines, nil
+}
+
+func configurationArrayInitializer(lines []string, declarationLine int) (int, int, bool) {
+	line := lines[declarationLine]
+	equals := indexOutsideStringAndComment(line, 0, '=')
+	if equals < 0 {
+		return 0, 0, false
+	}
+	for index := declarationLine; index < len(lines); index++ {
+		start := 0
+		if index == declarationLine {
+			start = equals + 1
+		}
+		for column := start; column < len(lines[index]); column++ {
+			switch lines[index][column] {
+			case ' ', '\t':
+				continue
+			case '[':
+				return index, column, true
+			default:
+				return 0, 0, false
+			}
+		}
+	}
+	return 0, 0, false
+}
+
+func findArrayCloseLineFrom(lines []string, openLine int, openColumn int) (int, bool) {
+	depth := 0
+	inString := false
+	escaped := false
+	for lineIndex := openLine; lineIndex < len(lines); lineIndex++ {
+		start := 0
+		if lineIndex == openLine {
+			start = openColumn
+		}
+		line := lines[lineIndex]
+		inString = false
+		escaped = false
+		for column := start; column < len(line); column++ {
+			ch := line[column]
+			if inString {
+				if escaped {
+					escaped = false
+					continue
+				}
+				if ch == '\\' {
+					escaped = true
+					continue
+				}
+				if ch == '"' {
+					inString = false
+				}
+				continue
+			}
+			if ch == '/' && column+1 < len(line) && line[column+1] == '/' {
+				break
+			}
+			if ch == '"' {
+				inString = true
+				continue
+			}
+			switch ch {
+			case '[':
+				depth++
+			case ']':
+				depth--
+				if depth == 0 {
+					return lineIndex, true
+				}
+			}
+		}
+	}
+	return 0, false
 }
 
 func renderLegacyConfigurations(configurations []string) []string {
@@ -518,6 +842,11 @@ func syncRuntimeProfileSchemesContent(content string, cfg config.ProjectConfig, 
 		if !ok {
 			return "", fmt.Errorf("schemes array opened on line %d has no closing bracket", schemesLine+1)
 		}
+		lines, closeLine, err = removeLegacyAppSchemes(lines, schemesLine, closeLine, cfg.AppName)
+		if err != nil {
+			return "", err
+		}
+		ensureArrayLastItemComma(lines, schemesLine, closeLine)
 		indent := leadingIndent(lines[closeLine]) + "    "
 		block := []string{indent + runtimeProfileSchemesBegin}
 		for _, profile := range cfg.OrderedDistributionProfiles() {
@@ -544,6 +873,161 @@ func syncRuntimeProfileSchemesContent(content string, cfg config.ProjectConfig, 
 	}
 	lines = insertRuntimeProfileLines(lines, targetsClose+1, block)
 	return joinSyncLines(lines, hasTrailingNewline), nil
+}
+
+func removeLegacyAppSchemes(lines []string, schemesLine int, closeLine int, appName string) ([]string, int, error) {
+	for index := schemesLine + 1; index < closeLine; {
+		if !strings.HasPrefix(strings.TrimSpace(lines[index]), ".scheme(") {
+			index++
+			continue
+		}
+
+		end, err := findSwiftCallEnd(lines, index)
+		if err != nil {
+			return nil, 0, fmt.Errorf("legacy app scheme opened on line %d is unterminated", index+1)
+		}
+		if end >= closeLine {
+			return nil, 0, fmt.Errorf("legacy app scheme opened on line %d crosses the schemes array boundary", index+1)
+		}
+
+		name, err := swiftSchemeNameArgument(strings.Join(lines[index:end+1], "\n"))
+		if err != nil {
+			return nil, 0, fmt.Errorf("parse scheme opened on line %d: %w", index+1, err)
+		}
+		if name != "appName" && name != strconv.Quote(strings.TrimSpace(appName)) {
+			index = end + 1
+			continue
+		}
+
+		removed := end - index + 1
+		lines = append(append([]string(nil), lines[:index]...), lines[end+1:]...)
+		closeLine -= removed
+	}
+	return lines, closeLine, nil
+}
+
+func findSwiftCallEnd(lines []string, startLine int) (int, error) {
+	depth := 0
+	started := false
+	inString := false
+	escaped := false
+	for lineIndex := startLine; lineIndex < len(lines); lineIndex++ {
+		inLineComment := false
+		for column := 0; column < len(lines[lineIndex]); column++ {
+			ch := lines[lineIndex][column]
+			if inLineComment {
+				break
+			}
+			if inString {
+				if escaped {
+					escaped = false
+					continue
+				}
+				if ch == '\\' {
+					escaped = true
+					continue
+				}
+				if ch == '"' {
+					inString = false
+				}
+				continue
+			}
+			if ch == '/' && column+1 < len(lines[lineIndex]) && lines[lineIndex][column+1] == '/' {
+				inLineComment = true
+				continue
+			}
+			if ch == '"' {
+				inString = true
+				continue
+			}
+			switch ch {
+			case '(':
+				depth++
+				started = true
+			case ')':
+				if started {
+					depth--
+					if depth == 0 {
+						return lineIndex, nil
+					}
+				}
+			}
+		}
+	}
+	return 0, fmt.Errorf("unterminated Swift call")
+}
+
+func swiftSchemeNameArgument(call string) (string, error) {
+	prefixIndex := strings.Index(call, ".scheme(")
+	if prefixIndex < 0 {
+		return "", fmt.Errorf(".scheme call not found")
+	}
+	argsStart := prefixIndex + len(".scheme(")
+	argsEnd := matchingSwiftCallClose(call, argsStart-1)
+	if argsEnd < 0 {
+		return "", fmt.Errorf("unterminated .scheme call")
+	}
+	ranges, err := splitTopLevelSwiftArguments(call[argsStart:argsEnd])
+	if err != nil {
+		return "", err
+	}
+	args := call[argsStart:argsEnd]
+	for _, argumentRange := range ranges {
+		argument := strings.TrimSpace(args[argumentRange.start:argumentRange.end])
+		if !strings.HasPrefix(argument, "name:") {
+			continue
+		}
+		return strings.TrimSpace(strings.TrimPrefix(argument, "name:")), nil
+	}
+	return "", nil
+}
+
+func matchingSwiftCallClose(content string, openingIndex int) int {
+	depth := 0
+	inString := false
+	escaped := false
+	inLineComment := false
+	for index := openingIndex; index < len(content); index++ {
+		ch := content[index]
+		if inLineComment {
+			if ch == '\n' {
+				inLineComment = false
+			}
+			continue
+		}
+		if inString {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			if ch == '"' {
+				inString = false
+			}
+			continue
+		}
+		if ch == '/' && index+1 < len(content) && content[index+1] == '/' {
+			inLineComment = true
+			continue
+		}
+		if ch == '"' {
+			inString = true
+			continue
+		}
+		switch ch {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return index
+			}
+		}
+	}
+	return -1
 }
 
 func removeManagedRuntimeProfileBlock(lines []string, begin string, end string) ([]string, bool, error) {

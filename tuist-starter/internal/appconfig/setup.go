@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/relux-works/ios-app-manager/internal/config"
+	"github.com/relux-works/ios-app-manager/internal/ioc"
 	"github.com/relux-works/ios-app-manager/internal/scaffold"
 )
 
@@ -15,11 +16,10 @@ const (
 	foundationAnchor         = "// MARK: - Foundation (scaffolding anchor: foundation)"
 	foundationBuildersAnchor = "// MARK: - Foundation Builders (scaffolding anchor: foundation-builders)"
 
-	registrationLine = `            ioc.register(IApiConfigManager.self, lifecycle: .container, resolver: Self.buildAppConfigManager)`
-	builderFunc      = `
-    private static func buildAppConfigManager() -> IApiConfigManager {
-        AppConfig.Business.Manager(secureStore: resolve(SecureStoring.self))
-    }`
+	registrationLine = `ioc.register(IApiConfigManager.self, lifecycle: .container, resolver: Self.buildAppConfigManager)`
+	builderFunc      = `private static func buildAppConfigManager() -> IApiConfigManager {
+    AppConfig.Business.Manager(secureStore: resolve(SecureStoring.self))
+}`
 )
 
 //go:embed setup_templates/*.tmpl
@@ -100,7 +100,7 @@ func Setup(input SetupInput) error {
 	}
 
 	// 5. Patch Registry.swift with registration + builder.
-	if err := patchRegistry(registryPath); err != nil {
+	if err := patchRegistry(registryPath, appTypeName); err != nil {
 		return fmt.Errorf("patch Registry.swift: %w", err)
 	}
 
@@ -168,66 +168,11 @@ func scaffoldFiles(outputDir string, runtimeProfiles ...bool) error {
 	return nil
 }
 
-func patchRegistry(registryPath string) error {
-	data, err := os.ReadFile(registryPath)
-	if err != nil {
-		return fmt.Errorf("read Registry.swift: %w", err)
-	}
-
-	content := string(data)
-
-	// Idempotent: skip if already patched.
-	if strings.Contains(content, "IApiConfigManager.self") {
-		return nil
-	}
-
-	// Insert registration after foundation anchor.
-	if !strings.Contains(content, foundationAnchor) {
-		return fmt.Errorf("foundation anchor not found in Registry.swift")
-	}
-	content = strings.Replace(
-		content,
-		foundationAnchor,
-		foundationAnchor+"\n"+registrationLine,
-		1,
-	)
-
-	// Insert builder into Foundation Builders extension.
-	anchorIdx := strings.Index(content, foundationBuildersAnchor)
-	if anchorIdx < 0 {
-		return fmt.Errorf("foundation-builders anchor not found in Registry.swift")
-	}
-
-	rest := content[anchorIdx:]
-	extStart := strings.Index(rest, "{")
-	if extStart < 0 {
-		return fmt.Errorf("extension opening brace not found after foundation-builders anchor")
-	}
-
-	closingIdx := findMatchingBrace(rest, extStart)
-	if closingIdx < 0 {
-		return fmt.Errorf("extension closing brace not found after foundation-builders anchor")
-	}
-
-	insertPos := anchorIdx + closingIdx
-	content = content[:insertPos] + builderFunc + "\n" + content[insertPos:]
-
-	return os.WriteFile(registryPath, []byte(content), 0o644)
-}
-
-// findMatchingBrace finds the index of the closing brace matching the opening brace at pos.
-func findMatchingBrace(s string, pos int) int {
-	depth := 0
-	for i := pos; i < len(s); i++ {
-		switch s[i] {
-		case '{':
-			depth++
-		case '}':
-			depth--
-			if depth == 0 {
-				return i
-			}
-		}
-	}
-	return -1
+func patchRegistry(registryPath string, appTypeName string) error {
+	return ioc.PatchFoundationRegistry(registryPath, appTypeName, ioc.RegistryFoundationPatch{
+		RegistrationMarker: "IApiConfigManager.self",
+		RegistrationLine:   registrationLine,
+		BuilderMarker:      "func buildAppConfigManager()",
+		BuilderFunction:    builderFunc,
+	})
 }

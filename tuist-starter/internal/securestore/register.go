@@ -26,9 +26,8 @@ const usageGuide = `## Usage
     try store.save(key: "user", object: userModel)
     let user: User? = try store.load(key: "user")
 
-  After setup, re-run ioc setup to register SecureStore in Registry:
-
-    ios-app-manager ioc setup`
+  When Registry.swift already exists, setup adds only the SecureStore imports,
+  registration, and builder. Existing custom composition is preserved.`
 
 func init() {
 	registry.Register(&registry.Module{
@@ -91,7 +90,7 @@ func Plan(input registry.SetupInput) (string, error) {
   Patch:
     Package.swift   — add SecureStore + SecureStoreImpl paths
     Project.swift   — add dependencies
-    Registry.swift  — will be updated on next ioc setup
+    Registry.swift  — add focused imports, registration, and builder in place
 
   Access group: %s`, accessGroup)
 	return plan, nil

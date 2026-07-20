@@ -501,6 +501,7 @@ func insertRootPackageDependency(content string, dependencyLine string) (string,
 			return content, nil
 		}
 
+		ensureArrayLastItemComma(lines, index, closeIndex)
 		insertIndent := dependencyInsertionIndent(lines, index, closeIndex)
 		lines = append(lines[:closeIndex], append([]string{insertIndent + dependencyLine + ","}, lines[closeIndex:]...)...)
 		return joinSyncLines(lines, hasTrailingNewline), nil
@@ -645,6 +646,9 @@ func syncProjectManifestExternalDependencyContent(content string, moduleName str
 			continue
 		}
 
+		if ensureArrayLastItemComma(lines, index, closeIndex) {
+			changed = true
+		}
 		insertIndent := dependencyInsertionIndent(lines, index, closeIndex)
 		lines = append(lines[:closeIndex], append([]string{insertIndent + externalDependency + ","}, lines[closeIndex:]...)...)
 		index = closeIndex + 1
@@ -757,4 +761,56 @@ func dependencyInsertionIndent(lines []string, openIndex int, closeIndex int) st
 		return leadingIndent(lines[index])
 	}
 	return leadingIndent(lines[closeIndex]) + "    "
+}
+
+func ensureArrayLastItemComma(lines []string, openIndex int, closeIndex int) bool {
+	for index := closeIndex - 1; index > openIndex; index-- {
+		commentIndex := swiftLineCommentIndex(lines[index])
+		codeEnd := len(lines[index])
+		if commentIndex >= 0 {
+			codeEnd = commentIndex
+		}
+		for codeEnd > 0 && (lines[index][codeEnd-1] == ' ' || lines[index][codeEnd-1] == '\t') {
+			codeEnd--
+		}
+		if codeEnd == 0 {
+			continue
+		}
+		if strings.HasSuffix(lines[index][:codeEnd], ",") {
+			return false
+		}
+		lines[index] = lines[index][:codeEnd] + "," + lines[index][codeEnd:]
+		return true
+	}
+	return false
+}
+
+func swiftLineCommentIndex(line string) int {
+	inString := false
+	escaped := false
+	for index := 0; index+1 < len(line); index++ {
+		ch := line[index]
+		if inString {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			if ch == '"' {
+				inString = false
+			}
+			continue
+		}
+		if ch == '"' {
+			inString = true
+			continue
+		}
+		if ch == '/' && line[index+1] == '/' {
+			return index
+		}
+	}
+	return -1
 }

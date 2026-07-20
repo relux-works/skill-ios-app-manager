@@ -29,11 +29,6 @@ func TestAppConfigSetupIntegration(t *testing.T) {
 		t.Fatalf("secure-store setup error = %v", err)
 	}
 
-	// Re-run IoC setup to regenerate Registry with SecureStore.
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
-		t.Fatalf("ioc setup (re-run) error = %v", err)
-	}
-
 	output, err := executeRootCommand("--config", configPath, "app-config", "setup", "--yes")
 	if err != nil {
 		t.Fatalf("app-config setup error = %v", err)
@@ -108,10 +103,6 @@ func TestAppConfigSetupIdempotent(t *testing.T) {
 	if _, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo", "--yes"); err != nil {
 		t.Fatalf("secure-store setup error = %v", err)
 	}
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
-		t.Fatalf("ioc setup (re-run) error = %v", err)
-	}
-
 	// First run.
 	if _, err := executeRootCommand("--config", configPath, "app-config", "setup", "--yes"); err != nil {
 		t.Fatalf("first app-config setup error = %v", err)
@@ -158,9 +149,6 @@ func TestAppConfigSetupOrchestratesRuntimeProfilesAndRemoval(t *testing.T) {
 	}
 	if _, err := executeRootCommand("--config", configPath, "secure-store", "setup", "--access-group", "group.com.example.demo", "--yes"); err != nil {
 		t.Fatalf("secure-store setup error = %v", err)
-	}
-	if _, err := executeRootCommand("--config", configPath, "ioc", "setup", "--yes"); err != nil {
-		t.Fatalf("ioc setup re-run error = %v", err)
 	}
 	if _, err := executeRootCommand("--config", configPath, "app-config", "setup", "--yes"); err != nil {
 		t.Fatalf("runtime app-config setup error = %v", err)
@@ -215,6 +203,148 @@ func TestAppConfigSetupOrchestratesRuntimeProfilesAndRemoval(t *testing.T) {
 	restoredManager := readTestFile(t, managerPath)
 	if !strings.Contains(restoredManager, "return .prod") || strings.Contains(restoredManager, "GeneratedRuntimeProfiles") {
 		t.Fatalf("AppConfig manager was not restored to backward-compatible mode:\n%s", restoredManager)
+	}
+}
+
+func TestMatureProjectRuntimeAdoptionPreservesCustomCompositionAndConverges(t *testing.T) {
+	fixturePath := filepath.Join("..", "..", "testdata", "runtime-profiles-config.json")
+	cfg, err := config.LoadConfig(fixturePath)
+	if err != nil {
+		t.Fatalf("config.LoadConfig(%q) error = %v", fixturePath, err)
+	}
+	cfg.AppName = "DemoApp"
+	cfg.ProductName = "DemoApp"
+	cfg.BundleID = "com.example.demo"
+	cfg.AppGroups = []string{"group.com.example.demo"}
+	for environment, descriptor := range cfg.RuntimeProfiles.BackendEnvironments {
+		if descriptor.Firebase != nil {
+			descriptor.Firebase.BundleID = cfg.BundleID
+		}
+		cfg.RuntimeProfiles.BackendEnvironments[environment] = descriptor
+	}
+
+	projectRoot := t.TempDir()
+	configureCLIRuntimeFirebaseInputs(t, projectRoot, cfg)
+	configPath := writeModuleConfig(t, projectRoot, cfg)
+	writeProjectScaffold(t, projectRoot, cfg)
+	writeTestFile(t, filepath.Join(projectRoot, "Project.swift"), readMatureRuntimeFixture(t, "Project.swift"))
+	writeTestFile(t, filepath.Join(projectRoot, "Package.swift"), readMatureRuntimeFixture(t, "Package.swift"))
+	registryPath := filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "App", cfg.AppName+".Registry.swift")
+	writeTestFile(t, registryPath, readMatureRuntimeFixture(t, "Registry.swift"))
+
+	if _, err := executeRootCommand(
+		"--config", configPath,
+		"secure-store", "setup",
+		"--access-group", "group.com.example.demo",
+		"--yes",
+	); err != nil {
+		t.Fatalf("secure-store setup against mature project error = %v", err)
+	}
+	output, err := executeRootCommand("--config", configPath, "app-config", "setup", "--yes")
+	if err != nil {
+		t.Fatalf("app-config setup against mature project error = %v", err)
+	}
+	for _, forbidden := range []string{
+		"public-client-validation-key",
+		filepath.Join(projectRoot, ".firebase-inputs"),
+	} {
+		if strings.Contains(output, forbidden) {
+			t.Fatalf("app-config output leaked validation material %q: %s", forbidden, output)
+		}
+	}
+
+	projectManifestPath := filepath.Join(projectRoot, "Project.swift")
+	packageManifestPath := filepath.Join(projectRoot, "Package.swift")
+	projectManifest := readTestFile(t, projectManifestPath)
+	packageManifest := readTestFile(t, packageManifestPath)
+	registry := readTestFile(t, registryPath)
+
+	for _, orphaned := range []string{
+		`name: "Staging"`,
+		"SWIFT_ACTIVE_COMPILATION_CONDITIONS",
+	} {
+		if strings.Contains(projectManifest, orphaned) {
+			t.Fatalf("Project.swift retained orphaned legacy configuration %q:\n%s", orphaned, projectManifest)
+		}
+	}
+	if count := strings.Count(projectManifest, "let configurations: [Configuration]"); count != 1 {
+		t.Fatalf("Project.swift configuration declaration count = %d, want 1:\n%s", count, projectManifest)
+	}
+	if !strings.Contains(
+		projectManifest,
+		".external(name: \"MatureFeature\"),\n                .external(name: \"SharedConfig\"),",
+	) {
+		t.Fatalf("Project.swift did not terminate the mature UI-test dependency before SharedConfig:\n%s", projectManifest)
+	}
+	if strings.Contains(projectManifest, "configuration: .debug") {
+		t.Fatalf("Project.swift retained the legacy app scheme after runtime-profile adoption:\n%s", projectManifest)
+	}
+
+	baseSettingsLine := ""
+	for _, line := range strings.Split(packageManifest, "\n") {
+		if strings.Contains(line, "baseSettings:") {
+			baseSettingsLine = line
+			break
+		}
+	}
+	if count := strings.Count(baseSettingsLine, "configurations:"); count != 1 {
+		t.Fatalf("Package.swift baseSettings configurations count = %d, want 1:\n%s", count, baseSettingsLine)
+	}
+	if !strings.Contains(baseSettingsLine, "RuntimeProfilesProjectDescription.configurations") {
+		t.Fatalf("Package.swift baseSettings did not adopt runtime configurations:\n%s", packageManifest)
+	}
+
+	for _, preserved := range []string{
+		"import MatureFeature",
+		"private(set) static var runtimeMode",
+		"MatureFeature.Persistence.self",
+		"MatureFeature.APIClient.self",
+		"preconditionFailure(\"Unregistered custom dependency\")",
+		"func buildPersistence()",
+		"func buildAPIClient()",
+	} {
+		if !strings.Contains(registry, preserved) {
+			t.Fatalf("Registry.swift lost mature custom composition %q:\n%s", preserved, registry)
+		}
+	}
+	for _, integrated := range []string{
+		"SecureStore.Module.Interface.self",
+		"func buildSecureStore()",
+		"IApiConfigManager.self",
+		"func buildAppConfigManager()",
+	} {
+		if !strings.Contains(registry, integrated) {
+			t.Fatalf("Registry.swift missing supported integration %q:\n%s", integrated, registry)
+		}
+	}
+
+	trackedPaths := []string{
+		projectManifestPath,
+		packageManifestPath,
+		registryPath,
+		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "AppConfig", "AppConfig.Manager.swift"),
+		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Configuration", "Runtime", "RuntimeProfiles.swift"),
+	}
+	first := make(map[string]string, len(trackedPaths))
+	for _, path := range trackedPaths {
+		first[path] = readTestFile(t, path)
+	}
+
+	if _, err := executeRootCommand(
+		"--config", configPath,
+		"secure-store", "setup",
+		"--access-group", "group.com.example.demo",
+		"--yes",
+	); err != nil {
+		t.Fatalf("second secure-store setup against mature project error = %v", err)
+	}
+	if _, err := executeRootCommand("--config", configPath, "app-config", "setup", "--yes"); err != nil {
+		t.Fatalf("second app-config setup against mature project error = %v", err)
+	}
+	for _, path := range trackedPaths {
+		if got := readTestFile(t, path); got != first[path] {
+			t.Fatalf("second mature-project adoption changed %s:\n%s", path, got)
+		}
 	}
 }
 
@@ -310,4 +440,14 @@ func configureCLIRuntimeFirebaseInputs(t *testing.T, projectRoot string, cfg con
 		}
 		t.Setenv(descriptor.Firebase.ValidationInputEnvironmentVar, path)
 	}
+}
+
+func readMatureRuntimeFixture(t *testing.T, name string) string {
+	t.Helper()
+	path := filepath.Join("..", "..", "testdata", "mature-runtime", name)
+	payload, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read mature runtime fixture %q: %v", path, err)
+	}
+	return string(payload)
 }

@@ -14,6 +14,8 @@ All notable changes to this project are documented in this file.
 
 - Kept generated package-project configurations aligned with app runtime profiles, canonicalized Tuist `PackageSettings` initializer order, and removed duplicate SharedConfig package/product dependencies during forced scaffold convergence.
 - Updated SecureStore builder configuration to use the canonical generated app-group property instead of the removed Info.plist-shaped accessor.
+- Replaced typed legacy `Configuration` arrays, obsolete app schemes, and existing `PackageSettings` configuration arguments cleanly when adopting runtime profiles in mature projects while retaining unrelated custom schemes.
+- Made SharedConfig dependency insertion comma-safe and changed SecureStore/AppConfig Registry integration to preserve unrelated custom composition.
 
 ## [v0.10.1] - 2026-07-14
 

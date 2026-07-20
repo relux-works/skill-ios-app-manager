@@ -133,30 +133,33 @@ func Setup(input SetupInput) error {
 		return fmt.Errorf("add to Workspace.swift: %w", err)
 	}
 
-	// 6. Re-scaffold Registry.swift if IoC is set up.
+	// 6. Patch only the SecureStore slice when an existing Registry is present.
 	registryPath := filepath.Join(
 		input.ProjectRoot, "Targets", input.AppName, "Sources", "App",
 		appTypeName+".Registry.swift",
 	)
 	if _, err := os.Stat(registryPath); err == nil {
-		modules, err := ioc.DiscoverModules(modulesRoot)
-		if err != nil {
-			return fmt.Errorf("discover modules: %w", err)
+		if err := patchRegistry(registryPath, appTypeName, builderArgs); err != nil {
+			return fmt.Errorf("patch Registry.swift: %w", err)
 		}
-
-		hasRelux := hasReluxInRegistry(registryPath)
-
-		if err := ioc.ScaffoldRegistryWithData(registryPath, ioc.RegistryTemplateData{
-			AppTypeName: appTypeName,
-			Imports:     ioc.BuildModuleImports(modules),
-			Modules:     modules,
-			HasRelux:    hasRelux,
-		}); err != nil {
-			return fmt.Errorf("regenerate Registry.swift: %w", err)
-		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat Registry.swift: %w", err)
 	}
 
 	return nil
+}
+
+func patchRegistry(registryPath string, appTypeName string, builderArgs string) error {
+	builderFunction := fmt.Sprintf(`private static func buildSecureStore() -> SecureStore.Module.Interface {
+    SecureStore.Module.Impl(%s)
+}`, builderArgs)
+	return ioc.PatchFoundationRegistry(registryPath, appTypeName, ioc.RegistryFoundationPatch{
+		Imports:            []string{moduleName, implPackageName},
+		RegistrationMarker: "SecureStore.Module.Interface.self",
+		RegistrationLine:   "ioc.register(SecureStore.Module.Interface.self, lifecycle: .container, resolver: Self.buildSecureStore)",
+		BuilderMarker:      "func buildSecureStore()",
+		BuilderFunction:    builderFunction,
+	})
 }
 
 func validateInput(input SetupInput) error {
@@ -310,14 +313,4 @@ func isIgnorableManifestError(err error) bool {
 	msg := err.Error()
 	return strings.Contains(msg, "already contains") ||
 		strings.Contains(msg, "not found")
-}
-
-// hasReluxInRegistry checks if the existing Registry.swift contains Relux imports.
-func hasReluxInRegistry(registryPath string) bool {
-	data, err := os.ReadFile(registryPath)
-	if err != nil {
-		return false
-	}
-	return strings.Contains(string(data), "import Relux") ||
-		strings.Contains(string(data), "@_exported import Relux")
 }

@@ -411,7 +411,7 @@ See [`diagrams/scaffolding-pipeline.puml`](diagrams/scaffolding-pipeline.puml) f
 | **init** | `init` | Project scaffold: Tuist manifests, App.swift, Info.plist, entitlements, Configuration, Assets | Config file |
 | **ioc** | `ioc setup` | SwiftIoC integration: Registry.swift, App.swift init injection, SwiftIoC dependency | init |
 | **relux** | `relux setup` | Relux state management: ReluxLogger, Registry infra, swift-relux + swiftui-relux deps | ioc |
-| **secure-store** | `secure-store setup --access-group <group>` | SecureStore + SecureStoreImpl: Keychain wrapper with interface/impl split | ioc |
+| **secure-store** | `secure-store setup --access-group <group>` | SecureStore + SecureStoreImpl plus a focused, non-destructive Registry patch | ioc |
 | **token-provider** | `token-provider setup` | TokenProvider + TokenProviderImpl: token storage/refresh | ioc |
 | **utilities** | `utilities setup` | Utilities single-package: HttpClientUtils helpers | ioc |
 | **foundation-plus** | `foundation-plus setup` | FoundationPlus single-package: `@_exported import Foundation`, MaybeData, CompletionStatus | ioc |
@@ -431,6 +431,8 @@ See [`diagrams/scaffolding-pipeline.puml`](diagrams/scaffolding-pipeline.puml) f
 ### Important: ordering constraints
 
 Commands that directly patch Registry.swift (`http-client setup`, `app-config setup`) must run **after** all `module create` calls, because `module create` regenerates Registry from template and wipes direct patches.
+
+`secure-store setup` patches only its imports, registration, and builder when Registry.swift already exists. Do not rerun `ioc setup` merely to adopt SecureStore in a mature custom composition root.
 
 Full recommended pipeline:
 ```bash

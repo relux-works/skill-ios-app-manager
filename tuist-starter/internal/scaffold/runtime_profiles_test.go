@@ -150,6 +150,174 @@ let packageSettings = PackageSettings(
 	}
 }
 
+func TestSyncRuntimeProfileConfigurationsReplacesTypedMultilineDeclaration(t *testing.T) {
+	t.Parallel()
+
+	legacy := `import ProjectDescription
+
+let appName = "MatureApp"
+let configurations: [Configuration] = [
+    .debug(name: "Debug"),
+    .debug(
+        name: "Staging",
+        settings: ["SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) STAGING"]
+    ),
+    .release(name: "Release"),
+]
+
+let project = Project(
+    name: appName,
+    settings: .settings(configurations: configurations),
+    targets: []
+)
+`
+
+	got, err := syncRuntimeProfileConfigurationsContent(legacy, config.ProjectConfig{}, true)
+	if err != nil {
+		t.Fatalf("syncRuntimeProfileConfigurationsContent() error = %v", err)
+	}
+	if strings.Contains(got, `name: "Staging"`) || strings.Contains(got, "SWIFT_ACTIVE_COMPILATION_CONDITIONS") {
+		t.Fatalf("typed legacy configuration entries were left orphaned:\n%s", got)
+	}
+	if count := strings.Count(got, "let configurations: [Configuration]"); count != 1 {
+		t.Fatalf("typed configuration declaration count = %d, want 1:\n%s", count, got)
+	}
+	if !strings.Contains(got, "let configurations: [Configuration] = RuntimeProfilesProjectDescription.configurations") {
+		t.Fatalf("managed configuration declaration missing:\n%s", got)
+	}
+
+	converged, err := syncRuntimeProfileConfigurationsContent(got, config.ProjectConfig{}, true)
+	if err != nil {
+		t.Fatalf("second syncRuntimeProfileConfigurationsContent() error = %v", err)
+	}
+	if converged != got {
+		t.Fatalf("second typed configuration sync changed output:\n%s", converged)
+	}
+}
+
+func TestSyncRuntimeProfilePackageManifestReplacesExistingConfigurationsArgument(t *testing.T) {
+	t.Parallel()
+
+	legacy := `// swift-tools-version: 6.2
+import PackageDescription
+
+#if TUIST
+import ProjectDescription
+
+let packageConfigurations: [Configuration] = [
+    .debug(name: "Debug"),
+    .debug(name: "Staging"),
+    .release(name: "Release"),
+]
+let swiftPackageTargetSettings: Settings = .settings(
+    base: ["SWIFT_VERSION": "6.0"],
+    configurations: packageConfigurations
+)
+let packageSettings = PackageSettings(
+    productTypes: [
+        "MatureFeature": .framework,
+    ],
+    baseSettings: .settings(configurations: packageConfigurations),
+    targetSettings: [
+        "MatureFeature": swiftPackageTargetSettings,
+    ]
+)
+#endif
+`
+
+	got, err := syncRuntimeProfilePackageManifestContent(legacy, config.ProjectConfig{}, true)
+	if err != nil {
+		t.Fatalf("syncRuntimeProfilePackageManifestContent() error = %v", err)
+	}
+	baseSettingsLine := ""
+	for _, line := range strings.Split(got, "\n") {
+		if strings.Contains(line, "baseSettings:") {
+			baseSettingsLine = line
+			break
+		}
+	}
+	if baseSettingsLine == "" {
+		t.Fatalf("Package.swift lost baseSettings:\n%s", got)
+	}
+	if count := strings.Count(baseSettingsLine, "configurations:"); count != 1 {
+		t.Fatalf("baseSettings configurations argument count = %d, want 1:\n%s", count, baseSettingsLine)
+	}
+	if !strings.Contains(baseSettingsLine, "configurations: RuntimeProfilesProjectDescription.configurations") {
+		t.Fatalf("baseSettings did not adopt runtime configurations:\n%s", got)
+	}
+
+	converged, err := syncRuntimeProfilePackageManifestContent(got, config.ProjectConfig{}, true)
+	if err != nil {
+		t.Fatalf("second syncRuntimeProfilePackageManifestContent() error = %v", err)
+	}
+	if converged != got {
+		t.Fatalf("second Package.swift sync changed output:\n%s", converged)
+	}
+
+	restored, err := syncRuntimeProfilePackageManifestContent(got, config.ProjectConfig{}, false)
+	if err != nil {
+		t.Fatalf("disabled syncRuntimeProfilePackageManifestContent() error = %v", err)
+	}
+	if !strings.Contains(restored, "baseSettings: .settings(configurations: packageConfigurations),") {
+		t.Fatalf("Package.swift did not restore the pre-runtime configurations argument:\n%s", restored)
+	}
+	if strings.Contains(restored, "RuntimeProfilesProjectDescription") || strings.Contains(restored, runtimeProfilePackageConfigMarker) {
+		t.Fatalf("Package.swift retained runtime-profile integration after removal:\n%s", restored)
+	}
+}
+
+func TestSyncRuntimeProfileSchemesReplacesLegacyAppSchemeAndPreservesUnrelatedSchemes(t *testing.T) {
+	t.Parallel()
+
+	legacy := `import ProjectDescription
+
+let appName = "MatureApp"
+let project = Project(
+    name: appName,
+    targets: [],
+    schemes: [
+        .scheme(
+            name: appName,
+            shared: true,
+            runAction: .runAction(configuration: .debug, executable: .target(appName))
+        ),
+        .scheme(
+            name: "Diagnostics",
+            shared: false,
+            buildAction: .buildAction(targets: [.target(appName)])
+        ) // deliberately no trailing comma
+    ]
+)
+`
+	cfg := loadRuntimeProfilesFixture(t)
+	cfg.AppName = "MatureApp"
+
+	got, err := syncRuntimeProfileSchemesContent(legacy, cfg, true)
+	if err != nil {
+		t.Fatalf("syncRuntimeProfileSchemesContent() error = %v", err)
+	}
+	if strings.Contains(got, "configuration: .debug") {
+		t.Fatalf("runtime schemes retained the legacy app scheme:\n%s", got)
+	}
+	if !strings.Contains(got, `name: "Diagnostics"`) {
+		t.Fatalf("runtime schemes removed an unrelated custom scheme:\n%s", got)
+	}
+	if !strings.Contains(got, "), // deliberately no trailing comma") {
+		t.Fatalf("runtime schemes did not terminate the preserved custom scheme:\n%s", got)
+	}
+	if count := strings.Count(got, "RuntimeProfilesProjectDescription.scheme(for:"); count != 4 {
+		t.Fatalf("managed runtime scheme count = %d, want 4:\n%s", count, got)
+	}
+
+	converged, err := syncRuntimeProfileSchemesContent(got, cfg, true)
+	if err != nil {
+		t.Fatalf("second syncRuntimeProfileSchemesContent() error = %v", err)
+	}
+	if converged != got {
+		t.Fatalf("second runtime scheme sync changed output:\n%s", converged)
+	}
+}
+
 func TestScaffoldCreatesRuntimeProfileOutputsOnInitialGeneration(t *testing.T) {
 	cfg := loadRuntimeProfilesFixture(t)
 	projectRoot := t.TempDir()

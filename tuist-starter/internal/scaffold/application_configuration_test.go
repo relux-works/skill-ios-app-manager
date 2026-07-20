@@ -217,3 +217,47 @@ let project = Project(
 		t.Fatal("generated Configuration+ApplicationConfiguration.swift under target-name path instead of existing configuration root")
 	}
 }
+
+func TestSyncProjectManifestExternalDependencyTerminatesExistingLastItem(t *testing.T) {
+	t.Parallel()
+
+	manifest := `import ProjectDescription
+
+let project = Project(
+    name: "MatureApp",
+    targets: [
+        .target(
+            name: "MatureAppUITests",
+            dependencies: [
+                .target(name: "MatureApp"),
+                .external(name: "MatureFeature")
+            ]
+        )
+    ]
+)
+`
+
+	got, changed, err := syncProjectManifestExternalDependencyContent(manifest, "SharedConfig")
+	if err != nil {
+		t.Fatalf("syncProjectManifestExternalDependencyContent() error = %v", err)
+	}
+	if !changed {
+		t.Fatal("syncProjectManifestExternalDependencyContent() changed = false, want true")
+	}
+	for _, want := range []string{
+		`.external(name: "MatureFeature"),`,
+		`.external(name: "SharedConfig"),`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("Project.swift missing comma-safe dependency %q:\n%s", want, got)
+		}
+	}
+
+	converged, changed, err := syncProjectManifestExternalDependencyContent(got, "SharedConfig")
+	if err != nil {
+		t.Fatalf("second syncProjectManifestExternalDependencyContent() error = %v", err)
+	}
+	if changed || converged != got {
+		t.Fatalf("second dependency sync did not converge (changed=%v):\n%s", changed, converged)
+	}
+}

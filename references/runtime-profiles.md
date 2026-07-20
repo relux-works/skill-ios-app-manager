@@ -94,10 +94,11 @@ The validation hook checks that the plist contains `PROJECT_ID`, `GOOGLE_APP_ID`
   - one shared scheme per distribution profile.
 - `Project.swift`
   - managed configuration and scheme blocks;
+  - replacement of the legacy app scheme when its Debug/Release actions no longer name generated configurations; unrelated custom schemes remain intact;
   - project configuration settings;
   - the `ApplicationConfiguration.distributionProfile` build setting.
 - `Package.swift`
-  - the same configurations for Tuist-generated package projects, avoiding configuration mismatches.
+  - the same configurations for Tuist-generated package projects, replacing an existing `PackageSettings` configurations argument instead of adding a duplicate.
 - `SharedConfig/Sources/ApplicationConfiguration.swift`
   - typed reading of the selected distribution profile.
 
@@ -122,9 +123,12 @@ ios-app-manager generate runtime-profiles
 Regenerate the full project configuration and the AppConfig consumer:
 
 ```bash
+ios-app-manager secure-store setup --access-group <group> --yes
 ios-app-manager generate project-config
 ios-app-manager app-config setup --yes
 ```
+
+On a mature project with an existing custom Registry, SecureStore and AppConfig add only their owned imports, registrations, and builders. They do not require or invoke full Registry regeneration.
 
 Rerunning either generator with unchanged config produces no file changes. Changes to allowed environments, configuration names, public metadata, or descriptors replace the managed output rather than appending another variant.
 
