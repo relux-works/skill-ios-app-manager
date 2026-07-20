@@ -25,6 +25,7 @@ func TestRootHelpShowsAllSubcommands(t *testing.T) {
 		"q",
 		"m",
 		"ioc",
+		"fireauth-relux",
 	} {
 		if !strings.Contains(output, expected) {
 			t.Fatalf("help output missing %q:\n%s", expected, output)

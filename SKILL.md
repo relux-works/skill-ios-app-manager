@@ -332,16 +332,17 @@ Key rules:
 - Live Activity (ActivityKit + Dynamic Island): `ios-app-manager live-activity setup`
 - HTTP client: `ios-app-manager http-client setup`
 - AppConfig (env switching + ApiConfigurator): `ios-app-manager app-config setup`
+- Firebase REST auth Relux module: `ios-app-manager fireauth-relux setup`
 
 Pipeline order matters — each command has prerequisites:
 ```
-init → ioc → relux → secure-store → token-provider → utilities
+init → ioc → relux → utilities
      → foundation-plus → swiftui-plus → test-targets
      → app-extensions → notification-service
                      → widget-base → app-intents → static-widget
                                   → live-activity
      → module create (blueprints)
-     → app-config → http-client
+     → secure-store → token-provider → app-config → fireauth-relux → http-client
 ```
 
 ### Module management
@@ -413,6 +414,7 @@ See [`diagrams/scaffolding-pipeline.puml`](diagrams/scaffolding-pipeline.puml) f
 | **relux** | `relux setup` | Relux state management: ReluxLogger, Registry infra, swift-relux + swiftui-relux deps | ioc |
 | **secure-store** | `secure-store setup --access-group <group>` | SecureStore + SecureStoreImpl plus a focused, non-destructive Registry patch | ioc |
 | **token-provider** | `token-provider setup` | TokenProvider + TokenProviderImpl: token storage/refresh | ioc |
+| **fireauth-relux** | `fireauth-relux setup` | Exact FireAuthRelux/FireAuthKit pins, generated Firebase REST loader, focused Registry registration/Relux wrapper, and in-process/app-process deterministic test selection | relux, token-provider, app-config |
 | **utilities** | `utilities setup` | Utilities single-package: HttpClientUtils helpers | ioc |
 | **foundation-plus** | `foundation-plus setup` | FoundationPlus single-package: `@_exported import Foundation`, MaybeData, CompletionStatus | ioc |
 | **swiftui-plus** | `swiftui-plus setup` | SwiftUIPlus single-package: `@_exported import SwiftUI`, AsyncButton | ioc |
@@ -430,17 +432,33 @@ See [`diagrams/scaffolding-pipeline.puml`](diagrams/scaffolding-pipeline.puml) f
 
 ### Important: ordering constraints
 
-Commands that directly patch Registry.swift (`http-client setup`, `app-config setup`) must run **after** all `module create` calls, because `module create` regenerates Registry from template and wipes direct patches.
+Commands that directly patch Registry.swift (`http-client setup`, `app-config setup`, `token-provider setup`, `fireauth-relux setup`) must run **after** all `module create` calls, because `module create` regenerates Registry from template and wipes direct patches.
 
-`secure-store setup` patches only its imports, registration, and builder when Registry.swift already exists. Do not rerun `ioc setup` merely to adopt SecureStore in a mature custom composition root.
+`secure-store setup` and `token-provider setup` patch only their imports,
+registration, and builder when Registry.swift already exists. `fireauth-relux
+setup` additionally replaces only the named Relux resolver line with a managed
+wrapper; the original Relux builder body remains untouched. Unsupported Relux
+registration shapes fail explicitly. Do not rerun `ioc setup` merely to adopt
+these capabilities in a mature custom composition root.
+
+FireAuth setup requires validated runtime profiles, generated
+`RuntimeProfiles.swift`, and the configured Firebase validation hooks. It reads
+each input plist only for validation and never retains its path or API key. The
+generated loader resolves the selected descriptor's plist resource, checks its
+public project/app/bundle metadata, and otherwise returns FireAuth's explicit
+unconfigured state. Unit or hosted tests in the app process may install
+`installFireAuthReluxModuleFactoryForTesting` before Registry configuration and
+must reset it during cleanup. XCUITest runs in a separate process: generated UI
+test sources expose `GeneratedFireAuthReluxTestLaunch` arguments/environment,
+and the generated App.swift bootstrap selects a deterministic unconfigured
+module with a transport that rejects all network requests before the existing
+`Registry.configure(...)` call.
 
 Full recommended pipeline:
 ```bash
 ios-app-manager init
 ios-app-manager ioc setup
 ios-app-manager relux setup
-ios-app-manager secure-store setup --access-group <group>
-ios-app-manager token-provider setup
 ios-app-manager utilities setup
 ios-app-manager foundation-plus setup
 ios-app-manager swiftui-plus setup
@@ -452,7 +470,10 @@ ios-app-manager app-intents setup
 ios-app-manager static-widget setup
 ios-app-manager live-activity setup
 ios-app-manager module create --from <name>.blueprint.json
+ios-app-manager secure-store setup --access-group <group>
+ios-app-manager token-provider setup
 ios-app-manager app-config setup
+ios-app-manager fireauth-relux setup
 ios-app-manager http-client setup
 ios-app-manager diagram
 ```

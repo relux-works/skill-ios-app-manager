@@ -1,5 +1,6 @@
 @startuml scaffold-plugin-dependencies
 !theme plain
+!pragma layout elk
 
 title ios-app-manager scaffold plugin dependency graph
 
@@ -29,6 +30,7 @@ package "Setup plugins (registry.Module)" {
     component "secure-store" as mod_secure_store
     component "token-provider" as mod_token_provider
     component "app-config" as mod_app_config
+    component "fireauth-relux" as mod_fireauth_relux
   }
 
   package "Network" #FFE0B2 {
@@ -62,6 +64,8 @@ package "Shared scaffold helpers" #FDEDEC {
 cloud "SwiftIoC" as ext_swiftioc #E8F0FE
 cloud "SwiftUIRelux" as ext_swiftuirelux #E8F0FE
 cloud "HttpClient" as ext_httpclient #E8F0FE
+cloud "FireAuthRelux" as ext_fireauthrelux #E8F0FE
+cloud "FireAuthKit" as ext_fireauthkit #E8F0FE
 
 cli_root --> setup_cmd : adds registered setup commands
 cli_root --> gen_cmd : adds generate commands
@@ -71,6 +75,7 @@ setup_cmd --> mod_relux
 setup_cmd --> mod_secure_store
 setup_cmd --> mod_token_provider
 setup_cmd --> mod_app_config
+setup_cmd --> mod_fireauth_relux
 setup_cmd --> mod_http_client
 setup_cmd --> mod_utilities
 setup_cmd --> mod_foundation_plus
@@ -94,6 +99,9 @@ mod_relux --> mod_ioc
 mod_http_client --> mod_ioc
 mod_app_config --> mod_ioc
 mod_app_config --> mod_secure_store
+mod_fireauth_relux --> mod_relux
+mod_fireauth_relux --> mod_token_provider
+mod_fireauth_relux --> mod_app_config
 mod_widget_base --> mod_app_extensions
 mod_app_intents --> mod_widget_base
 mod_static_widget --> mod_widget_base
@@ -103,6 +111,8 @@ mod_live_activity --> mod_widget_base
 mod_ioc --> ext_swiftioc : external dep
 mod_relux --> ext_swiftuirelux : external dep
 mod_http_client --> ext_httpclient : external dep
+mod_fireauth_relux --> ext_fireauthrelux : exact external dep
+mod_fireauth_relux --> ext_fireauthkit : exact external dep
 
 gen_project_config --> gen_versions : orchestrates
 gen_project_config --> gen_min_target : orchestrates

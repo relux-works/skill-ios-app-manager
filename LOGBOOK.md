@@ -5,6 +5,14 @@
 
 ## 2026-07-20
 
+### 1042 — Managed TokenProvider And FireAuthRelux Composition
+- ROOT CAUSE: TokenProvider setup delegated to full IoC Registry regeneration, so adopting it in a mature app erased unrelated runtime-mode, persistence, sync, API, AppConfig, hosted-test, and custom Relux composition. No FireAuthRelux setup capability existed at the accepted base.
+- DECISION: Mature Registry ownership is expressed through narrow `ios-app-manager` marker blocks. TokenProvider owns only its imports, registration, and builder; FireAuthRelux additionally owns a named resolver wrapper while leaving the original Relux builder body byte-for-byte intact. Unsupported resolver shapes fail explicitly.
+- ROOT CAUSE: An in-process static module-factory setter cannot cross from an XCUITest runner into the separately launched app process.
+- FIX: Added exact FireAuthRelux 1.2.1 and FireAuthKit 1.1.0 convergence, framework/deployment-target overrides, an environment-keyed Firebase bundle loader, a resettable in-process factory, and generated app/UI-test process selection. Deterministic UI-test mode is selected before Registry configuration and uses a transport that rejects all requests. Firebase validation inputs remain process-local and are never copied or serialized.
+- VALIDATION: Full Go tests/vet/build, mature-project rerun convergence, Tuist install/generate, 18 focused custom-composition tests, a generated cross-process Swift regression, and a generic iOS Simulator build passed. FireAuth package targets compile at the app's iOS 17 minimum through the generated Tuist target overrides.
+- ANOMALY: Repository-wide Gitleaks found the unchanged accepted-base APNs device-token example as `generic-api-key`; `.gitleaksignore` suppresses only fingerprint `.research/ref_send-push-with-p8.sh:generic-api-key:3`. The full redacted rescan reports zero findings.
+
 ### 0620 — Executable Tests Profile And Generated-Source Hygiene
 - ROOT CAUSE: Runtime-profile generation hardcoded the Tests action as `.targets([])` and discarded the mature app scheme that carried its testables and hosted-test launch argument. Supported reruns therefore produced a shared Tests scheme that `xcodebuild test` refused to execute.
 - ROOT CAUSE: Capability insertion wrote indentation before a newly inserted newline, leaving a whitespace-only line, while SharedConfig emitted every Info.plist read on one line and exceeded the generated SwiftLint error threshold for mature type names.

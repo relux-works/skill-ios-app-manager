@@ -126,6 +126,71 @@ func TestAddExternalDepAcceptsProductNames(t *testing.T) {
 	}
 }
 
+func TestEnsureExternalDepConvergesStaleExactPinAndPreservesUnrelatedDependencies(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	modulesRoot := filepath.Join(projectRoot, "Packages")
+	writeProjectDependencyManifest(t, projectRoot)
+
+	if err := AddExternalDep(
+		"https://github.com/example/unrelated.git",
+		`exact: "4.2.0"`,
+		"Unrelated",
+		"",
+		modulesRoot,
+	); err != nil {
+		t.Fatalf("AddExternalDep(Unrelated) error = %v", err)
+	}
+	if err := AddExternalDep(
+		"https://github.com/relux-works/FireAuthRelux.git",
+		`exact: "1.1.0"`,
+		"FireAuthRelux",
+		"",
+		modulesRoot,
+	); err != nil {
+		t.Fatalf("AddExternalDep(stale FireAuthRelux) error = %v", err)
+	}
+
+	if err := EnsureExternalDep(
+		"https://github.com/relux-works/FireAuthRelux.git",
+		`exact: "1.2.1"`,
+		"FireAuthRelux",
+		modulesRoot,
+		"FireAuthRelux",
+	); err != nil {
+		t.Fatalf("EnsureExternalDep() error = %v", err)
+	}
+	first := readStringFile(t, filepath.Join(projectRoot, moduleManifestName))
+	if err := EnsureExternalDep(
+		"https://github.com/relux-works/FireAuthRelux.git",
+		`exact: "1.2.1"`,
+		"FireAuthRelux",
+		modulesRoot,
+		"FireAuthRelux",
+	); err != nil {
+		t.Fatalf("second EnsureExternalDep() error = %v", err)
+	}
+	second := readStringFile(t, filepath.Join(projectRoot, moduleManifestName))
+
+	if second != first {
+		t.Fatalf("EnsureExternalDep() is not byte-idempotent:\n%s", second)
+	}
+	for _, want := range []string{
+		`.package(name: "FireAuthRelux", url: "https://github.com/relux-works/FireAuthRelux.git", .exact("1.2.1"))`,
+		`.package(name: "Unrelated", url: "https://github.com/example/unrelated.git", .exact("4.2.0"))`,
+		`"FireAuthRelux": .framework`,
+		`"Unrelated": .framework`,
+	} {
+		if !strings.Contains(first, want) {
+			t.Fatalf("converged manifest missing %q:\n%s", want, first)
+		}
+	}
+	if strings.Contains(first, `.exact("1.1.0")`) {
+		t.Fatalf("converged manifest retained stale pin:\n%s", first)
+	}
+}
+
 func TestAddExternalProductTargetSettings(t *testing.T) {
 	t.Parallel()
 

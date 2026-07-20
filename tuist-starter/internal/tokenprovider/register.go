@@ -8,9 +8,10 @@ import (
 
 const usageGuide = `## Usage
 
-  Resolve the TokenProvider protocol via IoC:
+  Resolve the generated TokenProvider module interface via IoC:
 
-    let provider: TokenProviding = IoC.resolve(TokenProviding.self)
+    let provider: TokenProvider.Module.Interface =
+        IoC.resolve(TokenProvider.Module.Interface.self)
 
   Store auth credentials after login:
 
@@ -20,9 +21,8 @@ const usageGuide = `## Usage
 
     let token: String? = await provider.getAccessToken()
 
-  After setup, re-run ioc setup to register TokenProvider in Registry:
-
-    ios-app-manager ioc setup`
+  Setup owns only the TokenProvider imports, container registration, and
+  builder. Existing custom Registry composition is preserved.`
 
 func init() {
 	registry.Register(&registry.Module{
@@ -60,14 +60,14 @@ func Plan(input registry.SetupInput) (string, error) {
       TokenProvider.swift                          — namespace enum
       TokenProvider.AuthData.swift                 — auth data struct
       Module/TokenProvider.Module.swift            — module declaration
-      Module/TokenProvider.Module+Interface.swift  — TokenProviding protocol
+      Module/TokenProvider.Module+Interface.swift  — TokenProvider.Module.Interface protocol
     Packages/TokenProviderImpl/Sources/TokenProviderImpl/
       Module/TokenProvider.Module+Impl.swift       — implementation
 
   Patch:
     Package.swift   — add TokenProvider + TokenProviderImpl paths
     Project.swift   — add dependencies
-    Registry.swift  — will be updated on next ioc setup
+    Registry.swift  — converge focused imports, container registration, and builder
 
   App: %s`, input.AppName)
 	return plan, nil

@@ -31,7 +31,7 @@ type SetupInput struct {
 }
 
 // Setup scaffolds TokenProvider and TokenProviderImpl module packages and
-// re-generates the IoC Registry to include them.
+// converges the generator-owned slices of an existing IoC Registry.
 func Setup(input SetupInput) error {
 	if err := validateInput(input); err != nil {
 		return err
@@ -123,30 +123,33 @@ func Setup(input SetupInput) error {
 		return fmt.Errorf("add to Workspace.swift: %w", err)
 	}
 
-	// 6. Re-scaffold Registry.swift if IoC is set up.
+	// 6. Patch only the TokenProvider-owned Registry slices if IoC is set up.
 	registryPath := filepath.Join(
 		input.ProjectRoot, "Targets", input.AppName, "Sources", "App",
 		appTypeName+".Registry.swift",
 	)
 	if _, err := os.Stat(registryPath); err == nil {
-		modules, err := ioc.DiscoverModules(modulesRoot)
-		if err != nil {
-			return fmt.Errorf("discover modules: %w", err)
+		if err := patchRegistry(registryPath, appTypeName); err != nil {
+			return fmt.Errorf("patch Registry.swift: %w", err)
 		}
-
-		hasRelux := hasReluxInRegistry(registryPath)
-
-		if err := ioc.ScaffoldRegistryWithData(registryPath, ioc.RegistryTemplateData{
-			AppTypeName: appTypeName,
-			Imports:     ioc.BuildModuleImports(modules),
-			Modules:     modules,
-			HasRelux:    hasRelux,
-		}); err != nil {
-			return fmt.Errorf("regenerate Registry.swift: %w", err)
-		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat Registry.swift: %w", err)
 	}
 
 	return nil
+}
+
+func patchRegistry(registryPath string, appTypeName string) error {
+	return ioc.ConvergeManagedFoundationRegistry(registryPath, appTypeName, ioc.RegistryManagedFoundationPatch{
+		ID:                       "token-provider",
+		Imports:                  []string{moduleName, implPackageName},
+		Registration:             "ioc.register(TokenProvider.Module.Interface.self, lifecycle: .container, resolver: Self.buildTokenProvider)",
+		LegacyRegistrationMarker: "TokenProvider.Module.Interface.self",
+		Builder: `private static func buildTokenProvider() -> TokenProvider.Module.Interface {
+    TokenProvider.Module.Impl()
+}`,
+		LegacyBuilderMarker: "func buildTokenProvider()",
+	})
 }
 
 func validateInput(input SetupInput) error {
@@ -290,14 +293,4 @@ func isIgnorableManifestError(err error) bool {
 	msg := err.Error()
 	return strings.Contains(msg, "already contains") ||
 		strings.Contains(msg, "not found")
-}
-
-// hasReluxInRegistry checks if the existing Registry.swift contains Relux imports.
-func hasReluxInRegistry(registryPath string) bool {
-	data, err := os.ReadFile(registryPath)
-	if err != nil {
-		return false
-	}
-	return strings.Contains(string(data), "import Relux") ||
-		strings.Contains(string(data), "@_exported import Relux")
 }

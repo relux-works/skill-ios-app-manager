@@ -15,6 +15,7 @@ const (
 	Relux               ModuleID = "relux"
 	SecureStore         ModuleID = "secure-store"
 	TokenProvider       ModuleID = "token-provider"
+	FireAuthRelux       ModuleID = "fireauth-relux"
 	HttpClient          ModuleID = "http-client"
 	AppConfig           ModuleID = "app-config"
 	AppExtensions       ModuleID = "app-extensions"

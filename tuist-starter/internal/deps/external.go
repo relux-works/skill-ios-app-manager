@@ -137,6 +137,93 @@ func AddExternalDep(url string, version string, packageName string, targetModule
 	return nil
 }
 
+// EnsureExternalDep converges one root Swift package dependency and its Tuist
+// framework product overrides. Unlike AddExternalDep, an existing package with
+// a stale URL or requirement is replaced in place without touching unrelated
+// dependencies.
+func EnsureExternalDep(url string, version string, packageName string, modulesPath string, productNames ...string) error {
+	trimmedURL := strings.TrimSpace(url)
+	if trimmedURL == "" {
+		return fmt.Errorf("external dependency URL is required")
+	}
+
+	resolvedPackageName, err := InferExternalPackageName(packageName, trimmedURL)
+	if err != nil {
+		return err
+	}
+	versionRequirement, err := parseExternalVersionRequirement(version)
+	if err != nil {
+		return err
+	}
+	spec := externalDependencySpec{
+		packageName:  resolvedPackageName,
+		url:          trimmedURL,
+		version:      versionRequirement,
+		productNames: normalizeExternalProductNames(productNames, resolvedPackageName),
+	}
+
+	modulesRoot := normalizeModulesPath(modulesPath)
+	manifestPath := rootManifestPathForModules(modulesRoot)
+	payload, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return fmt.Errorf("read project manifest %q: %w", manifestPath, err)
+	}
+
+	updated := string(payload)
+	manifest, err := tuistproj.ParseManifest(updated)
+	if err != nil {
+		return fmt.Errorf("parse project manifest %q: %w", manifestPath, err)
+	}
+	matching := make([]tuistproj.ManifestItem, 0, 1)
+	for _, item := range manifest.Dependencies {
+		if externalDependencyItemPackageName(item) == spec.packageName {
+			matching = append(matching, item)
+		}
+	}
+	if len(matching) > 1 {
+		return fmt.Errorf("project manifest contains %d dependencies named %q; converge them manually", len(matching), spec.packageName)
+	}
+
+	requirement := spec.version.clause()
+	dependencyCurrent := len(matching) == 1 &&
+		extractExternalDependencyURL(matching[0].Content) == spec.url &&
+		extractExternalDependencyRequirement(matching[0].Content) == requirement
+	if len(matching) == 1 && !dependencyCurrent {
+		var removed bool
+		updated, removed, err = removeDependencyItemIf(updated, func(item tuistproj.ManifestItem) bool {
+			return externalDependencyItemPackageName(item) == spec.packageName
+		})
+		if err != nil {
+			return fmt.Errorf("remove stale external dependency %q: %w", spec.packageName, err)
+		}
+		if !removed {
+			return fmt.Errorf("stale external dependency %q could not be removed", spec.packageName)
+		}
+	}
+	if len(matching) == 0 || !dependencyCurrent {
+		updated, err = tuistproj.ApplyManifestEdits(updated, tuistproj.ManifestEdit{
+			Type:    tuistproj.AddDependency,
+			Name:    spec.packageName,
+			Content: spec.manifestEntry(),
+		})
+		if err != nil {
+			return fmt.Errorf("add converged external dependency %q: %w", spec.packageName, err)
+		}
+	}
+
+	updated, err = tuistproj.EnsureFrameworkProductTypesInContent(updated, spec.frameworkProductNames()...)
+	if err != nil {
+		return fmt.Errorf("ensure framework product types for %q: %w", spec.packageName, err)
+	}
+	if updated == string(payload) {
+		return nil
+	}
+	if err := os.WriteFile(manifestPath, []byte(updated), 0o644); err != nil {
+		return fmt.Errorf("write project manifest %q: %w", manifestPath, err)
+	}
+	return nil
+}
+
 // AddExternalProductTargetSettings adds PackageSettings target build settings for external products.
 func AddExternalProductTargetSettings(modulesPath string, productNames []string, settings map[string]string) error {
 	normalizedProducts := normalizeExternalProductNames(productNames, "")

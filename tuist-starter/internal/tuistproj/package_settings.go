@@ -244,31 +244,130 @@ func mergeFrameworkProductTypes(content string, productNames []string) (string, 
 }
 
 func mergeTargetBuildSettings(content string, settings []TargetBuildSetting) (string, error) {
-	missing := make([]TargetBuildSetting, 0, len(settings))
+	updated := content
+	var err error
 	for _, setting := range settings {
-		if strings.Contains(content, targetBuildSettingEntry(setting)) {
-			continue
+		updated, err = upsertTargetBuildSetting(updated, setting)
+		if err != nil {
+			return "", err
 		}
-		missing = append(missing, setting)
 	}
+	return updated, nil
+}
 
-	if len(missing) == 0 {
-		return content, nil
-	}
-
+func upsertTargetBuildSetting(content string, setting TargetBuildSetting) (string, error) {
 	anchor := strings.Index(content, packageTargetSettingsAnchor)
 	if anchor == -1 {
 		return "", fmt.Errorf("targetSettings section not found")
 	}
-
-	arrayStart := anchor + len(packageTargetSettingsAnchor)
-	arrayEnd, err := matchingSquareBracket(content, arrayStart-1)
+	outerOpen := anchor + len(packageTargetSettingsAnchor) - 1
+	outerClose, err := matchingSquareBracket(content, outerOpen)
 	if err != nil {
 		return "", fmt.Errorf("targetSettings section is not closed")
 	}
 
-	insertPos := lineStartOffset(content, arrayEnd)
-	return content[:insertPos] + renderTargetSettingsEntries(missing) + content[insertPos:], nil
+	productLines := dictionaryKeyLinesAtDepth(content, outerOpen, outerClose, setting.ProductName, 1)
+	if len(productLines) > 1 {
+		return "", fmt.Errorf("targetSettings contains duplicate product %q entries", setting.ProductName)
+	}
+	if len(productLines) == 0 {
+		insertPos := lineStartOffset(content, outerClose)
+		return content[:insertPos] + renderTargetSettingsEntries([]TargetBuildSetting{setting}) + content[insertPos:], nil
+	}
+
+	productLine := productLines[0]
+	baseAnchorOffset := strings.Index(productLine.text, ".settings(base:")
+	if baseAnchorOffset < 0 {
+		return "", fmt.Errorf("targetSettings product %q is not an inline .settings(base:) entry", setting.ProductName)
+	}
+	baseOpenOffset := strings.Index(productLine.text[baseAnchorOffset:], "[")
+	if baseOpenOffset < 0 {
+		return "", fmt.Errorf("targetSettings product %q base dictionary is not open", setting.ProductName)
+	}
+	baseOpen := productLine.start + baseAnchorOffset + baseOpenOffset
+	baseClose, err := matchingSquareBracket(content, baseOpen)
+	if err != nil || baseClose > outerClose {
+		return "", fmt.Errorf("targetSettings product %q base dictionary is not closed", setting.ProductName)
+	}
+	if lineStartOffset(content, baseOpen) == lineStartOffset(content, baseClose) {
+		return "", fmt.Errorf("targetSettings product %q uses unsupported single-line base settings", setting.ProductName)
+	}
+
+	settingLines := dictionaryKeyLinesAtDepth(content, baseOpen, baseClose, setting.Key, 1)
+	if len(settingLines) > 1 {
+		return "", fmt.Errorf("targetSettings product %q contains duplicate setting %q", setting.ProductName, setting.Key)
+	}
+	if len(settingLines) == 1 {
+		line := settingLines[0]
+		replacement := line.indent + targetBuildSettingEntry(setting) + ","
+		if line.text == replacement {
+			return content, nil
+		}
+		return content[:line.start] + replacement + content[line.end:], nil
+	}
+
+	insertPos := lineStartOffset(content, baseClose)
+	indent := productLine.indent + "    "
+	insertion := indent + targetBuildSettingEntry(setting) + ",\n"
+	return content[:insertPos] + insertion + content[insertPos:], nil
+}
+
+type packageSettingsLine struct {
+	start  int
+	end    int
+	indent string
+	text   string
+}
+
+func dictionaryKeyLinesAtDepth(content string, open, close int, key string, depth int) []packageSettingsLine {
+	quotedKey := `"` + strings.ReplaceAll(strings.ReplaceAll(key, `\`, `\\`), `"`, `\"`) + `":`
+	result := make([]packageSettingsLine, 0, 1)
+	lineStart := open + 1
+	if newline := strings.Index(content[lineStart:close], "\n"); newline >= 0 {
+		lineStart += newline + 1
+	}
+	for lineStart < close {
+		lineEndOffset := strings.Index(content[lineStart:close], "\n")
+		lineEnd := close
+		if lineEndOffset >= 0 {
+			lineEnd = lineStart + lineEndOffset
+		}
+		lineText := content[lineStart:lineEnd]
+		if squareBracketDepth(content, open, lineStart) == depth && strings.HasPrefix(strings.TrimSpace(lineText), quotedKey) {
+			result = append(result, packageSettingsLine{
+				start:  lineStart,
+				end:    lineEnd,
+				indent: leadingPackageSettingsIndent(lineText),
+				text:   lineText,
+			})
+		}
+		if lineEnd == close {
+			break
+		}
+		lineStart = lineEnd + 1
+	}
+	return result
+}
+
+func squareBracketDepth(content string, open, end int) int {
+	depth := 0
+	for index := open; index < end; index++ {
+		switch content[index] {
+		case '[':
+			depth++
+		case ']':
+			depth--
+		}
+	}
+	return depth
+}
+
+func leadingPackageSettingsIndent(line string) string {
+	end := 0
+	for end < len(line) && (line[end] == ' ' || line[end] == '\t') {
+		end++
+	}
+	return line[:end]
 }
 
 func removeFrameworkProductTypesContent(content string, productNames []string) (string, error) {
@@ -384,8 +483,7 @@ func normalizeFrameworkProductNames(productNames []string) []string {
 }
 
 func normalizeTargetBuildSettings(settings []TargetBuildSetting) []TargetBuildSetting {
-	seen := make(map[string]struct{}, len(settings))
-	normalized := make([]TargetBuildSetting, 0, len(settings))
+	byKey := make(map[string]TargetBuildSetting, len(settings))
 
 	for _, setting := range settings {
 		productName := strings.TrimSpace(setting.ProductName)
@@ -395,16 +493,17 @@ func normalizeTargetBuildSettings(settings []TargetBuildSetting) []TargetBuildSe
 			continue
 		}
 
-		identity := productName + "\x00" + key + "\x00" + value
-		if _, exists := seen[identity]; exists {
-			continue
-		}
-		seen[identity] = struct{}{}
-		normalized = append(normalized, TargetBuildSetting{
+		identity := productName + "\x00" + key
+		byKey[identity] = TargetBuildSetting{
 			ProductName: productName,
 			Key:         key,
 			Value:       value,
-		})
+		}
+	}
+
+	normalized := make([]TargetBuildSetting, 0, len(byKey))
+	for _, setting := range byKey {
+		normalized = append(normalized, setting)
 	}
 
 	sort.Slice(normalized, func(i, j int) bool {

@@ -245,6 +245,71 @@ let packageSettings = PackageSettings(
 	}
 }
 
+func TestEnsureTargetBuildSettingsConvergesExistingValueWithoutDuplicateProduct(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "Package.swift")
+	writePackageSettingsTestFile(t, path, `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "DemoDependencies",
+    dependencies: [],
+    targets: []
+)
+
+#if TUIST
+import ProjectDescription
+
+let packageSettings = PackageSettings(
+    targetSettings: [
+        "FireAuthRelux": .settings(base: [
+            "IPHONEOS_DEPLOYMENT_TARGET": "18.0",
+            "SWIFT_VERSION": "6.0",
+        ]),
+        "Unrelated": .settings(base: [
+            "OTHER_SETTING": "preserved",
+        ]),
+    ]
+)
+#endif
+`)
+
+	setting := TargetBuildSetting{
+		ProductName: "FireAuthRelux",
+		Key:         "IPHONEOS_DEPLOYMENT_TARGET",
+		Value:       "17.0",
+	}
+	if err := EnsureTargetBuildSettings(path, setting); err != nil {
+		t.Fatalf("EnsureTargetBuildSettings() error = %v", err)
+	}
+	first := readPackageSettingsTestFile(t, path)
+	if err := EnsureTargetBuildSettings(path, setting); err != nil {
+		t.Fatalf("second EnsureTargetBuildSettings() error = %v", err)
+	}
+	second := readPackageSettingsTestFile(t, path)
+
+	if second != first {
+		t.Fatalf("EnsureTargetBuildSettings() is not byte-idempotent:\n%s", second)
+	}
+	if strings.Count(first, `"FireAuthRelux": .settings`) != 1 {
+		t.Fatalf("FireAuthRelux settings count != 1:\n%s", first)
+	}
+	if strings.Contains(first, `"IPHONEOS_DEPLOYMENT_TARGET": "18.0"`) ||
+		!strings.Contains(first, `"IPHONEOS_DEPLOYMENT_TARGET": "17.0"`) {
+		t.Fatalf("deployment target did not converge:\n%s", first)
+	}
+	for _, preserved := range []string{
+		`"SWIFT_VERSION": "6.0"`,
+		`"Unrelated": .settings`,
+		`"OTHER_SETTING": "preserved"`,
+	} {
+		if !strings.Contains(first, preserved) {
+			t.Fatalf("convergence lost %q:\n%s", preserved, first)
+		}
+	}
+}
+
 func TestRemoveFrameworkProductTypesRemovesRequestedEntries(t *testing.T) {
 	t.Parallel()
 

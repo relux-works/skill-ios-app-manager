@@ -425,7 +425,7 @@ Generates a complete iOS project structure from a JSON config file:
 - **Tuist manifests**: Project.swift, Package.swift, Workspace.swift, Tuist.swift
 - **IoC container**: SwiftIoC-based Registry.swift with auto-discovery
 - **Relux state management**: Actions, Effects, State, Flow scaffolding
-- **Foundation modules**: SecureStore (Keychain), TokenProvider, Utilities, FoundationPlus, SwiftUIPlus
+- **Foundation modules**: SecureStore (Keychain), TokenProvider, FireAuthRelux, Utilities, FoundationPlus, SwiftUIPlus
 - **App extensions**: Notification Service Extension, WidgetKit (static + interactive), Live Activity + Dynamic Island, App Intents, with extension internals in Core SwiftPM packages
 - **Network**: HttpClient IoC registration with swift-httpclient
 - **AppConfig**: Environment switching with ApiConfigurator
@@ -437,8 +437,6 @@ cd tuist-starter
 ./ios-app-manager init
 ./ios-app-manager ioc setup
 ./ios-app-manager relux setup
-./ios-app-manager secure-store setup --access-group <group>
-./ios-app-manager token-provider setup
 ./ios-app-manager utilities setup
 ./ios-app-manager foundation-plus setup
 ./ios-app-manager swiftui-plus setup
@@ -449,11 +447,24 @@ cd tuist-starter
 ./ios-app-manager static-widget setup
 ./ios-app-manager live-activity setup
 ./ios-app-manager module create --from <name>.blueprint.json
+./ios-app-manager secure-store setup --access-group <group>
+./ios-app-manager token-provider setup
 ./ios-app-manager app-config setup
+./ios-app-manager fireauth-relux setup
 ./ios-app-manager http-client setup
 ```
 
 Order matters -- each command depends on prerequisites from earlier steps.
+
+`token-provider setup` and `fireauth-relux setup` converge only their explicitly
+marked Registry slices. FireAuth setup pins FireAuthRelux 1.2.1 and FireAuthKit
+1.1.0 exactly, loads Firebase REST configuration from the runtime descriptor's
+validated plist resource, and adds separate deterministic hooks for in-process
+tests and UI-test app launches. UI-test targets receive generated typed launch
+arguments/environment; the app evaluates that selection immediately before its
+existing `Registry.configure(...)` call and uses an unconfigured module whose
+transport rejects every request. It never copies or serializes the
+validation-hook path or Firebase API key.
 
 ## Dynamic product policy
 

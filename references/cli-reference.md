@@ -56,7 +56,8 @@ ios-app-manager [command] [flags]
 | `ioc setup` | Set up SwiftIoC container and Registry.swift | `ios-app-manager ioc setup` |
 | `relux setup` | Set up Relux state management scaffolding | `ios-app-manager relux setup` |
 | `secure-store setup --access-group <group>` | Create SecureStore and patch its Registry slice without replacing custom composition | `ios-app-manager secure-store setup --access-group group.org.xflow.app` |
-| `token-provider setup` | Create TokenProvider module | `ios-app-manager token-provider setup` |
+| `token-provider setup` | Create TokenProvider and converge only its managed Registry slices | `ios-app-manager token-provider setup` |
+| `fireauth-relux setup` | Pin FireAuth packages exactly, generate the validated Firebase REST loader plus app/UI-test process selection, and wrap existing Relux composition non-destructively | `ios-app-manager fireauth-relux setup` |
 | `utilities setup` | Create Utilities module | `ios-app-manager utilities setup` |
 | `foundation-plus setup` | Create FoundationPlus utility module | `ios-app-manager foundation-plus setup` |
 | `swiftui-plus setup` | Create SwiftUIPlus utility module | `ios-app-manager swiftui-plus setup` |

@@ -1,5 +1,6 @@
 @startuml scaffolding-pipeline
 !theme plain
+!pragma layout smetana
 
 skinparam linetype ortho
 skinparam componentStyle rectangle
@@ -7,6 +8,8 @@ skinparam componentStyle rectangle
 cloud "HttpClient" as ext_httpclient #E8F0FE
 cloud "SwiftIoC" as ext_swiftioc #E8F0FE
 cloud "SwiftUIRelux" as ext_swiftuirelux #E8F0FE
+cloud "FireAuthRelux" as ext_fireauthrelux #E8F0FE
+cloud "FireAuthKit" as ext_fireauthkit #E8F0FE
 
 package "Infra" {
   component "App Extensions" as mod_app_extensions <<module>> #FFF3CD
@@ -25,6 +28,7 @@ package "Foundation" {
   component "AppConfig" as mod_app_config <<module>> #D6EAF8
   component "SecureStore" as mod_secure_store <<module>> #D6EAF8
   component "TokenProvider" as mod_token_provider <<module>> #D6EAF8
+  component "FireAuthRelux Setup" as mod_fireauth_relux <<module>> #D6EAF8
 }
 
 package "Network" {
@@ -49,6 +53,7 @@ end note
 FeatureModule ..> mod_app_config
 FeatureModule ..> mod_secure_store
 FeatureModule ..> mod_token_provider
+FeatureModule ..> mod_fireauth_relux
 FeatureModule ..> mod_http_client
 FeatureModule ..> mod_foundation_plus
 FeatureModule ..> mod_swiftui_plus
@@ -65,11 +70,16 @@ mod_test_targets --> mod_init
 mod_widget_base --> mod_app_extensions
 mod_app_config --> mod_ioc
 mod_app_config --> mod_secure_store
+mod_fireauth_relux --> mod_relux
+mod_fireauth_relux --> mod_token_provider
+mod_fireauth_relux --> mod_app_config
 mod_http_client --> mod_ioc
 
 mod_ioc --> ext_swiftioc
 mod_relux --> ext_swiftuirelux
 mod_http_client --> ext_httpclient
+mod_fireauth_relux --> ext_fireauthrelux
+mod_fireauth_relux --> ext_fireauthkit
 
 legend right
   |= Color |= Meaning |

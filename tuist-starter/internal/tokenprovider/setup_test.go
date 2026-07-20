@@ -5,7 +5,32 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/relux-works/ios-app-manager/internal/registry"
 )
+
+func TestUsageAndPlanNameGeneratedTokenProviderInterface(t *testing.T) {
+	t.Parallel()
+
+	plan, err := Plan(registry.SetupInput{AppName: "DemoApp"})
+	if err != nil {
+		t.Fatalf("Plan() error = %v", err)
+	}
+	for name, rendered := range map[string]string{
+		"usage": usageGuide,
+		"plan":  plan,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if !strings.Contains(rendered, "TokenProvider.Module.Interface") {
+				t.Fatalf("%s guidance does not name generated interface:\n%s", name, rendered)
+			}
+			if strings.Contains(rendered, "TokenProviding") {
+				t.Fatalf("%s guidance names ungenerated TokenProviding type:\n%s", name, rendered)
+			}
+		})
+	}
+}
 
 func TestSetupValidatesInput(t *testing.T) {
 	t.Parallel()
@@ -236,6 +261,118 @@ func TestSetupNoTemplateArtifacts(t *testing.T) {
 				t.Fatalf("Swift file %q contains template artifact %q", path, token)
 			}
 		}
+	}
+}
+
+func TestSetupPatchesExistingMatureRegistryWithoutRegeneration(t *testing.T) {
+	t.Parallel()
+
+	projectRoot := t.TempDir()
+	modulesPath := "Packages"
+	setupProjectFiles(t, projectRoot, modulesPath)
+
+	registryPath := filepath.Join(
+		projectRoot,
+		"Targets",
+		"DemoApp",
+		"Sources",
+		"App",
+		"DemoApp.Registry.swift",
+	)
+	customRegistry := `import CustomRuntime
+import SwiftIoC
+@_exported import Relux
+
+extension DemoApp {
+    @MainActor
+    enum Registry {
+        static let ioc = IoC()
+        private(set) static var runtimeMode = CustomRuntimeMode.application
+
+        static func configure(runtimeMode: CustomRuntimeMode = .current()) {
+            self.runtimeMode = runtimeMode
+
+            // MARK: - Infrastructure (scaffolding anchor: infra)
+            ioc.register(Relux.self, lifecycle: .container, resolver: buildRelux)
+            ioc.register(CustomRuntime.self, lifecycle: .container, resolver: buildCustomRuntime)
+
+            // MARK: - Foundation (scaffolding anchor: foundation)
+            ioc.register(CustomPersistence.self, lifecycle: .container, resolver: buildCustomPersistence)
+
+            // MARK: - Features (scaffolding anchor: features)
+
+            // MARK: - Network (scaffolding anchor: network)
+            ioc.register(CustomAPIClient.self, lifecycle: .container, resolver: buildCustomAPIClient)
+
+            // MARK: - Utils (scaffolding anchor: utils)
+        }
+
+        static func resolve<T>(_ type: T.Type) -> T {
+            guard let value = ioc.get(by: type) else {
+                preconditionFailure("custom resolve")
+            }
+            return value
+        }
+    }
+}
+
+// MARK: - Infrastructure Builders (scaffolding anchor: infra-builders)
+extension DemoApp.Registry {
+    private static func buildRelux() async -> Relux {
+        let relux = await Relux(logger: CustomLogger(), appStore: .init(), rootSaga: .init())
+        let feature = await CustomFeature(dispatcher: relux.dispatcher)
+        return relux.register(feature)
+    }
+
+    private static func buildCustomRuntime() -> CustomRuntime { .init() }
+    private static func buildCustomPersistence() -> CustomPersistence { .init() }
+    private static func buildCustomAPIClient() -> CustomAPIClient { .init() }
+}
+`
+	writeTestFile(t, registryPath, customRegistry)
+
+	input := SetupInput{
+		ProjectRoot: projectRoot,
+		AppName:     "DemoApp",
+		ModulesPath: modulesPath,
+	}
+	if err := Setup(input); err != nil {
+		t.Fatalf("Setup() mature Registry error = %v", err)
+	}
+	first := readFile(t, registryPath)
+
+	for _, preserved := range []string{
+		"import CustomRuntime",
+		"private(set) static var runtimeMode",
+		"ioc.register(CustomRuntime.self",
+		"ioc.register(CustomPersistence.self",
+		"ioc.register(CustomAPIClient.self",
+		"preconditionFailure(\"custom resolve\")",
+		"let feature = await CustomFeature",
+		"return relux.register(feature)",
+	} {
+		if !strings.Contains(first, preserved) {
+			t.Fatalf("TokenProvider setup lost mature composition %q:\n%s", preserved, first)
+		}
+	}
+	for _, integrated := range []string{
+		"import TokenProvider",
+		"import TokenProviderImpl",
+		"TokenProvider.Module.Interface.self",
+		"func buildTokenProvider()",
+		"TokenProvider.Module.Impl()",
+	} {
+		if !strings.Contains(first, integrated) {
+			t.Fatalf("TokenProvider setup missing %q:\n%s", integrated, first)
+		}
+	}
+
+	if err := Setup(input); err != nil {
+		t.Fatalf("second Setup() mature Registry error = %v", err)
+	}
+	second := readFile(t, registryPath)
+	if second != first {
+		t.Fatalf("second TokenProvider setup changed mature Registry:\n%s", second)
 	}
 }
 

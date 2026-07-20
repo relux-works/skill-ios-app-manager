@@ -11,8 +11,6 @@ ios-app-manager init
 # 2) Set up infrastructure (order matters — see diagrams/scaffolding-pipeline.puml)
 ios-app-manager ioc setup
 ios-app-manager relux setup
-ios-app-manager secure-store setup --access-group group.org.xflow.app
-ios-app-manager token-provider setup
 ios-app-manager utilities setup
 
 # 3) Create feature modules
@@ -22,12 +20,35 @@ ios-app-manager module create --from auth.blueprint.json
 ios-app-manager module create Profile --type feature
 
 # 4) Set up components that patch Registry (must be AFTER module create)
-ios-app-manager http-client setup
+ios-app-manager secure-store setup --access-group group.org.xflow.app
+ios-app-manager token-provider setup
 ios-app-manager app-config setup
+ios-app-manager fireauth-relux setup
+ios-app-manager http-client setup
 
 # 5) Generate Xcode project
 tuist install && tuist generate
 ```
+
+`fireauth-relux setup` requires runtime profiles and their local Firebase plist
+validation hooks. It validates the plists without copying them, then generates
+only public resource lookup logic. Unit or hosted in-process tests can install
+the generated Registry module factory before `Registry.configure(...)`.
+XCUITest cannot call that setter because its runner is a separate process;
+instead, use the generated launch configuration:
+
+```swift
+let app = XCUIApplication()
+app.launchArguments +=
+    GeneratedFireAuthReluxTestLaunch.deterministicLaunchArguments
+app.launch()
+```
+
+The equivalent `deterministicLaunchEnvironment` dictionary is available when
+launch environments are more convenient. App.swift evaluates either selection
+before its existing `Registry.configure(...)` call. The selected deterministic
+module is explicitly unconfigured and uses a transport that rejects every
+request, so UI tests never contact live Firebase.
 
 If scaffold files already exist and overwrite is intentional:
 
