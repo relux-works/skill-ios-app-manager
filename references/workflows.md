@@ -31,9 +31,12 @@ tuist install && tuist generate
 ```
 
 `fireauth-relux setup` requires runtime profiles and their local Firebase plist
-validation hooks. It validates the plists without copying them, then generates
-only public resource lookup logic. Unit or hosted in-process tests can install
-the generated Registry module factory before `Registry.configure(...)`.
+validation hooks plus the generated SecureStore module. It validates the plists
+without copying them, then generates only public resource lookup logic. Live
+composition uses an environment-scoped Keychain session account and a hashed
+identity-continuity marker; missing or corrupt provisioned sessions require
+explicit recovery. Unit or hosted in-process tests can install the generated
+Registry module factory before `Registry.configure(...)`.
 XCUITest cannot call that setter because its runner is a separate process;
 instead, use the generated launch configuration:
 

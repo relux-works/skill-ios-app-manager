@@ -68,6 +68,9 @@ func TestSetupConvergesMatureProjectAndPreservesCustomComposition(t *testing.T) 
 		"configureFireAuthReluxFromProcess",
 		"installFireAuthReluxModuleFactoryForTesting",
 		"resetFireAuthReluxModuleFactoryForTesting",
+		"buildLiveFireAuthRelux",
+		"EnvironmentScopedFireAuthSessionStore(",
+		"secureStore: resolve(SecureStoring.self)",
 		`// ios-app-manager:fireauth-relux-relux-registration:begin original="buildRelux"`,
 		"resolver: Self.buildReluxWithFireAuthRelux",
 		"let relux = await buildRelux()",
@@ -138,10 +141,12 @@ func TestSetupConvergesMatureProjectAndPreservesCustomComposition(t *testing.T) 
 	for _, want := range []string{
 		"typealias ModuleFactory",
 		"static func liveModule(",
+		"sessionStore: any FireAuthRelux.Business.SessionStore",
 		"static func deterministicModule(",
 		"DeterministicTransport",
 		"throw DeterministicTransportError.networkDisabled",
 		"static func moduleFactory(",
+		"liveFactory: @escaping ModuleFactory",
 		"for descriptor: BackendEnvironmentDescriptor",
 		"FireAuthProvider.Configuration.load(",
 		"googleServiceInfoResource: resourceName",
@@ -152,6 +157,14 @@ func TestSetupConvergesMatureProjectAndPreservesCustomComposition(t *testing.T) 
 	} {
 		if !strings.Contains(loader, want) {
 			t.Fatalf("generated loader missing %q:\n%s", want, loader)
+		}
+	}
+	for _, forbidden := range []string{
+		"sessionStore: any FireAuthRelux.Business.SessionStore =",
+		"liveFactory: @escaping ModuleFactory =",
+	} {
+		if strings.Contains(loader, forbidden) {
+			t.Fatalf("generated loader retains an implicit live fallback %q:\n%s", forbidden, loader)
 		}
 	}
 
@@ -189,6 +202,42 @@ func TestSetupConvergesMatureProjectAndPreservesCustomComposition(t *testing.T) 
 			if !strings.Contains(testLaunch, want) {
 				t.Fatalf("generated test launch helper for %s missing %q:\n%s", target, want, testLaunch)
 			}
+		}
+	}
+
+	sessionStore := readFireAuthTestFile(t, filepath.Join(
+		projectRoot,
+		"Targets", "MatureApp", "Sources", "Configuration", "FireAuth", generatedSessionStoreFileName,
+	))
+	for _, want := range []string{
+		"actor EnvironmentScopedFireAuthSessionStore",
+		"FireAuthRelux.Business.SessionStore",
+		`"fireauth.session.\(authNamespace)"`,
+		`"fireauth.continuity.\(authNamespace)"`,
+		"SHA256.hash",
+		"expectedAuthNamespace",
+		"requiresMigration",
+		"schemaVersion: Self.currentSchemaVersion",
+		"recoveryRequired(.missingSession)",
+		"recoveryRequired(.corruptSession)",
+		"recoveryRequired(.continuityMismatch)",
+		"func clear()",
+	} {
+		if !strings.Contains(sessionStore, want) {
+			t.Fatalf("generated environment session store missing %q:\n%s", want, sessionStore)
+		}
+	}
+	for _, forbidden := range []string{
+		"print(",
+		"debugPrint(",
+		"localizedDescription)",
+		"publicAnonymous",
+		"invitedPilot",
+		"transfersGrants",
+		"campaignRevocation",
+	} {
+		if strings.Contains(sessionStore, forbidden) {
+			t.Fatalf("generated environment session store contains unsafe diagnostic path %q:\n%s", forbidden, sessionStore)
 		}
 	}
 	if strings.Contains(first, "protected-test-api-key") {
@@ -302,6 +351,9 @@ func TestSetupRejectsCustomProcessOrTestLaunchOutputBeforeMutation(t *testing.T)
 		"test launch helper": filepath.Join(
 			"Targets", "MatureAppTests", "Sources", "Support", generatedTestLaunchFileName,
 		),
+		"environment session store": filepath.Join(
+			"Targets", "MatureApp", "Sources", "Configuration", "FireAuth", generatedSessionStoreFileName,
+		),
 	} {
 		t.Run(name, func(t *testing.T) {
 			projectRoot := prepareMatureFireAuthProject(t)
@@ -345,6 +397,33 @@ func TestSetupRejectsMissingRuntimeProfilesBeforeMutation(t *testing.T) {
 	after := snapshotProjectTree(t, projectRoot)
 	if after != before {
 		t.Fatal("failed setup mutated the mature project")
+	}
+}
+
+func TestSetupRejectsMissingSecureStorePrerequisiteBeforeMutation(t *testing.T) {
+	projectRoot := prepareMatureFireAuthProject(t)
+	cfg := matureFireAuthConfig(t)
+	configureFirebaseInputs(t, cfg, "protected-missing-secure-store-key")
+	registryPath := filepath.Join(
+		projectRoot,
+		"Targets", "MatureApp", "Sources", "App", "MatureApp.Registry.swift",
+	)
+	registry := readFireAuthTestFile(t, registryPath)
+	registry = strings.ReplaceAll(registry, "SecureStoring.self", "AbsentStoreProtocol.self")
+	writeFireAuthTestFile(t, registryPath, registry)
+	before := snapshotProjectTree(t, projectRoot)
+
+	err := Setup(SetupInput{
+		ProjectRoot: projectRoot,
+		AppName:     "MatureApp",
+		ModulesPath: "Packages",
+		Config:      cfg,
+	})
+	if err == nil || !strings.Contains(err.Error(), "run 'secure-store setup' first") {
+		t.Fatalf("Setup() error = %v, want explicit SecureStore prerequisite", err)
+	}
+	if after := snapshotProjectTree(t, projectRoot); after != before {
+		t.Fatal("missing SecureStore prerequisite mutated the mature project")
 	}
 }
 

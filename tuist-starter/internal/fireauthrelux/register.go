@@ -30,15 +30,22 @@ const usageGuide = `## Usage
   The equivalent generated launch environment is also available. App.swift
   evaluates the process selection before Registry.configure(...).
   Live configuration reads the selected runtime descriptor and the matching
-  bundled plist. Missing fixture configuration is explicitly unconfigured.`
+  bundled plist. Its Keychain session account and hashed UserDefaults identity
+  continuity marker are scoped by that descriptor's auth namespace. Missing
+  fixture configuration is explicitly unconfigured.`
 
 func init() {
 	registry.Register(&registry.Module{
-		ID:           registry.FireAuthRelux,
-		Name:         "FireAuthRelux",
-		Description:  "Firebase REST authentication Relux module",
-		Category:     registry.Foundation,
-		Dependencies: []registry.ModuleID{registry.Relux, registry.TokenProvider, registry.AppConfig},
+		ID:          registry.FireAuthRelux,
+		Name:        "FireAuthRelux",
+		Description: "Firebase REST authentication Relux module",
+		Category:    registry.Foundation,
+		Dependencies: []registry.ModuleID{
+			registry.Relux,
+			registry.TokenProvider,
+			registry.AppConfig,
+			registry.SecureStore,
+		},
 
 		Plan:       Plan,
 		Setup:      SetupFromRegistry,
@@ -73,6 +80,9 @@ func Plan(input registry.SetupInput) (string, error) {
     Targets/%[1]s/Sources/Configuration/FireAuth/GeneratedFireAuthRelux.swift
       — environment-keyed Firebase bundle loader, live module, deterministic
         network-disabled module, and injectable in-process factory
+    Targets/%[1]s/Sources/Configuration/FireAuth/EnvironmentScopedFireAuthSessionStore.swift
+      — environment-keyed Keychain session codec and hashed identity-continuity
+        marker with explicit recovery, migration, and a primitive clear operation
     Targets/%[1]s/Sources/Configuration/FireAuth/GeneratedFireAuthReluxProcess.swift
       — launch-argument/environment selection parsed in the app process
     configured test targets/Support/GeneratedFireAuthReluxTestLaunch.swift

@@ -59,6 +59,9 @@ func TestFireAuthReluxSetupCommandConvergesMatureProject(t *testing.T) {
 	if !strings.Contains(dryRunOutput, "FireAuthRelux Setup Plan") {
 		t.Fatalf("dry-run output missing plan:\n%s", dryRunOutput)
 	}
+	if !strings.Contains(dryRunOutput, "EnvironmentScopedFireAuthSessionStore.swift") {
+		t.Fatalf("dry-run output missing durable session-store output:\n%s", dryRunOutput)
+	}
 	if got := readTestFile(t, filepath.Join(projectRoot, "Package.swift")); got != dryRunBefore {
 		t.Fatalf("dry-run mutated Package.swift:\n%s", got)
 	}
@@ -83,6 +86,7 @@ func TestFireAuthReluxSetupCommandConvergesMatureProject(t *testing.T) {
 		registryPath,
 		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Configuration", "FireAuth", "GeneratedFireAuthRelux.swift"),
 		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Configuration", "FireAuth", "GeneratedFireAuthReluxProcess.swift"),
+		filepath.Join(projectRoot, "Targets", cfg.AppName, "Sources", "Configuration", "FireAuth", "EnvironmentScopedFireAuthSessionStore.swift"),
 	}
 	for _, target := range cfg.RuntimeProfiles.TestAction.Targets {
 		trackedPaths = append(trackedPaths, filepath.Join(

@@ -11,12 +11,13 @@ extension GeneratedFireAuthRelux {
 
     @MainActor
     static func liveModule(
-        for descriptor: BackendEnvironmentDescriptor
+        for descriptor: BackendEnvironmentDescriptor,
+        sessionStore: any FireAuthRelux.Business.SessionStore
     ) -> any FireAuthRelux.Module.Interface {
         FireAuthRelux.Module.Impl(
             configuration: configuration(for: descriptor),
             transport: URLSessionFirebaseAuthTransport(),
-            sessionStore: FireAuthRelux.InMemorySessionStore(),
+            sessionStore: sessionStore,
             refreshLeeway: 60
         )
     }
@@ -35,13 +36,14 @@ extension GeneratedFireAuthRelux {
 
     @MainActor
     static func moduleFactory(
-        for selection: GeneratedFireAuthReluxProcess.Selection
+        for selection: GeneratedFireAuthReluxProcess.Selection,
+        liveFactory: @escaping ModuleFactory
     ) -> ModuleFactory {
         switch selection {
         case .live:
-            return { liveModule(for: $0) }
+            liveFactory
         case .deterministic:
-            return { deterministicModule(for: $0) }
+            { deterministicModule(for: $0) }
         }
     }
 
@@ -55,7 +57,8 @@ extension GeneratedFireAuthRelux {
 
         let plistSuffix = ".plist"
         guard firebase.resourceName.hasSuffix(plistSuffix),
-              firebase.resourceName.count > plistSuffix.count else {
+              firebase.resourceName.count > plistSuffix.count
+        else {
             return unconfigured
         }
         let resourceName = String(firebase.resourceName.dropLast(plistSuffix.count))
@@ -67,7 +70,8 @@ extension GeneratedFireAuthRelux {
         guard case let .configured(resolved) = loaded.status,
               resolved.firebaseProjectID == firebase.projectID,
               resolved.googleAppID == firebase.googleAppID,
-              resolved.bundleID == firebase.bundleID else {
+              resolved.bundleID == firebase.bundleID
+        else {
             return unconfigured
         }
         return loaded

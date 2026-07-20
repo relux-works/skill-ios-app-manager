@@ -414,7 +414,7 @@ See [`diagrams/scaffolding-pipeline.puml`](diagrams/scaffolding-pipeline.puml) f
 | **relux** | `relux setup` | Relux state management: ReluxLogger, Registry infra, swift-relux + swiftui-relux deps | ioc |
 | **secure-store** | `secure-store setup --access-group <group>` | SecureStore + SecureStoreImpl plus a focused, non-destructive Registry patch | ioc |
 | **token-provider** | `token-provider setup` | TokenProvider + TokenProviderImpl: token storage/refresh | ioc |
-| **fireauth-relux** | `fireauth-relux setup` | Exact FireAuthRelux/FireAuthKit pins, generated Firebase REST loader, focused Registry registration/Relux wrapper, and in-process/app-process deterministic test selection | relux, token-provider, app-config |
+| **fireauth-relux** | `fireauth-relux setup` | Exact FireAuthRelux/FireAuthKit pins, generated Firebase REST loader, environment-scoped durable session store, focused Registry registration/Relux wrapper, and in-process/app-process deterministic test selection | relux, token-provider, app-config, secure-store |
 | **utilities** | `utilities setup` | Utilities single-package: HttpClientUtils helpers | ioc |
 | **foundation-plus** | `foundation-plus setup` | FoundationPlus single-package: `@_exported import Foundation`, MaybeData, CompletionStatus | ioc |
 | **swiftui-plus** | `swiftui-plus setup` | SwiftUIPlus single-package: `@_exported import SwiftUI`, AsyncButton | ioc |
@@ -446,7 +446,11 @@ FireAuth setup requires validated runtime profiles, generated
 each input plist only for validation and never retains its path or API key. The
 generated loader resolves the selected descriptor's plist resource, checks its
 public project/app/bundle metadata, and otherwise returns FireAuth's explicit
-unconfigured state. Unit or hosted tests in the app process may install
+unconfigured state. Live composition stores the session in a Keychain account
+derived from the descriptor's auth namespace and stores only a namespace-bound
+hashed UID continuity marker in UserDefaults. A provisioned identity with a
+missing, corrupt, or mismatched session routes to explicit recovery. Unit or
+hosted tests in the app process may install
 `installFireAuthReluxModuleFactoryForTesting` before Registry configuration and
 must reset it during cleanup. XCUITest runs in a separate process: generated UI
 test sources expose `GeneratedFireAuthReluxTestLaunch` arguments/environment,

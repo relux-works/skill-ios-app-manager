@@ -459,12 +459,15 @@ Order matters -- each command depends on prerequisites from earlier steps.
 `token-provider setup` and `fireauth-relux setup` converge only their explicitly
 marked Registry slices. FireAuth setup pins FireAuthRelux 1.2.1 and FireAuthKit
 1.1.0 exactly, loads Firebase REST configuration from the runtime descriptor's
-validated plist resource, and adds separate deterministic hooks for in-process
-tests and UI-test app launches. UI-test targets receive generated typed launch
-arguments/environment; the app evaluates that selection immediately before its
-existing `Registry.configure(...)` call and uses an unconfigured module whose
-transport rejects every request. It never copies or serializes the
-validation-hook path or Firebase API key.
+validated plist resource, persists each environment's session under a separate
+Keychain account, and keeps only a namespace-bound hashed identity-continuity
+marker in UserDefaults. Missing or corrupt provisioned sessions fail into
+explicit recovery. The setup also adds separate deterministic hooks for
+in-process tests and UI-test app launches. UI-test targets receive generated
+typed launch arguments/environment; the app evaluates that selection
+immediately before its existing `Registry.configure(...)` call and uses an
+unconfigured module whose transport rejects every request. It never copies or
+serializes the validation-hook path, Firebase API key, raw token, or raw UID.
 
 ## Dynamic product policy
 
