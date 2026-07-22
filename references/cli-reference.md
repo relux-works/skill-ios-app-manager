@@ -34,7 +34,7 @@ ios-app-manager [command] [flags]
 | `generate project-config` | Sync manifest config slices across app + extensions | `ios-app-manager generate project-config` |
 | `generate bundle-id` | Generate or update app + extension bundle identifiers | `ios-app-manager generate bundle-id` |
 | `generate versions` | Generate or update app + extension versions | `ios-app-manager generate versions` |
-| `generate min-target` | Generate or update app + extension deployment target markers | `ios-app-manager generate min-target` |
+| `generate min-target` | Synchronize Tuist targets plus root/local Package.swift minimum-target declarations | `ios-app-manager generate min-target` |
 | `generate team-id` | Generate or update app + extension signing team settings | `ios-app-manager generate team-id` |
 | `generate background-modes-config` | Generate or update host app background modes Info.plist key | `ios-app-manager generate background-modes-config` |
 | `generate application-configuration` | Generate or update product-level runtime app configuration | `ios-app-manager generate application-configuration` |
@@ -417,10 +417,11 @@ ios-app-manager generate min-target
 ```
 
 Description:
-- Syncs `min_target` from config into scaffold-managed `Project.swift` manifests.
-- Updates the host app manifest and every `Extensions/*/Project.swift` generated from scaffold templates.
-- Canonicalizes both `deploymentTargets: .iOS(minTarget)` and `"IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget)`.
-- Older manifests without explicit `minTarget` markers are migrated forward during sync.
+- Syncs `min_target` from config into scaffold-managed `Project.swift` manifests, including app, unit-test, UI-test, and extension targets.
+- Updates existing `IPHONEOS_DEPLOYMENT_TARGET` overrides in root `Package.swift` without changing dependency declarations or pins.
+- Recursively discovers first-party `Package.swift` manifests below `modules_path` and canonicalizes their iOS `platforms` declaration to PackageDescription-compatible `.iOS("<major>.<minor>")` syntax. Existing `.iOS(.v<major>[_<minor>])` and numeric string declarations are accepted as input.
+- Canonicalizes both `deploymentTargets: .iOS(minTarget)` and `"IPHONEOS_DEPLOYMENT_TARGET": .string(minTarget)` in generated Tuist targets.
+- Plans and validates every change before writing; unsupported platform syntax, an absent root package when local manifests exist, or an unwritable changed manifest fail without a partial migration.
 
 Flags:
 - `--config <path>`: Optional command-level config override.

@@ -332,6 +332,41 @@ let project = Project(
     ]
 )
 `)
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Package.swift"), `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "DemoDependencies",
+    dependencies: [
+        .package(url: "https://example.invalid/pinned.git", exact: "1.2.3"),
+    ],
+    targets: []
+)
+
+#if TUIST
+import ProjectDescription
+
+let packageSettings = PackageSettings(
+    targetSettings: [
+        "PinnedDependency": .settings(base: [
+            "IPHONEOS_DEPLOYMENT_TARGET": "16.0",
+        ]),
+    ]
+)
+#endif
+`)
+	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Packages", "SharedKit", "Package.swift"), `// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "SharedKit",
+    platforms: [
+        .iOS(.v16),
+        .macOS(.v14),
+    ],
+    targets: []
+)
+`)
 
 	updatedCfg := cfg
 	updatedCfg.MinTarget = "18.0"
@@ -343,7 +378,7 @@ let project = Project(
 	if err != nil {
 		t.Fatalf("executeRootCommand(generate min-target) error = %v", err)
 	}
-	if !strings.Contains(output, "regenerated min target manifests in 2 file(s)") {
+	if !strings.Contains(output, "regenerated min target manifests in 4 file(s)") {
 		t.Fatalf("generate min-target output = %q, want regenerate message", output)
 	}
 
@@ -364,6 +399,23 @@ let project = Project(
 				t.Fatalf("%s missing %q:\n%s", manifestPath, want, string(content))
 			}
 		}
+	}
+	rootPackage, err := os.ReadFile(filepath.Join(projectRoot, "Package.swift"))
+	if err != nil {
+		t.Fatalf("ReadFile(Package.swift) error = %v", err)
+	}
+	if !strings.Contains(string(rootPackage), `"IPHONEOS_DEPLOYMENT_TARGET": "18.0"`) {
+		t.Fatalf("root Package.swift missing synced deployment override:\n%s", string(rootPackage))
+	}
+	if !strings.Contains(string(rootPackage), `exact: "1.2.3"`) {
+		t.Fatalf("root Package.swift lost dependency pin:\n%s", string(rootPackage))
+	}
+	localPackage, err := os.ReadFile(filepath.Join(projectRoot, "Packages", "SharedKit", "Package.swift"))
+	if err != nil {
+		t.Fatalf("ReadFile(Packages/SharedKit/Package.swift) error = %v", err)
+	}
+	if !strings.Contains(string(localPackage), `.iOS("18.0")`) || !strings.Contains(string(localPackage), `.macOS(.v14)`) {
+		t.Fatalf("local Package.swift did not preserve/sync platforms:\n%s", string(localPackage))
 	}
 }
 
@@ -763,6 +815,18 @@ let package = Package(
     ],
     targets: []
 )
+
+#if TUIST
+import ProjectDescription
+
+let packageSettings = PackageSettings(
+    targetSettings: [
+        "PinnedDependency": .settings(base: [
+            "IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+        ]),
+    ]
+)
+#endif
 `)
 	writeGenerateVersionManifest(t, filepath.Join(projectRoot, "Packages", "Auth", "Package.swift"), `// swift-tools-version: 6.0
 import PackageDescription
@@ -811,7 +875,7 @@ let package = Package(
 		"project config sync summary:",
 		"- bundle-id: regenerated bundle id manifests in 2 file(s)",
 		"- versions: regenerated version manifests in 2 file(s)",
-		"- min-target: regenerated min target manifests in 3 file(s)",
+		"- min-target: regenerated min target manifests in 4 file(s)",
 		"- team-id: regenerated team id manifests in 2 file(s)",
 		"- background-modes-config: regenerated background modes config in 1 file(s)",
 		"- presentation-config: presentation config already up to date",
@@ -891,7 +955,7 @@ let package = Package(
 	if err != nil {
 		t.Fatalf("ReadFile(Packages/Auth/Package.swift) error = %v", err)
 	}
-	if !strings.Contains(string(packageManifest), `.iOS(.v18)`) {
+	if !strings.Contains(string(packageManifest), `.iOS("18.0")`) {
 		t.Fatalf("Package.swift missing synced iOS minimum:\n%s", string(packageManifest))
 	}
 	if !strings.Contains(string(packageManifest), `.swiftLanguageMode(.v6)`) {
@@ -899,6 +963,13 @@ let package = Package(
 	}
 	if !strings.Contains(string(packageManifest), `.enableUpcomingFeature("StrictConcurrency")`) {
 		t.Fatalf("Package.swift missing explicit strict concurrency:\n%s", string(packageManifest))
+	}
+	rootPackage, err := os.ReadFile(filepath.Join(projectRoot, "Package.swift"))
+	if err != nil {
+		t.Fatalf("ReadFile(root Package.swift) error = %v", err)
+	}
+	if !strings.Contains(string(rootPackage), `"IPHONEOS_DEPLOYMENT_TARGET": "18.0"`) {
+		t.Fatalf("root Package.swift missing synced deployment override:\n%s", string(rootPackage))
 	}
 
 	appCapabilities, err := os.ReadFile(filepath.Join(projectRoot, "Tuist", "ProjectDescriptionHelpers", "AppCapabilities.swift"))

@@ -5,7 +5,7 @@ import "fmt"
 func init() {
 	RegisterGenerator(&GeneratorPlugin{
 		Name:         "min-target",
-		Short:        "Generate or regenerate app and extension deployment targets from project config",
+		Short:        "Synchronize app, root package, and local package deployment targets from project config",
 		Dependencies: []string{"init"},
 		Run:          runGenerateMinTarget,
 	})
