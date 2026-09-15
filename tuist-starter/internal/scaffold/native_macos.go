@@ -116,7 +116,7 @@ let project = Project(
             sources: ["Targets/%s/Sources/**"],
             resources: .resources([.glob(pattern: "Targets/%s/Resources/**", excluding: [])]),
             dependencies: [.target(name: %s)],
-            settings: .settings(base: ["ENABLE_APP_SANDBOX": %s])
+            settings: .settings(base: ["ENABLE_APP_SANDBOX": %s, "CODE_SIGN_IDENTITY": "Apple Development"])
         ),
         .target(
             name: %s, destinations: [.mac], product: .framework,
@@ -124,14 +124,16 @@ let project = Project(
             infoPlist: .default,
             sources: ["Packages/%s/Sources/**"],
             dependencies: [
-%s            ]
+%s            ],
+            settings: .settings(base: ["CODE_SIGN_IDENTITY": "Apple Development"])
         ),
         .target(
             name: %s, destinations: [.mac], product: .unitTests,
             bundleId: %s, deploymentTargets: .macOS(%s),
             infoPlist: .default,
             sources: ["Packages/%s/Tests/**"],
-            dependencies: [.target(name: %s)]
+            dependencies: [.target(name: %s)],
+            settings: .settings(base: ["CODE_SIGN_IDENTITY": "Apple Development"])
         ),
     ]
 )
