@@ -45,6 +45,9 @@ var AllowedBackgroundModes = []string{
 
 // ProjectConfig defines project-init schema for ios-app-manager.
 type ProjectConfig struct {
+	// Native macOS scaffold options, consumed by generate macos-app.
+	MacOS *MacOSAppConfig `json:"macos,omitempty"`
+
 	// Identity
 	AppName  string `json:"app_name"`
 	BundleID string `json:"bundle_id"`
@@ -241,4 +244,16 @@ func normalizeBackgroundModes(values []string) []string {
 	}
 
 	return normalized
+}
+
+// MacOSAppConfig opts into the standalone native macOS scaffold plugin.
+type MacOSAppConfig struct {
+	MenuBar  bool           `json:"menu_bar,omitempty"`
+	Sandbox  bool           `json:"sandbox"`
+	Packages []MacOSPackage `json:"packages,omitempty"`
+}
+type MacOSPackage struct {
+	URL     string `json:"url"`
+	Version string `json:"version"`
+	Product string `json:"product"`
 }

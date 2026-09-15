@@ -51,6 +51,10 @@ skill-ios-app-manager/
     └── testdata/
 ```
 
+## Native macOS
+
+For native macOS apps and menu-bar utilities use the dedicated `generate macos-app` plugin. Read [references/native-macos.md](references/native-macos.md). Do not use the iOS init pipeline and patch its generated platform settings.
+
 ## Quick start
 
 1. Initialize from config:
