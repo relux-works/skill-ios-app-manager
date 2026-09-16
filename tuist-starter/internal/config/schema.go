@@ -248,11 +248,15 @@ func normalizeBackgroundModes(values []string) []string {
 
 // MacOSAppConfig opts into the standalone native macOS scaffold plugin.
 type MacOSAppConfig struct {
-	MenuBar  bool           `json:"menu_bar,omitempty"`
-	Sandbox  bool           `json:"sandbox"`
-	Packages []MacOSPackage `json:"packages,omitempty"`
+	HardenedRuntime bool           `json:"hardened_runtime,omitempty"`
+	InfoPlist       map[string]any `json:"info_plist,omitempty"`
+	MenuBar         bool           `json:"menu_bar,omitempty"`
+	Sandbox         bool           `json:"sandbox"`
+	Packages        []MacOSPackage `json:"packages,omitempty"`
 }
 type MacOSPackage struct {
+	Target string `json:"target,omitempty"` // core (default) or app
+
 	URL     string `json:"url"`
 	Version string `json:"version"`
 	Product string `json:"product"`

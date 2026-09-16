@@ -54,3 +54,35 @@ func TestNativeMacOSRejectsForeignManifest(t *testing.T) {
 		t.Fatal("partial scaffold")
 	}
 }
+
+func TestNativeMacOSAppOnlyDependencyAndPlist(t *testing.T) {
+	c := config.ProjectConfig{AppName: "Example", MinTarget: "14.0", SwiftVersion: "6.0", MacOS: &config.MacOSAppConfig{HardenedRuntime: true, InfoPlist: map[string]any{"SUFeedURL": "https://example.com/appcast.xml", "SUEnableAutomaticChecks": true}, Packages: []config.MacOSPackage{{URL: "https://example.com/update.git", Version: "1.0.0", Product: "Updater", Target: "app"}}}}
+	root := t.TempDir()
+	input := GenerateInput{ProjectRoot: root, Config: c}
+	if _, err := runGenerateMacOSApp(input); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(filepath.Join(root, "Project.swift"))
+	p := string(b)
+	for _, want := range []string{`"SUFeedURL": .string("https://example.com/appcast.xml")`, `"SUEnableAutomaticChecks": .boolean(true)`, `"ENABLE_HARDENED_RUNTIME": "YES"`, `dependencies: [.target(name: "ExampleCore"), .package(product: "Updater")]`} {
+		if !strings.Contains(p, want) {
+			t.Fatal(want)
+		}
+	}
+	manifest, _ := os.ReadFile(filepath.Join(root, "Packages/ExampleCore/Package.swift"))
+	if strings.Contains(string(manifest), "Updater") || strings.Contains(string(manifest), "update.git") {
+		t.Fatal("app dependency leaked into Core")
+	}
+	delete(c.MacOS.InfoPlist, "SUEnableAutomaticChecks")
+	if _, err := runGenerateMacOSApp(input); err != nil {
+		t.Fatal(err)
+	}
+	b, _ = os.ReadFile(filepath.Join(root, "Project.swift"))
+	if strings.Contains(string(b), "SUEnableAutomaticChecks") {
+		t.Fatal("removed setting retained")
+	}
+	c.MacOS.InfoPlist["CFBundleIdentifier"] = "invalid"
+	if _, err := runGenerateMacOSApp(input); err == nil {
+		t.Fatal("reserved identity must be rejected")
+	}
+}

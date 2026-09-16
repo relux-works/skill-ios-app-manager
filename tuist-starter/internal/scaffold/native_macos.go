@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -37,7 +38,20 @@ func runGenerateMacOSApp(input GenerateInput) (GenerateResult, error) {
 		if seen[p.Product] {
 			return GenerateResult{}, fmt.Errorf("duplicate package product %q", p.Product)
 		}
+		if p.Target != "" && p.Target != "core" && p.Target != "app" {
+			return GenerateResult{}, fmt.Errorf("macos package target must be core or app")
+		}
 		seen[p.Product] = true
+	}
+	for key, value := range c.MacOS.InfoPlist {
+		if key == "LSUIElement" || key == "NSHumanReadableCopyright" || strings.HasPrefix(key, "CFBundle") {
+			return GenerateResult{}, fmt.Errorf("reserved Info.plist key %q", key)
+		}
+		switch value.(type) {
+		case string, bool:
+		default:
+			return GenerateResult{}, fmt.Errorf("Info.plist value for %q must be string or bool", key)
+		}
 	}
 	files := map[string]string{}
 	for _, generate := range []func(config.ProjectConfig) map[string]string{nativeMacOSManifests, nativeMacOSPackage} {
@@ -78,10 +92,31 @@ func nativeMacOSManifests(c config.ProjectConfig) map[string]string {
 	q := strconv.Quote
 	n := c.AppName
 	core := n + "Core"
-	var packages, deps strings.Builder
+	var packages, deps, appDeps, info strings.Builder
 	for _, p := range c.MacOS.Packages {
 		fmt.Fprintf(&packages, "        .remote(url: %s, requirement: .exact(%s)),\n", q(p.URL), q(p.Version))
-		fmt.Fprintf(&deps, "                .package(product: %s),\n", q(p.Product))
+		if p.Target == "app" {
+			fmt.Fprintf(&appDeps, ", .package(product: %s)", q(p.Product))
+		} else {
+			fmt.Fprintf(&deps, "                .package(product: %s),\n", q(p.Product))
+		}
+	}
+	keys := make([]string, 0, len(c.MacOS.InfoPlist))
+	for key := range c.MacOS.InfoPlist {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		switch value := c.MacOS.InfoPlist[key].(type) {
+		case string:
+			fmt.Fprintf(&info, "                %s: .string(%s),\n", q(key), q(value))
+		case bool:
+			fmt.Fprintf(&info, "                %s: .boolean(%t),\n", q(key), value)
+		}
+	}
+	hardened := "NO"
+	if c.MacOS.HardenedRuntime {
+		hardened = "YES"
 	}
 	sandbox := "NO"
 	if c.MacOS.Sandbox {
@@ -102,6 +137,7 @@ let project = Project(
         "SWIFT_VERSION": "6.0",
         "SWIFT_STRICT_CONCURRENCY": "complete",
         "MACOSX_DEPLOYMENT_TARGET": %s,
+        "ENABLE_HARDENED_RUNTIME": %s,
     ]),
     targets: [
         .target(
@@ -112,10 +148,10 @@ let project = Project(
                 "CFBundleShortVersionString": .string(%s),
                 "CFBundleVersion": .string(%s),
                 "NSHumanReadableCopyright": .string(%s),
-            ]),
+%s            ]),
             sources: ["Targets/%s/Sources/**"],
             resources: .resources([.glob(pattern: "Targets/%s/Resources/**", excluding: [])]),
-            dependencies: [.target(name: %s)],
+            dependencies: [.target(name: %s)%s],
             settings: .settings(base: ["ENABLE_APP_SANDBOX": %s, "CODE_SIGN_IDENTITY": "Apple Development"])
         ),
         .target(
@@ -137,7 +173,7 @@ let project = Project(
         ),
     ]
 )
-`, nativeMacOSMarker, q(n), q(c.OrgName), packages.String(), q(c.TeamID), q(c.MinTarget), q(n), q(c.BundleID), q(c.MinTarget), c.MacOS.MenuBar, q(c.MarketingVersion), q(c.ProjectVersion), q(c.OrgName), n, n, q(core), q(sandbox), q(core), q(c.BundleID+".core"), q(c.MinTarget), core, deps.String(), q(core+"Tests"), q(c.BundleID+".coretests"), q(c.MinTarget), core, q(core))
+`, nativeMacOSMarker, q(n), q(c.OrgName), packages.String(), q(c.TeamID), q(c.MinTarget), q(hardened), q(n), q(c.BundleID), q(c.MinTarget), c.MacOS.MenuBar, q(c.MarketingVersion), q(c.ProjectVersion), q(c.OrgName), info.String(), n, n, q(core), appDeps.String(), q(sandbox), q(core), q(c.BundleID+".core"), q(c.MinTarget), core, deps.String(), q(core+"Tests"), q(c.BundleID+".coretests"), q(c.MinTarget), core, q(core))
 	return map[string]string{"Project.swift": b.String(), "Workspace.swift": nativeMacOSMarker + "\nimport ProjectDescription\nlet workspace = Workspace(name: " + q(n) + ", projects: [\".\"])\n"}
 }
 
@@ -146,6 +182,9 @@ func nativeMacOSPackage(c config.ProjectConfig) map[string]string {
 	q := strconv.Quote
 	var deps, products strings.Builder
 	for _, p := range c.MacOS.Packages {
+		if p.Target == "app" {
+			continue
+		}
 		fmt.Fprintf(&deps, "        .package(url: %s, exact: %s),\n", q(p.URL), q(p.Version))
 		identity := strings.TrimSuffix(filepath.Base(p.URL), ".git")
 		fmt.Fprintf(&products, "                .product(name: %s, package: %s),\n", q(p.Product), q(identity))

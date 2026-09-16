@@ -11,3 +11,9 @@ The iOS init pipeline exposes iPhone/iPad destinations, iOS deployment settings 
 Re-run this command to converge config-owned Project.swift and Workspace.swift. Source files are seeded only when absent, so handwritten code/tests survive regeneration. The separate Core Package.swift enables `swift test --package-path Packages/<AppName>Core` on macOS. Native Xcode packages and SwiftPM use the same configured exact versions. The package manifest is config-owned too. Do not mix the iOS `generate project-config` orchestration into this native scaffold; use `generate macos-app` for synchronization.
 
 Generate with `tuist generate --no-open`, then build with `xcodebuild -workspace <AppName>.xcworkspace -scheme <AppName> -destination 'platform=macOS' build`. Sign using the configured DEVELOPMENT_TEAM; do not silently substitute another team. The generated app source is a starting point that can be implemented normally. MenuBarExtra lifecycle/composition stays in the app; services, state and reducers stay in Core.
+
+## Desktop distribution and app-only frameworks
+
+Set `macos.hardened_runtime: true` for Developer ID distribution. `macos.info_plist` adds string/bool host metadata (for example update-feed URLs and public signing keys); reserved identity keys remain owned by the normal project fields. Put a package on `target: "app"` when its framework belongs in the host UI/lifecycle rather than Core. App-only packages are excluded from the Core SwiftPM manifest and its unit tests. Omitting `target` keeps the existing Core behavior. Re-running the generator converges all these fields.
+
+For Sparkle distribution use archive/export with the Developer ID method so nested helpers are signed, notarize and staple the app, then create/notarize/staple the DMG and generate the EdDSA-signed appcast. Never put API keys or private update signing keys in project JSON or manifests.
