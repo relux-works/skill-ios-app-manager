@@ -7,8 +7,7 @@ Skill + Go CLI tool that scaffolds and manages Tuist-based iOS projects with Rel
 ```
 skill-ios-app-manager/
 ├── SKILL.md              # Skill definition
-├── blueprints/           # Versioned example blueprints for relux-feature modules
-├── references/           # CLI, DSL, workflow docs
+├── references/           # CLI/workflow docs, blueprints, diagrams, runtime-profile example
 ├── diagrams/             # Architecture diagrams
 ├── tuist-starter/        # Go CLI tool source
 │   ├── cmd/, internal/, pkg/
@@ -375,7 +374,7 @@ It prints an agent-readable rendered accessibility hierarchy and reports duplica
 | Runtime errors | `references/runtime-error-diagnostics-research.md` |
 | Rendered layout XML | `references/layout-hierarchy-diagnostics-research.md` |
 | Architecture | `references/profile-diagnostics-architecture.md` |
-| Diagram | `diagrams/profile-diagnostics-architecture.puml` |
+| Diagram | `references/diagrams/profile-diagnostics-architecture.puml` |
 
 ### App Groups capability
 
@@ -478,14 +477,14 @@ serializes the validation-hook path, Firebase API key, raw token, or raw UID.
 
 ## Blueprint examples
 
-Versioned relux-feature blueprints live under [blueprints/](blueprints/README.md).
+Versioned relux-feature blueprints live under [references/blueprints/](references/blueprints/guide.md).
 Current examples come from the XFlow iOS migration surface:
 
-- [Auth.blueprint.json](blueprints/xflow-ios/Auth.blueprint.json)
-- [CRM.blueprint.json](blueprints/xflow-ios/CRM.blueprint.json)
-- [Onboarding.blueprint.json](blueprints/xflow-ios/Onboarding.blueprint.json)
-- [Organizations.blueprint.json](blueprints/xflow-ios/Organizations.blueprint.json)
-- [Profile.blueprint.json](blueprints/xflow-ios/Profile.blueprint.json)
+- [Auth.blueprint.json](references/blueprints/xflow-ios/Auth.blueprint.json)
+- [CRM.blueprint.json](references/blueprints/xflow-ios/CRM.blueprint.json)
+- [Onboarding.blueprint.json](references/blueprints/xflow-ios/Onboarding.blueprint.json)
+- [Organizations.blueprint.json](references/blueprints/xflow-ios/Organizations.blueprint.json)
+- [Profile.blueprint.json](references/blueprints/xflow-ios/Profile.blueprint.json)
 
 ## Module types
 
@@ -506,7 +505,7 @@ Current examples come from the XFlow iOS migration surface:
 | `make test` | Run all Go tests | `cd tuist-starter && go test ./...` |
 | `make test-update` | Rebuild golden files + run tests | `cd tuist-starter && go test ./internal/testutil -update && go test ./...` |
 | `make lint` | Lint Go code | `cd tuist-starter && go vet ./...` |
-| `plantuml` | Render dependency diagrams | `plantuml -tpng diagrams/*.puml -o diagrams/` |
+| `plantuml` | Render dependency diagrams | `plantuml -tpng references/diagrams/*.puml` |
 | `tuist graph` | Build target dependency graph for profile analysis | `tuist graph --format legacyJSON --no-open --path . --output-path .temp/build-profile/graph` |
 | `xcodebuild` | Build and emit timing/result bundle artifacts | `xcodebuild -showBuildTimingSummary -resultBundlePath .temp/build-profile/Build.xcresult ...` |
 | `xcrun simctl` | Collect simulator logs for profile diagnostics | `xcrun simctl spawn booted log show --style ndjson --last 10m ...` |

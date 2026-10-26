@@ -190,7 +190,7 @@ All scaffold plugins and subplugins must be idempotent: repeated runs with the s
 
 ## 7) Configure typed runtime profiles
 
-Start from the generic config in `tuist-starter/testdata/runtime-profiles-config.json`, then provide Firebase plist paths only through the hook environment variables named in that config:
+Start from the generic config in `runtime-profiles-config.json`, then provide Firebase plist paths only through the hook environment variables named in that config:
 
 ```bash
 export IOS_APP_MANAGER_FIREBASE_SHARED_PLIST="$PWD/.local/firebase/shared.plist"

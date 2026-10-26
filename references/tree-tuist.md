@@ -11,7 +11,7 @@ Use this decision tree:
 2. Need to create/list/delete modules?
    Run [B. Module CRUD](#b-module-crud-create-list-delete-with-types).
 3. Need to change dependencies or manifests?
-   Run [C. Manifest Management](#c-manifest-management-package-swift--projectswift).
+   Run [C. Manifest Management](#c-manifest-management-packageswift--projectswift).
 4. Need to manage entitlements?
    Run [D. Entitlements](#d-entitlements-management).
 5. Need Makefile/SwiftLint/project-config regeneration?

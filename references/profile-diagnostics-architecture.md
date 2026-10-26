@@ -10,7 +10,9 @@ ios-app-manager profile runtime scaffold [flags]
 ios-app-manager profile runtime analyze --input <log> [flags]
 ```
 
-## Package Layout
+## Source Package Layout
+
+The following paths describe the source checkout. Curator installs the compiled command and excludes its build sources from skill context.
 
 ```text
 tuist-starter/internal/profile/

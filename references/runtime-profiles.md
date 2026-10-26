@@ -2,7 +2,7 @@
 
 `runtime_profiles` separates immutable distribution artifacts from the backend environment selected at runtime. The generator owns the typed Swift descriptors, Tuist build configurations and schemes, application configuration field, and the policy-aware AppConfig templates.
 
-Use the complete generic example at [`tuist-starter/testdata/runtime-profiles-config.json`](../tuist-starter/testdata/runtime-profiles-config.json). The machine-readable block schema is [`runtime-profiles.schema.json`](runtime-profiles.schema.json).
+Use the complete generic example at [`runtime-profiles-config.json`](runtime-profiles-config.json). The machine-readable block schema is [`runtime-profiles.schema.json`](runtime-profiles.schema.json).
 
 ## Model
 

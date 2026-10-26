@@ -17,6 +17,8 @@ Agent-facing workflow for managing Tuist-based iOS projects that follow Relux mo
 
 ## Setup
 
+The setup commands below run from a source checkout. Curator installations provide the compiled `ios-app-manager` command; build sources and the legacy installer are source-checkout-only. Instructional assets live under `references/`.
+
 ```bash
 # Clone and run setup (builds CLI, installs runtime skill copy, symlinks binary)
 git clone git@github.com:relux-works/skill-ios-app-manager.git
@@ -36,14 +38,13 @@ Setup does:
 - Symlinks binary to `~/.local/bin/ios-app-manager`
 - `--select-xcode` runs only a hardcoded privileged list: `sudo -v` and `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`
 
-## Repository structure
+## Source repository structure
 
 ```
 skill-ios-app-manager/
 ├── SKILL.md              # This file (skill definition)
-├── blueprints/           # Versioned example relux-feature blueprints
-├── references/           # CLI, DSL, workflow docs
-├── diagrams/             # Architecture diagrams (PlantUML)
+├── references/           # CLI/workflow docs, blueprints, diagrams, runtime-profile example
+├── diagrams/             # Other source architecture diagrams (PlantUML)
 ├── scripts/setup.sh      # Global skill installer
 └── tuist-starter/        # Go CLI source
     ├── cmd/, internal/, pkg/
@@ -296,9 +297,9 @@ Artifacts and references:
 | Runtime error diagnostics research | `references/runtime-error-diagnostics-research.md` |
 | Rendered layout hierarchy research | `references/layout-hierarchy-diagnostics-research.md` |
 | Architecture overview | `references/profile-diagnostics-architecture.md` |
-| Architecture diagram | `diagrams/profile-diagnostics-architecture.puml` |
+| Architecture diagram | `references/diagrams/profile-diagnostics-architecture.puml` |
 
-Implementation notes:
+Implementation notes (setup-script paths refer to the source checkout):
 
 - `scripts/setup.sh` verifies Go and Tuist, then reports Xcode/profile-tool readiness for `xcodebuild`, `xcrun/simctl`, macOS `log`, and optional `xctrace`; missing Xcode tools are warnings so the CLI can still be installed.
 - `./scripts/setup.sh --select-xcode` is the only setup path that uses sudo; it prints the exact hardcoded command list first and does not evaluate user-provided shell strings.
@@ -358,11 +359,11 @@ init → ioc → relux → utilities
 - Delete module: `ios-app-manager module delete <name> [--force]`
 
 Versioned blueprint examples:
-- [`blueprints/xflow-ios/Auth.blueprint.json`](blueprints/xflow-ios/Auth.blueprint.json)
-- [`blueprints/xflow-ios/CRM.blueprint.json`](blueprints/xflow-ios/CRM.blueprint.json)
-- [`blueprints/xflow-ios/Onboarding.blueprint.json`](blueprints/xflow-ios/Onboarding.blueprint.json)
-- [`blueprints/xflow-ios/Organizations.blueprint.json`](blueprints/xflow-ios/Organizations.blueprint.json)
-- [`blueprints/xflow-ios/Profile.blueprint.json`](blueprints/xflow-ios/Profile.blueprint.json)
+- [`references/blueprints/xflow-ios/Auth.blueprint.json`](references/blueprints/xflow-ios/Auth.blueprint.json)
+- [`references/blueprints/xflow-ios/CRM.blueprint.json`](references/blueprints/xflow-ios/CRM.blueprint.json)
+- [`references/blueprints/xflow-ios/Onboarding.blueprint.json`](references/blueprints/xflow-ios/Onboarding.blueprint.json)
+- [`references/blueprints/xflow-ios/Organizations.blueprint.json`](references/blueprints/xflow-ios/Organizations.blueprint.json)
+- [`references/blueprints/xflow-ios/Profile.blueprint.json`](references/blueprints/xflow-ios/Profile.blueprint.json)
 
 Module type guidance:
 - `feature`: UI module, interface/implementation split (no Relux business logic)
@@ -407,7 +408,7 @@ Framework policy:
 
 ## Scaffolding pipeline — dependency graph
 
-See [`diagrams/scaffolding-pipeline.puml`](diagrams/scaffolding-pipeline.puml) for the visual dependency graph. Always consult this diagram to understand what depends on what before running setup commands.
+See [`references/diagrams/scaffolding-pipeline.puml`](references/diagrams/scaffolding-pipeline.puml) for the visual dependency graph. Always consult this diagram to understand what depends on what before running setup commands.
 
 ### Pipeline elements
 
@@ -491,5 +492,5 @@ ios-app-manager diagram
 - Command/flag reference: [`references/cli-reference.md`](references/cli-reference.md)
 - DSL syntax and operations: [`references/dsl-reference.md`](references/dsl-reference.md)
 - End-to-end examples: [`references/workflows.md`](references/workflows.md)
-- Dependency diagram: [`diagrams/scaffolding-pipeline.puml`](diagrams/scaffolding-pipeline.puml)
-- Blueprint examples: [`blueprints/README.md`](blueprints/README.md)
+- Dependency diagram: [`references/diagrams/scaffolding-pipeline.puml`](references/diagrams/scaffolding-pipeline.puml)
+- Blueprint examples: [`references/blueprints/guide.md`](references/blueprints/guide.md)
