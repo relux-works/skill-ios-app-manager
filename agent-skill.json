@@ -1,0 +1,22 @@
+{
+  "schema_version": 6,
+  "capabilities": {
+    "network": [
+      "brew.sh",
+      "example.com",
+      "github.com",
+      "gitlab.example.com",
+      "json-schema.org"
+    ]
+  },
+  "build_roots": [
+    "tuist-starter"
+  ],
+  "commands": {
+    "ios-app-manager": {
+      "type": "build",
+      "driver": "go-v1",
+      "source_dir": "tuist-starter/cmd/ios-app-manager"
+    }
+  }
+}
